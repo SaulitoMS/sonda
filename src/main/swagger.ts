@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import SwaggerParser from '@apidevtools/swagger-parser'
-import type { HttpMethod, KeyValueData, ResponseSchemas, SavedRequest } from '../shared/types'
+import type {
+  HttpMethod,
+  JsonSchema,
+  KeyValueData,
+  ResponseSchemas,
+  SavedRequest
+} from '../shared/types'
 
 export interface ImportedRequest {
   folder: string
@@ -173,6 +179,23 @@ function extractResponseSchemas(isV3: boolean, op: any): ResponseSchemas | undef
   return Object.keys(out).length > 0 ? out : undefined
 }
 
+/** Schema JSON del body que espera la operación (solo JSON), para validar lo que se envía */
+function extractRequestSchema(
+  isV3: boolean,
+  op: any,
+  params: Map<string, any>
+): JsonSchema | undefined {
+  let schema: any
+  if (isV3) {
+    const content = op.requestBody?.content
+    const jsonKey = content ? Object.keys(content).find((k) => k.includes('json')) : undefined
+    schema = jsonKey ? content[jsonKey]?.schema : undefined
+  } else {
+    schema = [...params.values()].find((p) => p.in === 'body')?.schema
+  }
+  return schema ? cleanSchema(schema) : undefined
+}
+
 function resolveBaseUrl(api: any, specUrl: string): string {
   const spec = new URL(specUrl)
 
@@ -256,6 +279,7 @@ function buildRequest(
       headers,
       body,
       description: op.description,
+      requestSchema: extractRequestSchema(isV3, op, params),
       responseSchemas: extractResponseSchemas(isV3, op)
     }
   }

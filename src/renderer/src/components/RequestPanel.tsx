@@ -1,16 +1,32 @@
 import { useMemo, useState } from 'react'
 import { applyQuery, parseQuery } from '../../../shared/params'
+import type { SchemaValidation } from '../../../shared/types'
+import { validateRequestBody } from '../../../shared/validate'
+import { buildVarMap, interpolate } from '../../../shared/variables'
+import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore, type KeyValue } from '../store/useRequestStore'
 import { AssertionsPanel } from './AssertionsPanel'
 import { AuthPanel } from './AuthPanel'
 import { KeyValueEditor } from './KeyValueEditor'
+import { RequestSchemaStatus } from './RequestSchemaStatus'
 
 type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests'
 
 export function RequestPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('params')
-  const { url, headers, body, auth, assertions, method, setUrl, setHeaders, setBody } =
-    useRequestStore()
+  const {
+    url,
+    headers,
+    body,
+    auth,
+    assertions,
+    requestSchema,
+    method,
+    setUrl,
+    setHeaders,
+    setBody
+  } = useRequestStore()
+  const envData = useEnvironmentStore((s) => s.data)
 
   const tabClass = (t: Tab): string =>
     `px-4 py-2 text-sm font-medium border-b-2 transition ${
@@ -36,6 +52,23 @@ export function RequestPanel(): React.JSX.Element {
     setUrl(applyQuery(url, rows))
   }
 
+  // Valida el body tal como se enviaría: con las {{variables}} del entorno activo ya resueltas
+  const bodyCheck = useMemo<SchemaValidation | null>(() => {
+    if (!requestSchema) return null
+    const env = envData.environments.find((e) => e.id === envData.activeId)
+    const { text, missing } = interpolate(body, buildVarMap(env))
+    if (missing.length > 0) {
+      const names = missing.map((n) => `{{${n}}}`).join(', ')
+      return {
+        verdict: 'skipped',
+        message: `El body usa variables sin definir (${names}), no se puede validar.`,
+        issues: [],
+        truncated: false
+      }
+    }
+    return validateRequestBody({ schema: requestSchema, method, body: text })
+  }, [requestSchema, body, method, envData])
+
   const paramCount = paramRows.length - 1
   const activeHeaders = headers.filter((h) => h.enabled && h.key.trim()).length
   const bodyDisabled = method === 'GET' || method === 'HEAD'
@@ -53,7 +86,12 @@ export function RequestPanel(): React.JSX.Element {
           Headers {activeHeaders > 0 && <span className="text-blue-400">({activeHeaders})</span>}
         </button>
         <button className={tabClass('body')} onClick={() => setTab('body')}>
-          Body
+          Body {bodyCheck?.verdict === 'valid' && <span className="text-emerald-400">✓</span>}
+          {bodyCheck?.verdict === 'invalid' && (
+            <span className="text-red-400">
+              ✗ {bodyCheck.issues.filter((i) => i.severity === 'error').length}
+            </span>
+          )}
         </button>
         <button className={tabClass('tests')} onClick={() => setTab('tests')}>
           Tests{' '}
@@ -78,9 +116,9 @@ export function RequestPanel(): React.JSX.Element {
         {tab === 'tests' && <AssertionsPanel />}
 
         {tab === 'body' && (
-          <>
+          <div className="flex h-full flex-col gap-3">
             {bodyDisabled && (
-              <p className="mb-2 text-xs text-amber-400">
+              <p className="text-xs text-amber-400">
                 {method} no envía body. Cambia el método para usarlo.
               </p>
             )}
@@ -89,9 +127,10 @@ export function RequestPanel(): React.JSX.Element {
               onChange={(e) => setBody(e.target.value)}
               placeholder={'{\n  "nombre": "Sonda"\n}'}
               spellCheck={false}
-              className="h-full min-h-48 w-full resize-none rounded-md border border-zinc-700 bg-zinc-800 p-3 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
+              className="min-h-48 w-full flex-1 resize-none rounded-md border border-zinc-700 bg-zinc-800 p-3 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
             />
-          </>
+            {bodyCheck && <RequestSchemaStatus validation={bodyCheck} />}
+          </div>
         )}
       </div>
     </div>

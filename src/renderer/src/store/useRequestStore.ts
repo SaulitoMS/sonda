@@ -5,6 +5,7 @@ import type {
   AssertionResult,
   AuthConfig,
   HttpMethod,
+  JsonSchema,
   ResponseSchemas,
   SavedRequest,
   SchemaValidation,
@@ -38,6 +39,8 @@ interface RequestState {
   loading: boolean
   response: SendRequestResult | null
 
+  /** Schema del body que espera la spec (solo si viene de una spec OpenAPI) */
+  requestSchema: JsonSchema | null
   /** Schemas de respuesta de la petición cargada (solo si viene de una spec OpenAPI) */
   responseSchemas: ResponseSchemas | null
   /** Resultado de validar la última respuesta contra esos schemas */
@@ -76,6 +79,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   assertions: [],
   loading: false,
   response: null,
+  requestSchema: null,
   responseSchemas: null,
   validation: null,
   assertionResults: [],
@@ -91,12 +95,22 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setAssertions: (assertions) => set({ assertions }),
 
   send: async () => {
-    const { method, url, headers, body, auth, assertions, loading, responseSchemas } = get()
+    const {
+      method,
+      url,
+      headers,
+      body,
+      auth,
+      assertions,
+      loading,
+      requestSchema,
+      responseSchemas
+    } = get()
     if (loading || !url.trim()) return
 
     set({ loading: true })
     const { response, validation, assertionResults, warnings } = await executeRequest(
-      { method, url, headers, body, auth, assertions, responseSchemas },
+      { method, url, headers, body, auth, assertions, requestSchema, responseSchemas },
       useEnvironmentStore.getState().getActive()
     )
     set({ response, validation, assertionResults, warnings, loading: false })
@@ -113,6 +127,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       currentFile: path,
       name: saved.name,
       response: null,
+      requestSchema: saved.requestSchema ?? null,
       responseSchemas: saved.responseSchemas ?? null,
       validation: null,
       assertionResults: [],
@@ -120,7 +135,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     }),
 
   toSaved: (name) => {
-    const { method, url, headers, body, auth, assertions, responseSchemas } = get()
+    const { method, url, headers, body, auth, assertions, requestSchema, responseSchemas } = get()
     return {
       name,
       method,
@@ -132,6 +147,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       ...(auth.type !== 'none' ? { auth } : {}),
       ...(assertions.length > 0 ? { assertions } : {}),
       // Se conservan para no perderlos al volver a guardar una petición importada
+      ...(requestSchema ? { requestSchema } : {}),
       ...(responseSchemas ? { responseSchemas } : {})
     }
   },
@@ -150,6 +166,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       currentFile: null,
       name: '',
       response: null,
+      requestSchema: null,
       responseSchemas: null,
       validation: null,
       assertionResults: [],

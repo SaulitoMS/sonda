@@ -9,6 +9,7 @@ import type { JsonSchema, ResponseSchemas, SchemaIssue, SchemaValidation } from 
 interface Schema {
   type?: string | string[]
   nullable?: boolean
+  readOnly?: boolean
   enum?: unknown[]
   format?: string
   pattern?: string
@@ -352,6 +353,20 @@ const skipped = (matched: string, message: string): SchemaValidation => ({
   truncated: false
 })
 
+/** Errores primero, advertencias después (el orden dentro de cada grupo se conserva) */
+function summarize(ctx: Ctx, matched: string): SchemaValidation {
+  const issues = [
+    ...ctx.issues.filter((i) => i.severity === 'error'),
+    ...ctx.issues.filter((i) => i.severity === 'warning')
+  ]
+  return {
+    verdict: ctx.errors > 0 ? 'invalid' : 'valid',
+    matched,
+    issues,
+    truncated: ctx.truncated
+  }
+}
+
 function validate(input: ValidateInput): SchemaValidation | null {
   const { schemas, status, method, headers, body } = input
   if (Object.keys(schemas).length === 0) return null
@@ -392,17 +407,7 @@ function validate(input: ValidateInput): SchemaValidation | null {
 
   const ctx = newCtx()
   check(schema as unknown as Schema, parsed, '$', ctx)
-  // Errores primero, advertencias después (el orden dentro de cada grupo se conserva)
-  const issues = [
-    ...ctx.issues.filter((i) => i.severity === 'error'),
-    ...ctx.issues.filter((i) => i.severity === 'warning')
-  ]
-  return {
-    verdict: ctx.errors > 0 ? 'invalid' : 'valid',
-    matched: key,
-    issues,
-    truncated: ctx.truncated
-  }
+  return summarize(ctx, key)
 }
 
 /**
@@ -415,6 +420,74 @@ export function validateResponse(input: ValidateInput): SchemaValidation | null 
   } catch (err) {
     return skipped(
       '',
+      `No se pudo validar: ${err instanceof Error ? err.message : 'error desconocido'}`
+    )
+  }
+}
+
+// ---------- Validación del request ----------
+
+export interface ValidateRequestInput {
+  /** Schema del requestBody de la spec. Sin schema no hay nada que validar */
+  schema: JsonSchema | null | undefined
+  method: string
+  /** Body tal como se va a enviar, con las {{variables}} ya resueltas */
+  body: string
+}
+
+/**
+ * Los campos readOnly los pone el servidor: aunque la spec los marque como required,
+ * el cliente no tiene que enviarlos. Devuelve una copia del schema sin esa exigencia.
+ */
+function relaxReadOnly(schema: Schema, depth = 0): Schema {
+  if (depth > MAX_DEPTH) return schema
+  const out: Schema = { ...schema }
+
+  if (schema.properties) {
+    const entries = Object.entries(schema.properties)
+    out.properties = Object.fromEntries(
+      entries.map(([name, sub]) => [name, relaxReadOnly(sub, depth + 1)])
+    )
+    const readOnly = new Set(entries.filter(([, sub]) => sub.readOnly === true).map(([n]) => n))
+    if (readOnly.size > 0 && schema.required) {
+      out.required = schema.required.filter((name) => !readOnly.has(name))
+    }
+  }
+  if (schema.items) out.items = relaxReadOnly(schema.items, depth + 1)
+  for (const list of ['allOf', 'anyOf', 'oneOf'] as const) {
+    const variants = schema[list]
+    if (variants) out[list] = variants.map((v) => relaxReadOnly(v, depth + 1))
+  }
+  return out
+}
+
+/**
+ * Revisa el body que se va a enviar contra el schema del requestBody de la spec.
+ * Devuelve null si no hay nada que validar (sin schema, o método sin body como GET).
+ * Nunca lanza: si algo falla, el resultado es "skipped".
+ */
+export function validateRequestBody(input: ValidateRequestInput): SchemaValidation | null {
+  const { schema, body } = input
+  if (!schema || Object.keys(schema).length === 0) return null
+  const method = input.method.toUpperCase()
+  if (method === 'GET' || method === 'HEAD') return null
+
+  try {
+    if (!body.trim()) return skipped('requestBody', 'No hay body para validar.')
+
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(body)
+    } catch {
+      return invalid('requestBody', 'El body no es JSON válido')
+    }
+
+    const ctx = newCtx()
+    check(relaxReadOnly(schema as unknown as Schema), parsed, '$', ctx)
+    return summarize(ctx, 'requestBody')
+  } catch (err) {
+    return skipped(
+      'requestBody',
       `No se pudo validar: ${err instanceof Error ? err.message : 'error desconocido'}`
     )
   }

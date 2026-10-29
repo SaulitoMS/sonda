@@ -15,10 +15,10 @@ export interface RunVerdict {
  * - Sin schema: pasa si el status es < 400, salvo que haya aserciones propias
  *   y todas pasen (ahí manda lo que el usuario definió, ej: esperar un 404)
  */
-export function classifyResult(
+function classifyResponse(
   response: SendRequestResult,
   validation: SchemaValidation | null,
-  assertions: AssertionResult[] = []
+  assertions: AssertionResult[]
 ): RunVerdict {
   if (!response.ok) return { status: 'fail', detail: response.error }
 
@@ -57,4 +57,29 @@ export function classifyResult(
   return response.status >= 400
     ? { status: 'fail', detail: `HTTP ${response.status} ${response.statusText}`.trim() }
     : { status: 'pass', detail: '' }
+}
+
+/**
+ * Igual que classifyResponse, pero además avisa (warn) si la petición salió bien pero el body
+ * que se envió no cumplía el schema del requestBody: la API respondió, aunque el request
+ * se apartaba de la spec.
+ */
+export function classifyResult(
+  response: SendRequestResult,
+  validation: SchemaValidation | null,
+  assertions: AssertionResult[] = [],
+  requestValidation: SchemaValidation | null = null
+): RunVerdict {
+  const verdict = classifyResponse(response, validation, assertions)
+  if (verdict.status !== 'pass' || requestValidation?.verdict !== 'invalid') return verdict
+
+  const errors = requestValidation.issues.filter((i) => i.severity === 'error')
+  const first = errors[0]
+  const count = `${errors.length} ${errors.length === 1 ? 'error' : 'errores'}`
+  return {
+    status: 'warn',
+    detail: first
+      ? `Body enviado inválido (${count}): ${first.path} ${first.message}`
+      : `Body enviado inválido (${count})`
+  }
 }

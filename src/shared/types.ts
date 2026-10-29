@@ -42,6 +42,9 @@ export interface SavedRequest {
   description?: string
   /** Schemas de respuesta de la spec, por status. Solo existe en peticiones importadas de OpenAPI */
   responseSchemas?: ResponseSchemas
+
+  /** Schema del body que espera la spec (solo JSON). Solo existe en peticiones importadas de OpenAPI */
+  requestSchema?: JsonSchema
   /** Autenticación de la petición. Si no existe, la petición no usa auth */
   auth?: AuthConfig
   /** Aserciones propias que se evalúan junto al schema. Si no existe, no hay reglas */

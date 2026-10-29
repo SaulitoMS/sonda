@@ -86,8 +86,11 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
       let row: Row
       try {
         const saved = await window.api.readRequest(entry.item.path)
-        const { response, validation, assertionResults } = await executeRequest(saved, env)
-        const verdict = classifyResult(response, validation, assertionResults)
+        const { response, validation, requestValidation, assertionResults } = await executeRequest(
+          saved,
+          env
+        )
+        const verdict = classifyResult(response, validation, assertionResults, requestValidation)
         row = {
           entry,
           ...verdict,

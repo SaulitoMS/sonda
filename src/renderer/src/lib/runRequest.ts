@@ -7,11 +7,12 @@ import type {
   AuthConfig,
   Environment,
   HttpMethod,
+  JsonSchema,
   ResponseSchemas,
   SchemaValidation,
   SendRequestResult
 } from '../../../shared/types'
-import { validateResponse } from '../../../shared/validate'
+import { validateRequestBody, validateResponse } from '../../../shared/validate'
 import { buildVarMap, interpolate } from '../../../shared/variables'
 
 export interface RequestDraft {
@@ -21,12 +22,16 @@ export interface RequestDraft {
   body: string
   auth?: AuthConfig | null
   responseSchemas?: ResponseSchemas | null
+  /** Schema del body que espera la spec; si existe, se valida lo que se va a enviar */
+  requestSchema?: JsonSchema | null
   assertions?: Assertion[] | null
 }
 
 export interface ExecuteResult {
   response: SendRequestResult
   validation: SchemaValidation | null
+  /** Resultado de validar el body enviado contra el schema del requestBody (null si no aplica) */
+  requestValidation: SchemaValidation | null
   /** Resultado de cada aserción activa (vacío si no hay o si la petición no llegó a responder) */
   assertionResults: AssertionResult[]
   /** Avisos que no impiden enviar (ej: la auth quedó vacía y se omitió) */
@@ -76,6 +81,7 @@ export async function executeRequest(
     return {
       response: { ok: false, error: `Variables sin definir: ${names}. ${hint}`, timeMs: 0 },
       validation: null,
+      requestValidation: null,
       assertionResults: [],
       warnings: []
     }
@@ -90,6 +96,20 @@ export async function executeRequest(
   const hasContentType = headers.some((h) => h.key.toLowerCase() === 'content-type')
   if (finalBody && !hasContentType && looksLikeJson(finalBody)) {
     headers.push({ key: 'Content-Type', value: 'application/json' })
+  }
+
+  // Solo avisa: la petición se envía igual, para poder probar cómo reacciona la API a un body malo
+  const requestValidation = validateRequestBody({
+    schema: draft.requestSchema,
+    method: draft.method,
+    body: finalBody ?? ''
+  })
+  const warnings = [...authParts.warnings]
+  if (requestValidation?.verdict === 'invalid') {
+    const n = requestValidation.issues.filter((i) => i.severity === 'error').length
+    warnings.push(
+      `El body enviado no cumple el schema de la spec (${n} ${n === 1 ? 'error' : 'errores'}). Revísalo en la pestaña Body.`
+    )
   }
 
   const response = await window.api.sendRequest({
@@ -112,5 +132,5 @@ export async function executeRequest(
 
   const assertionResults = response.ok ? evaluateAssertions(draft.assertions, response) : []
 
-  return { response, validation, assertionResults, warnings: authParts.warnings }
+  return { response, validation, requestValidation, assertionResults, warnings }
 }
