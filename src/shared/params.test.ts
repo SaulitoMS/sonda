@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyQuery, parseQuery } from './params'
+import { appendQuery, applyQuery, parseQuery } from './params'
 
 describe('parseQuery', () => {
   it('lee pares clave=valor', () => {
@@ -52,5 +52,33 @@ describe('applyQuery', () => {
   it('hace ida y vuelta sin alterar la URL', () => {
     const url = '{{baseUrl}}/users?id={{id}}&tag=a%20b'
     expect(applyQuery(url, parseQuery(url))).toBe(url)
+  })
+})
+
+describe('appendQuery', () => {
+  it('agrega a una URL sin query', () => {
+    expect(appendQuery('https://a.com/x', [{ key: 'api_key', value: 'abc' }])).toBe(
+      'https://a.com/x?api_key=abc'
+    )
+  })
+
+  it('conserva los parámetros existentes y el fragmento', () => {
+    expect(appendQuery('https://a.com/x?a=1#top', [{ key: 'k', value: 'v' }])).toBe(
+      'https://a.com/x?a=1&k=v#top'
+    )
+  })
+
+  it('codifica el valor agregado', () => {
+    expect(appendQuery('/x', [{ key: 'k', value: 'a b&c' }])).toBe('/x?k=a%20b%26c')
+  })
+
+  it('no codifica las {{variables}}', () => {
+    expect(appendQuery('/x', [{ key: 'api_key', value: '{{apiKey}}' }])).toBe(
+      '/x?api_key={{apiKey}}'
+    )
+  })
+
+  it('no cambia nada si no hay parámetros extra', () => {
+    expect(appendQuery('/x?a=1', [])).toBe('/x?a=1')
   })
 })

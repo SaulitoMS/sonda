@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { parseCurl, toCurl, type ParsedCurl } from '../../../shared/curl'
 import { buildVarMap, interpolate } from '../../../shared/variables'
+import { buildAuth } from '../../../shared/auth'
+import { appendQuery } from '../../../shared/params'
 import { applyCurl } from '../lib/applyCurl'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
@@ -150,6 +152,7 @@ function ImportTab({
 /* ---------- Exportar ---------- */
 
 function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
+  const auth = useRequestStore((s) => s.auth)
   const method = useRequestStore((s) => s.method)
   const url = useRequestStore((s) => s.url)
   const headers = useRequestStore((s) => s.headers)
@@ -185,8 +188,23 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       finalHeaders.push({ key: 'Content-Type', value: 'application/json' })
     }
 
-    return toCurl({ method, url: r(url.trim()), headers: finalHeaders, body: finalBody })
-  }, [method, url, headers, body, resolve, activeEnv])
+    // Basic se exporta con --user (así los {{secretos}} no se codifican en base64 sin resolver)
+    const basicUser = auth.type === 'basic' ? `${r(auth.username)}:${r(auth.password)}` : undefined
+    const authParts = buildAuth(auth.type === 'basic' ? null : auth, r)
+    for (const h of authParts.headers) {
+      if (!finalHeaders.some((x) => x.key.toLowerCase() === h.key.toLowerCase())) {
+        finalHeaders.push(h)
+      }
+    }
+
+    return toCurl({
+      method,
+      url: appendQuery(r(url.trim()), authParts.query),
+      headers: finalHeaders,
+      body: finalBody,
+      user: basicUser === ':' ? undefined : basicUser
+    })
+  }, [method, url, headers, body, auth, resolve, activeEnv])
 
   const hasPlaceholders = /\{\{\s*[\w.-]+\s*\}\}/.test(output)
 

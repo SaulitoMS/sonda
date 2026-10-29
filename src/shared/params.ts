@@ -48,3 +48,20 @@ export function applyQuery(url: string, params: QueryParam[]): string {
     .map((p) => `${escapeKey(p.key)}=${escapeValue(p.value)}`)
   return base + (parts.length ? `?${parts.join('&')}` : '') + hash
 }
+
+const VAR_SPLIT = /(\{\{\s*[\w.-]+\s*\}\})/
+
+// Codifica el texto pero deja intactas las {{variables}} (se resuelven después)
+const encodePart = (text: string): string =>
+  text
+    .split(VAR_SPLIT)
+    .map((part, i) => (i % 2 === 1 ? part : encodeURIComponent(part)))
+    .join('')
+
+/** Agrega parámetros a la URL (codificándolos) sin tocar los que ya tiene */
+export function appendQuery(url: string, extra: QueryParam[]): string {
+  if (extra.length === 0) return url
+  const current = parseQuery(url)
+  const added = extra.map((p) => ({ key: encodePart(p.key), value: encodePart(p.value) }))
+  return applyQuery(url, [...current, ...added])
+}

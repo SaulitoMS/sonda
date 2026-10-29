@@ -42,8 +42,27 @@ export interface SavedRequest {
   description?: string
   /** Schemas de respuesta de la spec, por status. Solo existe en peticiones importadas de OpenAPI */
   responseSchemas?: ResponseSchemas
+  /** Autenticación de la petición. Si no existe, la petición no usa auth */
+  auth?: AuthConfig
 }
 
+// ---------- Autenticación ----------
+
+export type AuthType = 'none' | 'bearer' | 'basic' | 'apikey'
+
+/** Todos los campos viven juntos para no perder lo escrito al cambiar de tipo */
+export interface AuthConfig {
+  type: AuthType
+  /** Bearer */
+  token: string
+  /** Basic */
+  username: string
+  password: string
+  /** API Key */
+  keyName: string
+  keyValue: string
+  keyIn: 'header' | 'query'
+}
 export interface RequestItem {
   /** Ruta relativa al workspace, con "/" (ej: "petstore/pet/post-pet.json") */
   path: string

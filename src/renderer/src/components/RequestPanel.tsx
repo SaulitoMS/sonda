@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { applyQuery, parseQuery } from '../../../shared/params'
 import { useRequestStore, type KeyValue } from '../store/useRequestStore'
+import { AuthPanel } from './AuthPanel'
 import { KeyValueEditor } from './KeyValueEditor'
 
-type Tab = 'params' | 'headers' | 'body'
+type Tab = 'params' | 'auth' | 'headers' | 'body'
 
 export function RequestPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('params')
-  const { url, headers, body, method, setUrl, setHeaders, setBody } = useRequestStore()
+  const { url, headers, body, auth, method, setUrl, setHeaders, setBody } = useRequestStore()
 
   const tabClass = (t: Tab): string =>
     `px-4 py-2 text-sm font-medium border-b-2 transition ${
@@ -43,6 +44,9 @@ export function RequestPanel(): React.JSX.Element {
         <button className={tabClass('params')} onClick={() => setTab('params')}>
           Params {paramCount > 0 && <span className="text-blue-400">({paramCount})</span>}
         </button>
+        <button className={tabClass('auth')} onClick={() => setTab('auth')}>
+          Auth {auth.type !== 'none' && <span className="text-blue-400">●</span>}
+        </button>
         <button className={tabClass('headers')} onClick={() => setTab('headers')}>
           Headers {activeHeaders > 0 && <span className="text-blue-400">({activeHeaders})</span>}
         </button>
@@ -60,6 +64,8 @@ export function RequestPanel(): React.JSX.Element {
             hideToggle
           />
         )}
+
+        {tab === 'auth' && <AuthPanel />}
 
         {tab === 'headers' && <KeyValueEditor rows={headers} onChange={setHeaders} />}
 

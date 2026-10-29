@@ -196,3 +196,16 @@ describe('toCurl', () => {
     expect(parseCurl(toCurl(req))).toMatchObject(req)
   })
 })
+
+describe('toCurl con --user', () => {
+  it('exporta las credenciales Basic con --user', () => {
+    const out = toCurl({
+      method: 'GET',
+      url: 'https://x.com',
+      headers: [],
+      body: '',
+      user: 'ana:1234'
+    })
+    expect(out).toContain("--user 'ana:1234'")
+  })
+})

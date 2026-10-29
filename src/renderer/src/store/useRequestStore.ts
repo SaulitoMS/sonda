@@ -1,5 +1,7 @@
 import { create } from 'zustand'
+import { emptyAuth } from '../../../shared/auth'
 import type {
+  AuthConfig,
   HttpMethod,
   ResponseSchemas,
   SavedRequest,
@@ -28,6 +30,7 @@ interface RequestState {
   url: string
   headers: KeyValue[]
   body: string
+  auth: AuthConfig
   loading: boolean
   response: SendRequestResult | null
 
@@ -44,6 +47,7 @@ interface RequestState {
   setUrl: (u: string) => void
   setHeaders: (h: KeyValue[]) => void
   setBody: (b: string) => void
+  setAuth: (a: AuthConfig) => void
   send: () => Promise<void>
 
   loadSaved: (saved: SavedRequest, path: string) => void
@@ -58,6 +62,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   url: 'https://jsonplaceholder.typicode.com/todos/1',
   headers: [newRow()],
   body: '',
+  auth: emptyAuth(),
   loading: false,
   response: null,
   responseSchemas: null,
@@ -69,14 +74,15 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setUrl: (url) => set({ url }),
   setHeaders: (headers) => set({ headers }),
   setBody: (body) => set({ body }),
+  setAuth: (auth) => set({ auth }),
 
   send: async () => {
-    const { method, url, headers, body, loading, responseSchemas } = get()
+    const { method, url, headers, body, auth, loading, responseSchemas } = get()
     if (loading || !url.trim()) return
 
     set({ loading: true })
     const { response, validation } = await executeRequest(
-      { method, url, headers, body, responseSchemas },
+      { method, url, headers, body, auth, responseSchemas },
       useEnvironmentStore.getState().getActive()
     )
     set({ response, validation, loading: false })
@@ -88,6 +94,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       url: saved.url,
       headers: [...(saved.headers ?? []).map((h) => ({ id: crypto.randomUUID(), ...h })), newRow()],
       body: saved.body ?? '',
+      auth: { ...emptyAuth(), ...saved.auth },
       currentFile: path,
       name: saved.name,
       response: null,
@@ -96,7 +103,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     }),
 
   toSaved: (name) => {
-    const { method, url, headers, body, responseSchemas } = get()
+    const { method, url, headers, body, auth, responseSchemas } = get()
     return {
       name,
       method,
@@ -105,6 +112,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         .filter((h) => h.key.trim())
         .map(({ key, value, enabled }) => ({ key, value, enabled })),
       body,
+      ...(auth.type !== 'none' ? { auth } : {}),
       // Se conservan para no perderlos al volver a guardar una petición importada
       ...(responseSchemas ? { responseSchemas } : {})
     }
@@ -119,6 +127,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       url: '',
       headers: [newRow()],
       body: '',
+      auth: emptyAuth(),
       currentFile: null,
       name: '',
       response: null,

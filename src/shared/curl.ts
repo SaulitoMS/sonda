@@ -5,6 +5,8 @@ export interface CurlRequest {
   url: string
   headers: { key: string; value: string }[]
   body: string
+  /** Credenciales Basic como "usuario:contraseña" (se exporta con --user) */
+  user?: string
 }
 
 export interface ParsedCurl extends CurlRequest {
@@ -355,6 +357,8 @@ export function toCurl(req: CurlRequest): string {
 
   lines.push(`--url ${quote(req.url)}`)
   for (const h of req.headers) lines.push(`--header ${quote(`${h.key}: ${h.value}`)}`)
+
+  if (req.user) lines.push(`--user ${quote(req.user)}`)
 
   if (req.body.trim() && req.method !== 'GET' && req.method !== 'HEAD') {
     lines.push(`--data-raw ${quote(req.body)}`)

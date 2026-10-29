@@ -1,3 +1,4 @@
+import { emptyAuth } from '../../../shared/auth'
 import type { ParsedCurl } from '../../../shared/curl'
 import { newRow, useRequestStore } from '../store/useRequestStore'
 
@@ -11,6 +12,7 @@ export function applyCurl(parsed: ParsedCurl): void {
       newRow()
     ],
     body: parsed.body,
+    auth: emptyAuth(),
     currentFile: null,
     name: '',
     response: null,

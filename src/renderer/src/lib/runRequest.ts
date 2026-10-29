@@ -1,4 +1,7 @@
+import { buildAuth } from '../../../shared/auth'
+import { appendQuery } from '../../../shared/params'
 import type {
+  AuthConfig,
   Environment,
   HttpMethod,
   ResponseSchemas,
@@ -13,6 +16,7 @@ export interface RequestDraft {
   url: string
   headers: { key: string; value: string; enabled: boolean }[]
   body: string
+  auth?: AuthConfig | null
   responseSchemas?: ResponseSchemas | null
 }
 
@@ -47,11 +51,14 @@ export async function executeRequest(
     return result.text
   }
 
-  const finalUrl = resolve(draft.url.trim())
+  let finalUrl = resolve(draft.url.trim())
   const finalBody = draft.body.trim() ? resolve(draft.body) : undefined
   const headers = draft.headers
     .filter((h) => h.enabled && h.key.trim())
     .map((h) => ({ key: resolve(h.key), value: resolve(h.value) }))
+
+  // La auth se resuelve antes de revisar variables faltantes para reportarlas también
+  const authParts = buildAuth(draft.auth, resolve)
 
   if (missing.size > 0) {
     const names = [...missing].map((n) => `{{${n}}}`).join(', ')
@@ -63,6 +70,12 @@ export async function executeRequest(
       validation: null
     }
   }
+
+  // Un header escrito a mano tiene prioridad sobre el que genera la pestaña Auth
+  for (const h of authParts.headers) {
+    if (!headers.some((x) => x.key.toLowerCase() === h.key.toLowerCase())) headers.push(h)
+  }
+  finalUrl = appendQuery(finalUrl, authParts.query)
 
   const hasContentType = headers.some((h) => h.key.toLowerCase() === 'content-type')
   if (finalBody && !hasContentType && looksLikeJson(finalBody)) {
