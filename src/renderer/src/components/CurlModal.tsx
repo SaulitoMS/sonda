@@ -175,7 +175,7 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
             : null
         )
       : {}
-    const r = (text: string): string => interpolate(text, vars).text
+    const r = (text: string): string => interpolate(text, vars, { dynamic: resolve }).text
 
     const finalHeaders = headers
       .filter((h) => h.enabled && h.key.trim())
@@ -208,7 +208,7 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
     })
   }, [method, url, headers, body, auth, resolve, activeEnv, lang])
 
-  const hasPlaceholders = /\{\{\s*[\w.-]+\s*\}\}/.test(output)
+  const hasPlaceholders = /\{\{\s*\$?[\w.-]+\s*\}\}/.test(output)
 
   const copy = async (): Promise<void> => {
     await navigator.clipboard.writeText(output)

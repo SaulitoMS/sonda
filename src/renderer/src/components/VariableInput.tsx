@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
+import { getDynamicVariable, isDynamicVariable } from '../../../shared/dynamicVariables'
 import { buildVarMap } from '../../../shared/variables'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 
-const VAR_SPLIT = /(\{\{\s*[\w.-]+\s*\}\})/g
-const VAR_NAME = /\{\{\s*([\w.-]+)\s*\}\}/
+const VAR_SPLIT = /(\{\{\s*\$?[\w.-]+\s*\}\})/g
+const VAR_NAME = /\{\{\s*(\$?[\w.-]+)\s*\}\}/
 
 interface Props {
   value: string
@@ -57,6 +58,7 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
   const parts = value.split(VAR_SPLIT)
 
   // Info de la variable que está bajo el cursor
+  const hoveredDynamic = hover ? getDynamicVariable(hover.name) : undefined
   const hoveredVar = hover
     ? activeEnv?.variables.find((v) => v.enabled && v.key.trim() === hover.name)
     : undefined
@@ -74,7 +76,8 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
         {parts.map((part, i) => {
           if (i % 2 === 0) return <span key={i}>{part}</span>
           const name = part.match(VAR_NAME)?.[1] ?? ''
-          const defined = Object.prototype.hasOwnProperty.call(vars, name)
+          const dynamic = isDynamicVariable(name)
+          const defined = dynamic || Object.prototype.hasOwnProperty.call(vars, name)
           return (
             <span
               key={i}
@@ -85,7 +88,9 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
                 if (el) spanRefs.current.set(key, el)
                 else spanRefs.current.delete(key)
               }}
-              className={defined ? 'font-semibold text-blue-400' : 'font-semibold text-amber-400'}
+              className={`font-semibold ${
+                dynamic ? 'text-emerald-400' : defined ? 'text-blue-400' : 'text-amber-400'
+              }`}
             >
               {part}
             </span>
@@ -115,7 +120,18 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
           className="pointer-events-none absolute top-full z-50 mt-1 max-w-[420px] rounded-md border border-zinc-700 bg-zinc-950 p-2.5 text-xs shadow-xl"
           style={{ left: hover.left }}
         >
-          {hoveredVar ? (
+          {hoveredDynamic ? (
+            <>
+              <div className="mb-1 flex items-center gap-2">
+                <span className="font-mono font-semibold text-emerald-400">{hover.name}</span>
+                <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">
+                  Dinámica
+                </span>
+              </div>
+              <div className="text-zinc-200">{hoveredDynamic.description}</div>
+              <div className="mt-1.5 text-[10px] text-zinc-500">Se genera de nuevo en cada envío</div>
+            </>
+          ) : hoveredVar ? (
             <>
               <div className="mb-1 flex items-center gap-2">
                 <span className="font-mono font-semibold text-blue-400">{hover.name}</span>

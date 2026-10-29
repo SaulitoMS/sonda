@@ -49,7 +49,7 @@ export function applyQuery(url: string, params: QueryParam[]): string {
   return base + (parts.length ? `?${parts.join('&')}` : '') + hash
 }
 
-const VAR_SPLIT = /(\{\{\s*[\w.-]+\s*\}\})/
+const VAR_SPLIT = /(\{\{\s*\$?[\w.-]+\s*\}\})/
 
 // Codifica el texto pero deja intactas las {{variables}} (se resuelven después)
 const encodePart = (text: string): string =>

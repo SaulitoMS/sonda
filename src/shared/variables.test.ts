@@ -72,3 +72,33 @@ describe('interpolate', () => {
     expect(interpolate('https://x.com/a', {}).text).toBe('https://x.com/a')
   })
 })
+
+describe('interpolate con variables dinámicas', () => {
+  it('resuelve {{$uuid}} sin necesitar entorno', () => {
+    const r = interpolate('/users/{{$uuid}}', {})
+    expect(r.missing).toEqual([])
+    expect(r.text).toMatch(/^\/users\/[0-9a-f-]{36}$/)
+  })
+
+  it('genera un valor distinto en cada aparición', () => {
+    const [a, b] = interpolate('{{$uuid}}|{{$uuid}}', {}).text.split('|')
+    expect(a).not.toBe(b)
+  })
+
+  it('tolera espacios dentro de las llaves', () => {
+    expect(interpolate('{{ $randomInt }}', {}).text).toMatch(/^\d+$/)
+  })
+
+  it('reporta como faltante una dinámica que no existe', () => {
+    expect(interpolate('{{$nope}}', {})).toEqual({ text: '{{$nope}}', missing: ['$nope'] })
+  })
+
+  it('con dynamic: false las deja intactas', () => {
+    expect(interpolate('{{$uuid}}', {}, { dynamic: false }).text).toBe('{{$uuid}}')
+  })
+
+  it('las dinámicas conviven con las del entorno', () => {
+    const r = interpolate('{{baseUrl}}?id={{$randomInt}}', { baseUrl: 'https://api.com' })
+    expect(r.text).toMatch(/^https:\/\/api\.com\?id=\d+$/)
+  })
+})
