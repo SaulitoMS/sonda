@@ -13,6 +13,8 @@ export function applyCurl(parsed: ParsedCurl): void {
     body: parsed.body,
     currentFile: null,
     name: '',
-    response: null
+    response: null,
+    responseSchemas: null,
+    validation: null
   })
 }

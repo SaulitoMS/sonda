@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
+import type { SchemaValidation } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
 
-type Tab = 'body' | 'headers'
+type Tab = 'body' | 'headers' | 'schema'
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`
@@ -16,9 +17,73 @@ const statusColor = (status: number): string => {
   return 'bg-emerald-500/20 text-emerald-400'
 }
 
+const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+
+/** Marca corta que se ve en la pestaña "Schema" */
+const verdictBadge = (v: SchemaValidation): { label: string; color: string } => {
+  switch (v.verdict) {
+    case 'valid':
+      return { label: '✓', color: 'text-emerald-400' }
+    case 'invalid':
+      return {
+        label: `✗ ${v.issues.filter((i) => i.severity === 'error').length}`,
+        color: 'text-red-400'
+      }
+    case 'undocumented':
+      return { label: '⚠', color: 'text-amber-400' }
+    default:
+      return { label: '–', color: 'text-zinc-500' }
+  }
+}
+
+function SchemaReport({ validation }: { validation: SchemaValidation }): React.JSX.Element {
+  const errors = validation.issues.filter((i) => i.severity === 'error').length
+  const warnings = validation.issues.length - errors
+
+  let summary: string
+  let color = 'text-zinc-400'
+  if (validation.verdict === 'valid') {
+    summary = `La respuesta cumple el schema del status ${validation.matched}`
+    if (warnings > 0) summary += ` (${plural(warnings, 'advertencia', 'advertencias')})`
+    color = 'text-emerald-400'
+  } else if (validation.verdict === 'invalid') {
+    summary = `${plural(errors, 'error', 'errores')} contra el schema del status ${validation.matched}`
+    color = 'text-red-400'
+  } else {
+    summary = validation.message ?? ''
+    if (validation.verdict === 'undocumented') color = 'text-amber-400'
+  }
+
+  return (
+    <div className="selectable space-y-3 text-xs">
+      <p className={`font-semibold ${color}`}>{summary}</p>
+
+      {validation.issues.length > 0 && (
+        <ul className="space-y-1.5 font-mono">
+          {validation.issues.map((issue, i) => (
+            <li key={i} className="flex gap-2">
+              <span className={issue.severity === 'error' ? 'text-red-400' : 'text-amber-400'}>
+                {issue.severity === 'error' ? '✗' : '⚠'}
+              </span>
+              <span className="font-semibold text-blue-300">{issue.path}</span>
+              <span className="text-zinc-300">{issue.message}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {validation.truncated && (
+        <p className="text-zinc-500">Se muestran solo los primeros 50 problemas de cada tipo.</p>
+      )}
+    </div>
+  )
+}
+
 export function ResponsePanel(): React.JSX.Element {
-  const { response, loading } = useRequestStore()
+  const { response, loading, validation } = useRequestStore()
   const [tab, setTab] = useState<Tab>('body')
+  // Si la nueva respuesta no tiene validación, la pestaña "Schema" no existe: volver a Body
+  const current: Tab = tab === 'schema' && !validation ? 'body' : tab
   const [copied, setCopied] = useState(false)
 
   const prettyBody = useMemo(() => {
@@ -38,7 +103,7 @@ export function ResponsePanel(): React.JSX.Element {
 
   const tabClass = (t: Tab): string =>
     `px-4 py-2 text-sm font-medium border-b-2 transition ${
-      tab === t
+      current === t
         ? 'border-blue-500 text-zinc-100'
         : 'border-transparent text-zinc-500 hover:text-zinc-300'
     }`
@@ -81,6 +146,14 @@ export function ResponsePanel(): React.JSX.Element {
           <button className={tabClass('headers')} onClick={() => setTab('headers')}>
             Headers ({Object.keys(response.headers).length})
           </button>
+          {validation && (
+            <button className={tabClass('schema')} onClick={() => setTab('schema')}>
+              Schema{' '}
+              <span className={verdictBadge(validation).color}>
+                {verdictBadge(validation).label}
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-3 pr-2 text-xs">
@@ -93,7 +166,7 @@ export function ResponsePanel(): React.JSX.Element {
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-auto p-3">
-        {tab === 'body' && (
+        {current === 'body' && (
           <>
             <button
               onClick={copy}
@@ -107,7 +180,7 @@ export function ResponsePanel(): React.JSX.Element {
           </>
         )}
 
-        {tab === 'headers' && (
+        {current === 'headers' && (
           <table className="selectable w-full text-left font-mono text-xs">
             <tbody>
               {Object.entries(response.headers).map(([key, value]) => (
@@ -119,6 +192,8 @@ export function ResponsePanel(): React.JSX.Element {
             </tbody>
           </table>
         )}
+
+        {current === 'schema' && validation && <SchemaReport validation={validation} />}
       </div>
     </div>
   )

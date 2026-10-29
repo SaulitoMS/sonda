@@ -40,6 +40,8 @@ export interface SavedRequest {
   headers: KeyValueData[]
   body: string
   description?: string
+  /** Schemas de respuesta de la spec, por status. Solo existe en peticiones importadas de OpenAPI */
+  responseSchemas?: ResponseSchemas
 }
 
 export interface RequestItem {
@@ -109,4 +111,32 @@ export interface Environment {
 export interface EnvironmentsData {
   activeId: string | null
   environments: Environment[]
+}
+
+// ---------- Validación de respuestas ----------
+
+/** Schema JSON ya sin $ref (lo genera el importador de OpenAPI) */
+export type JsonSchema = Record<string, unknown>
+
+/**
+ * Schemas de respuesta por código de status ("200", "4XX", "default").
+ * null = el status está documentado pero sin body JSON (ej: 204).
+ */
+export type ResponseSchemas = Record<string, JsonSchema | null>
+
+export interface SchemaIssue {
+  /** Ruta al campo con problema: $.user.tags[0].name */
+  path: string
+  message: string
+  severity: 'error' | 'warning'
+}
+
+export interface SchemaValidation {
+  verdict: 'valid' | 'invalid' | 'undocumented' | 'no-schema' | 'skipped'
+  /** Código de la spec que se usó: "200", "2XX" o "default" */
+  matched?: string
+  message?: string
+  issues: SchemaIssue[]
+  /** true si hubo más problemas de los que se muestran */
+  truncated: boolean
 }

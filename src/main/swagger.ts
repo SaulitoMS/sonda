@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import SwaggerParser from '@apidevtools/swagger-parser'
-import type { HttpMethod, KeyValueData, SavedRequest } from '../shared/types'
+import type { HttpMethod, KeyValueData, ResponseSchemas, SavedRequest } from '../shared/types'
 
 export interface ImportedRequest {
   folder: string
@@ -106,6 +106,73 @@ function paramValue(p: any): unknown {
   )
 }
 
+/** Claves que no aportan a la validación y solo inflan los archivos guardados */
+const SCHEMA_NOISE = new Set([
+  'description',
+  'title',
+  'example',
+  'examples',
+  'default',
+  'xml',
+  'externalDocs',
+  'deprecated',
+  'writeOnly',
+  'discriminator'
+])
+const MAX_SCHEMA_DEPTH = 12
+
+/**
+ * Copia un schema (ya dereferenciado) a JSON plano y serializable: quita el ruido,
+ * convierte x-nullable (Swagger 2) en nullable y corta las referencias circulares
+ * (un schema que se contiene a sí mismo se vuelve {}, que acepta cualquier valor).
+ */
+function cleanSchema(schema: any, stack: object[] = []): any {
+  if (Array.isArray(schema)) return schema.map((item) => cleanSchema(item, stack))
+  if (!schema || typeof schema !== 'object') return schema
+  if (stack.includes(schema) || stack.length >= MAX_SCHEMA_DEPTH) return {}
+
+  const next = [...stack, schema]
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries<any>(schema)) {
+    if (key === 'x-nullable') {
+      if (value === true) out.nullable = true
+      continue
+    }
+    if (key.startsWith('x-') || SCHEMA_NOISE.has(key)) continue
+
+    if (key === 'enum') {
+      out.enum = value
+    } else if (key === 'properties' && value && typeof value === 'object') {
+      // Las claves de "properties" son nombres de campos, no palabras clave del schema
+      out.properties = Object.fromEntries(
+        Object.entries<any>(value).map(([name, prop]) => [name, cleanSchema(prop, next)])
+      )
+    } else {
+      out[key] = cleanSchema(value, next)
+    }
+  }
+  return out
+}
+
+/** Schemas JSON de las respuestas de una operación, por código de status */
+function extractResponseSchemas(isV3: boolean, op: any): ResponseSchemas | undefined {
+  const out: ResponseSchemas = {}
+  for (const [code, res] of Object.entries<any>(op.responses ?? {})) {
+    if (code.startsWith('x-')) continue
+
+    let schema: any
+    if (isV3) {
+      const content = res?.content
+      const jsonKey = content ? Object.keys(content).find((k) => k.includes('json')) : undefined
+      schema = jsonKey ? content[jsonKey]?.schema : undefined
+    } else {
+      schema = res?.schema
+    }
+    out[code] = schema ? cleanSchema(schema) : null
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
 function resolveBaseUrl(api: any, specUrl: string): string {
   const spec = new URL(specUrl)
 
@@ -188,7 +255,8 @@ function buildRequest(
       url: baseUrl + resolvedPath + (qs ? `?${qs}` : ''),
       headers,
       body,
-      description: op.description
+      description: op.description,
+      responseSchemas: extractResponseSchemas(isV3, op)
     }
   }
 }

@@ -1,5 +1,12 @@
 import { create } from 'zustand'
-import type { HttpMethod, SavedRequest, SendRequestResult } from '../../../shared/types'
+import type {
+  HttpMethod,
+  ResponseSchemas,
+  SavedRequest,
+  SchemaValidation,
+  SendRequestResult
+} from '../../../shared/types'
+import { validateResponse } from '../../../shared/validate'
 import { buildVarMap, interpolate } from '../../../shared/variables'
 import { useEnvironmentStore } from './useEnvironmentStore'
 
@@ -24,6 +31,11 @@ interface RequestState {
   body: string
   loading: boolean
   response: SendRequestResult | null
+
+  /** Schemas de respuesta de la petición cargada (solo si viene de una spec OpenAPI) */
+  responseSchemas: ResponseSchemas | null
+  /** Resultado de validar la última respuesta contra esos schemas */
+  validation: SchemaValidation | null
 
   /** Archivo de la colección que se está editando (null = petición sin guardar) */
   currentFile: string | null
@@ -58,6 +70,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   body: '',
   loading: false,
   response: null,
+  responseSchemas: null,
+  validation: null,
   currentFile: null,
   name: '',
 
@@ -67,7 +81,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setBody: (body) => set({ body }),
 
   send: async () => {
-    const { method, url, headers, body, loading } = get()
+    const { method, url, headers, body, loading, responseSchemas } = get()
     if (loading || !url.trim()) return
 
     // 1. Resolver {{variables}} con el entorno activo
@@ -94,7 +108,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         ? `Defínelas en el entorno "${activeEnv.name}".`
         : 'Selecciona o crea un entorno en la cabecera.'
       set({
-        response: { ok: false, error: `Variables sin definir: ${names}. ${hint}`, timeMs: 0 }
+        response: { ok: false, error: `Variables sin definir: ${names}. ${hint}`, timeMs: 0 },
+        validation: null
       })
       return
     }
@@ -114,7 +129,19 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       body: finalBody
     })
 
-    set({ response, loading: false })
+    // 4. Si la petición viene de una spec OpenAPI, validar la respuesta contra su schema
+    const validation =
+      response.ok && responseSchemas
+        ? validateResponse({
+            schemas: responseSchemas,
+            status: response.status,
+            method,
+            headers: response.headers,
+            body: response.body
+          })
+        : null
+
+    set({ response, validation, loading: false })
   },
 
   loadSaved: (saved, path) =>
@@ -125,11 +152,13 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       body: saved.body ?? '',
       currentFile: path,
       name: saved.name,
-      response: null
+      response: null,
+      responseSchemas: saved.responseSchemas ?? null,
+      validation: null
     }),
 
   toSaved: (name) => {
-    const { method, url, headers, body } = get()
+    const { method, url, headers, body, responseSchemas } = get()
     return {
       name,
       method,
@@ -137,7 +166,9 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       headers: headers
         .filter((h) => h.key.trim())
         .map(({ key, value, enabled }) => ({ key, value, enabled })),
-      body
+      body,
+      // Se conservan para no perderlos al volver a guardar una petición importada
+      ...(responseSchemas ? { responseSchemas } : {})
     }
   },
 
@@ -152,6 +183,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       body: '',
       currentFile: null,
       name: '',
-      response: null
+      response: null,
+      responseSchemas: null,
+      validation: null
     })
 }))
