@@ -5,13 +5,16 @@ interface Props {
   onChange: (rows: KeyValue[]) => void
   keyPlaceholder?: string
   valuePlaceholder?: string
+  /** Oculta el checkbox de activar/desactivar (ej: la tabla de Params, que vive en la URL) */
+  hideToggle?: boolean
 }
 
 export function KeyValueEditor({
   rows,
   onChange,
   keyPlaceholder = 'Clave',
-  valuePlaceholder = 'Valor'
+  valuePlaceholder = 'Valor',
+  hideToggle = false
 }: Props): React.JSX.Element {
   const update = (id: string, patch: Partial<KeyValue>): void => {
     const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r))
@@ -33,12 +36,14 @@ export function KeyValueEditor({
     <div className="flex flex-col gap-2">
       {rows.map((row) => (
         <div key={row.id} className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={row.enabled}
-            onChange={(e) => update(row.id, { enabled: e.target.checked })}
-            className="accent-blue-500"
-          />
+          {!hideToggle && (
+            <input
+              type="checkbox"
+              checked={row.enabled}
+              onChange={(e) => update(row.id, { enabled: e.target.checked })}
+              className="accent-blue-500"
+            />
+          )}
           <input
             value={row.key}
             onChange={(e) => update(row.id, { key: e.target.value })}
