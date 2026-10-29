@@ -17,6 +17,7 @@ export function applyCurl(parsed: ParsedCurl): void {
     name: '',
     response: null,
     responseSchemas: null,
-    validation: null
+    validation: null,
+    warnings: []
   })
 }

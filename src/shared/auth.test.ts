@@ -7,8 +7,12 @@ const make = (patch: Partial<AuthConfig>): AuthConfig => ({ ...emptyAuth(), ...p
 
 describe('buildAuth', () => {
   it('no agrega nada sin auth o con tipo none', () => {
-    expect(buildAuth(null, id)).toEqual({ headers: [], query: [] })
-    expect(buildAuth(make({ type: 'none', token: 'x' }), id)).toEqual({ headers: [], query: [] })
+    expect(buildAuth(null, id)).toEqual({ headers: [], query: [], warnings: [] })
+    expect(buildAuth(make({ type: 'none', token: 'x' }), id)).toEqual({
+      headers: [],
+      query: [],
+      warnings: []
+    })
   })
 
   it('Bearer agrega el header Authorization', () => {
@@ -22,6 +26,17 @@ describe('buildAuth', () => {
       'Bearer abc'
     )
     expect(buildAuth(make({ type: 'bearer', token: '  ' }), id).headers).toEqual([])
+  })
+
+  it('Bearer con token vacío avisa en vez de callar', () => {
+    const parts = buildAuth(make({ type: 'bearer', token: '' }), id)
+    expect(parts.headers).toEqual([])
+    expect(parts.warnings).toHaveLength(1)
+    expect(parts.warnings[0]).toContain('token')
+  })
+
+  it('Basic sin datos avisa', () => {
+    expect(buildAuth(make({ type: 'basic' }), id).warnings).toHaveLength(1)
   })
 
   it('Bearer resuelve variables', () => {
@@ -53,10 +68,17 @@ describe('buildAuth', () => {
     expect(query.headers).toEqual([])
   })
 
-  it('API Key incompleta no agrega nada', () => {
-    expect(buildAuth(make({ type: 'apikey', keyName: 'X-Key' }), id)).toEqual({
-      headers: [],
-      query: []
-    })
+  it('API Key incompleta no agrega nada y avisa', () => {
+    const noValue = buildAuth(make({ type: 'apikey', keyName: 'X-Key' }), id)
+    expect(noValue.headers).toEqual([])
+    expect(noValue.warnings[0]).toContain('X-Key')
+
+    const noName = buildAuth(make({ type: 'apikey', keyValue: 'v' }), id)
+    expect(noName.headers).toEqual([])
+    expect(noName.warnings).toHaveLength(1)
+  })
+
+  it('una auth completa no genera avisos', () => {
+    expect(buildAuth(make({ type: 'bearer', token: 'abc' }), id).warnings).toEqual([])
   })
 })

@@ -23,6 +23,8 @@ export interface RequestDraft {
 export interface ExecuteResult {
   response: SendRequestResult
   validation: SchemaValidation | null
+  /** Avisos que no impiden enviar (ej: la auth quedó vacía y se omitió) */
+  warnings: string[]
 }
 
 const looksLikeJson = (text: string): boolean => {
@@ -67,7 +69,8 @@ export async function executeRequest(
       : 'Selecciona o crea un entorno en la cabecera.'
     return {
       response: { ok: false, error: `Variables sin definir: ${names}. ${hint}`, timeMs: 0 },
-      validation: null
+      validation: null,
+      warnings: []
     }
   }
 
@@ -100,5 +103,5 @@ export async function executeRequest(
         })
       : null
 
-  return { response, validation }
+   return { response, validation, warnings: authParts.warnings }
 }

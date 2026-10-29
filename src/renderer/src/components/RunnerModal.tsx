@@ -122,7 +122,8 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
     loadSaved(row.saved, row.entry.item.path)
     useRequestStore.setState({
       response: row.response ?? null,
-      validation: row.validation ?? null
+      validation: row.validation ?? null,
+      warnings: []
     })
     onClose()
   }

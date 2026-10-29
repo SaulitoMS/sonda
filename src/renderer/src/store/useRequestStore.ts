@@ -39,6 +39,9 @@ interface RequestState {
   /** Resultado de validar la última respuesta contra esos schemas */
   validation: SchemaValidation | null
 
+  /** Avisos de la última petición enviada (ej: auth vacía) */
+  warnings: string[]
+
   /** Archivo de la colección que se está editando (null = petición sin guardar) */
   currentFile: string | null
   name: string
@@ -67,6 +70,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   response: null,
   responseSchemas: null,
   validation: null,
+  warnings: [],
   currentFile: null,
   name: '',
 
@@ -81,11 +85,11 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     if (loading || !url.trim()) return
 
     set({ loading: true })
-    const { response, validation } = await executeRequest(
+    const { response, validation, warnings } = await executeRequest(
       { method, url, headers, body, auth, responseSchemas },
       useEnvironmentStore.getState().getActive()
     )
-    set({ response, validation, loading: false })
+    set({ response, validation, warnings, loading: false })
   },
 
   loadSaved: (saved, path) =>
@@ -99,7 +103,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       name: saved.name,
       response: null,
       responseSchemas: saved.responseSchemas ?? null,
-      validation: null
+      validation: null,
+      warnings: []
     }),
 
   toSaved: (name) => {
@@ -132,6 +137,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       name: '',
       response: null,
       responseSchemas: null,
-      validation: null
+      validation: null,
+      warnings: []
     })
 }))
