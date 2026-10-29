@@ -1,5 +1,8 @@
 # sonda
 
+![CI](https://github.com/SaulitoMS/sonda/actions/workflows/ci.yml/badge.svg)
+
+
 An Electron application with React and TypeScript
 
 ## Recommended IDE Setup
