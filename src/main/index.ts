@@ -3,8 +3,10 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerHttpHandlers } from './http'
+import { registerCollectionHandlers } from './collections'
 
 registerHttpHandlers()
+registerCollectionHandlers()
 
 function createWindow(): void {
   // Create the browser window.

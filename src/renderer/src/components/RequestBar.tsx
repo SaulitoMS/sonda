@@ -3,7 +3,7 @@ import { useRequestStore } from '../store/useRequestStore'
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 
-const METHOD_COLORS: Record<HttpMethod, string> = {
+export const METHOD_COLORS: Record<HttpMethod, string> = {
   GET: 'text-emerald-400',
   POST: 'text-amber-400',
   PUT: 'text-sky-400',

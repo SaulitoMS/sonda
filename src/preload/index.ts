@@ -1,13 +1,18 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { SendRequestInput, SendRequestResult } from '../shared/types'
+import type { SondaApi } from '../shared/types'
 
-const api = {
-  sendRequest: (input: SendRequestInput): Promise<SendRequestResult> =>
-    ipcRenderer.invoke('http:send', input)
+const api: SondaApi = {
+  sendRequest: (input) => ipcRenderer.invoke('http:send', input),
+  listCollections: () => ipcRenderer.invoke('collections:list'),
+  createCollection: (name) => ipcRenderer.invoke('collections:create', name),
+  deleteCollection: (id) => ipcRenderer.invoke('collections:delete', id),
+  readRequest: (path) => ipcRenderer.invoke('collections:readRequest', path),
+  saveRequest: (input) => ipcRenderer.invoke('collections:saveRequest', input),
+  deleteRequest: (path) => ipcRenderer.invoke('collections:deleteRequest', path),
+  openWorkspace: () => ipcRenderer.invoke('collections:openWorkspace'),
+  importSwagger: (url) => ipcRenderer.invoke('swagger:import', url)
 }
-
-export type Api = typeof api
 
 if (process.contextIsolated) {
   try {
