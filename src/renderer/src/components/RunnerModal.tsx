@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { classifyResult, type RunStatus } from '../../../shared/classify'
 import type {
+  AssertionResult,
   HttpMethod,
   RequestItem,
   SavedRequest,
@@ -30,6 +31,7 @@ interface Row {
   saved?: SavedRequest
   response?: SendRequestResult
   validation?: SchemaValidation | null
+  assertionResults?: AssertionResult[]
 }
 
 const ICON: Record<RunStatus, { mark: string; color: string }> = {
@@ -84,8 +86,8 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
       let row: Row
       try {
         const saved = await window.api.readRequest(entry.item.path)
-        const { response, validation } = await executeRequest(saved, env)
-        const verdict = classifyResult(response, validation)
+        const { response, validation, assertionResults } = await executeRequest(saved, env)
+        const verdict = classifyResult(response, validation, assertionResults)
         row = {
           entry,
           ...verdict,
@@ -93,7 +95,8 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
           timeMs: response.timeMs,
           saved,
           response,
-          validation
+          validation,
+          assertionResults
         }
       } catch (err) {
         row = {
@@ -123,6 +126,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
     useRequestStore.setState({
       response: row.response ?? null,
       validation: row.validation ?? null,
+      assertionResults: row.assertionResults ?? [],
       warnings: []
     })
     onClose()
@@ -137,7 +141,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
         <div className="space-y-3 text-xs text-zinc-300">
           <p>
             Se enviarán <b>{planned.length}</b> de {all.length} peticiones usando el entorno activo
-            y se validará cada respuesta contra su schema.
+            y se validará cada respuesta contra su schema y sus aserciones.
           </p>
           {writeCount > 0 && (
             <label className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-amber-200">

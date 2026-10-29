@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { emptyAuth } from '../../../shared/auth'
 import type {
+  Assertion,
+  AssertionResult,
   AuthConfig,
   HttpMethod,
   ResponseSchemas,
@@ -31,6 +33,8 @@ interface RequestState {
   headers: KeyValue[]
   body: string
   auth: AuthConfig
+  /** Reglas propias de la petición (status, tiempo, headers, body) */
+  assertions: Assertion[]
   loading: boolean
   response: SendRequestResult | null
 
@@ -38,6 +42,8 @@ interface RequestState {
   responseSchemas: ResponseSchemas | null
   /** Resultado de validar la última respuesta contra esos schemas */
   validation: SchemaValidation | null
+  /** Resultado de las aserciones en la última respuesta */
+  assertionResults: AssertionResult[]
 
   /** Avisos de la última petición enviada (ej: auth vacía) */
   warnings: string[]
@@ -51,6 +57,7 @@ interface RequestState {
   setHeaders: (h: KeyValue[]) => void
   setBody: (b: string) => void
   setAuth: (a: AuthConfig) => void
+  setAssertions: (a: Assertion[]) => void
   send: () => Promise<void>
 
   loadSaved: (saved: SavedRequest, path: string) => void
@@ -66,10 +73,12 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   headers: [newRow()],
   body: '',
   auth: emptyAuth(),
+  assertions: [],
   loading: false,
   response: null,
   responseSchemas: null,
   validation: null,
+  assertionResults: [],
   warnings: [],
   currentFile: null,
   name: '',
@@ -79,17 +88,18 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setHeaders: (headers) => set({ headers }),
   setBody: (body) => set({ body }),
   setAuth: (auth) => set({ auth }),
+  setAssertions: (assertions) => set({ assertions }),
 
   send: async () => {
-    const { method, url, headers, body, auth, loading, responseSchemas } = get()
+    const { method, url, headers, body, auth, assertions, loading, responseSchemas } = get()
     if (loading || !url.trim()) return
 
     set({ loading: true })
-    const { response, validation, warnings } = await executeRequest(
-      { method, url, headers, body, auth, responseSchemas },
+    const { response, validation, assertionResults, warnings } = await executeRequest(
+      { method, url, headers, body, auth, assertions, responseSchemas },
       useEnvironmentStore.getState().getActive()
     )
-    set({ response, validation, warnings, loading: false })
+    set({ response, validation, assertionResults, warnings, loading: false })
   },
 
   loadSaved: (saved, path) =>
@@ -99,16 +109,18 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       headers: [...(saved.headers ?? []).map((h) => ({ id: crypto.randomUUID(), ...h })), newRow()],
       body: saved.body ?? '',
       auth: { ...emptyAuth(), ...saved.auth },
+      assertions: saved.assertions ?? [],
       currentFile: path,
       name: saved.name,
       response: null,
       responseSchemas: saved.responseSchemas ?? null,
       validation: null,
+      assertionResults: [],
       warnings: []
     }),
 
   toSaved: (name) => {
-    const { method, url, headers, body, auth, responseSchemas } = get()
+    const { method, url, headers, body, auth, assertions, responseSchemas } = get()
     return {
       name,
       method,
@@ -118,6 +130,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         .map(({ key, value, enabled }) => ({ key, value, enabled })),
       body,
       ...(auth.type !== 'none' ? { auth } : {}),
+      ...(assertions.length > 0 ? { assertions } : {}),
       // Se conservan para no perderlos al volver a guardar una petición importada
       ...(responseSchemas ? { responseSchemas } : {})
     }
@@ -133,11 +146,13 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       headers: [newRow()],
       body: '',
       auth: emptyAuth(),
+      assertions: [],
       currentFile: null,
       name: '',
       response: null,
       responseSchemas: null,
       validation: null,
+      assertionResults: [],
       warnings: []
     })
 }))

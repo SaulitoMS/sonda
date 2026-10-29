@@ -44,6 +44,8 @@ export interface SavedRequest {
   responseSchemas?: ResponseSchemas
   /** Autenticación de la petición. Si no existe, la petición no usa auth */
   auth?: AuthConfig
+  /** Aserciones propias que se evalúan junto al schema. Si no existe, no hay reglas */
+  assertions?: Assertion[]
 }
 
 // ---------- Autenticación ----------
@@ -63,6 +65,47 @@ export interface AuthConfig {
   keyValue: string
   keyIn: 'header' | 'query'
 }
+
+// ---------- Aserciones ----------
+
+/** Qué parte de la respuesta se revisa */
+export type AssertionKind = 'status' | 'time' | 'header' | 'body'
+
+export type AssertionOp =
+  | 'eq'
+  | 'neq'
+  | 'lt'
+  | 'lte'
+  | 'gt'
+  | 'gte'
+  | 'contains'
+  | 'notContains'
+  | 'matches'
+  | 'exists'
+  | 'notExists'
+
+export interface Assertion {
+  id: string
+  enabled: boolean
+  kind: AssertionKind
+  /** Nombre del header, o ruta dentro del JSON (data.items[0].id). Vacío en status y time */
+  target: string
+  op: AssertionOp
+  /** Valor esperado como texto. Se ignora en exists / notExists */
+  expected: string
+}
+
+export interface AssertionResult {
+  id: string
+  /** Descripción legible de la regla, ej: Status es igual a 200 */
+  label: string
+  passed: boolean
+  /** Valor real encontrado, ya como texto corto */
+  actual?: string
+  /** Explicación cuando falla (vacío si pasó) */
+  message: string
+}
+
 export interface RequestItem {
   /** Ruta relativa al workspace, con "/" (ej: "petstore/pet/post-pet.json") */
   path: string

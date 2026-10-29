@@ -1,6 +1,9 @@
+import { evaluateAssertions } from '../../../shared/assertions'
 import { buildAuth } from '../../../shared/auth'
 import { appendQuery } from '../../../shared/params'
 import type {
+  Assertion,
+  AssertionResult,
   AuthConfig,
   Environment,
   HttpMethod,
@@ -18,11 +21,14 @@ export interface RequestDraft {
   body: string
   auth?: AuthConfig | null
   responseSchemas?: ResponseSchemas | null
+  assertions?: Assertion[] | null
 }
 
 export interface ExecuteResult {
   response: SendRequestResult
   validation: SchemaValidation | null
+  /** Resultado de cada aserción activa (vacío si no hay o si la petición no llegó a responder) */
+  assertionResults: AssertionResult[]
   /** Avisos que no impiden enviar (ej: la auth quedó vacía y se omitió) */
   warnings: string[]
 }
@@ -70,6 +76,7 @@ export async function executeRequest(
     return {
       response: { ok: false, error: `Variables sin definir: ${names}. ${hint}`, timeMs: 0 },
       validation: null,
+      assertionResults: [],
       warnings: []
     }
   }
@@ -103,5 +110,7 @@ export async function executeRequest(
         })
       : null
 
-   return { response, validation, warnings: authParts.warnings }
+  const assertionResults = response.ok ? evaluateAssertions(draft.assertions, response) : []
+
+  return { response, validation, assertionResults, warnings: authParts.warnings }
 }

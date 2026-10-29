@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import type { SchemaValidation } from '../../../shared/types'
+import { summarizeAssertions } from '../../../shared/assertions'
+import type { AssertionResult, SchemaValidation } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
 
-type Tab = 'body' | 'headers' | 'schema'
+type Tab = 'body' | 'headers' | 'schema' | 'tests'
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`
@@ -79,6 +80,36 @@ function SchemaReport({ validation }: { validation: SchemaValidation }): React.J
   )
 }
 
+function TestsReport({ results }: { results: AssertionResult[] }): React.JSX.Element {
+  const { passed, total } = summarizeAssertions(results)
+  const allPassed = passed === total
+
+  return (
+    <div className="selectable space-y-3 text-xs">
+      <p className={`font-semibold ${allPassed ? 'text-emerald-400' : 'text-red-400'}`}>
+        {allPassed
+          ? `Pasaron las ${plural(total, 'aserción', 'aserciones')}`
+          : `Pasaron ${passed} de ${plural(total, 'aserción', 'aserciones')}`}
+      </p>
+
+      <ul className="space-y-1.5 font-mono">
+        {results.map((r) => (
+          <li key={r.id} className="flex gap-2">
+            <span className={r.passed ? 'text-emerald-400' : 'text-red-400'}>
+              {r.passed ? '✓' : '✗'}
+            </span>
+            <span className="text-zinc-200">{r.label}</span>
+            {!r.passed && <span className="text-red-300">· {r.message}</span>}
+            {r.passed && r.actual !== undefined && (
+              <span className="text-zinc-500">· {r.actual}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function WarningsBanner({ warnings }: { warnings: string[] }): React.JSX.Element | null {
   if (warnings.length === 0) return null
   return (
@@ -91,10 +122,12 @@ function WarningsBanner({ warnings }: { warnings: string[] }): React.JSX.Element
 }
 
 export function ResponsePanel(): React.JSX.Element {
-  const { response, loading, validation, warnings } = useRequestStore()
+  const { response, loading, validation, assertionResults, warnings } = useRequestStore()
   const [tab, setTab] = useState<Tab>('body')
   // Si la nueva respuesta no tiene validación, la pestaña "Schema" no existe: volver a Body
-  const current: Tab = tab === 'schema' && !validation ? 'body' : tab
+  const hasTests = assertionResults.length > 0
+  const current: Tab =
+    (tab === 'schema' && !validation) || (tab === 'tests' && !hasTests) ? 'body' : tab
   const [copied, setCopied] = useState(false)
 
   const prettyBody = useMemo(() => {
@@ -150,9 +183,8 @@ export function ResponsePanel(): React.JSX.Element {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-
       <WarningsBanner warnings={warnings} />
-      
+
       <div className="flex items-center justify-between border-b border-zinc-800 px-2">
         <div className="flex">
           <button className={tabClass('body')} onClick={() => setTab('body')}>
@@ -166,6 +198,20 @@ export function ResponsePanel(): React.JSX.Element {
               Schema{' '}
               <span className={verdictBadge(validation).color}>
                 {verdictBadge(validation).label}
+              </span>
+            </button>
+          )}
+          {hasTests && (
+            <button className={tabClass('tests')} onClick={() => setTab('tests')}>
+              Tests{' '}
+              <span
+                className={
+                  summarizeAssertions(assertionResults).passed === assertionResults.length
+                    ? 'text-emerald-400'
+                    : 'text-red-400'
+                }
+              >
+                {summarizeAssertions(assertionResults).passed}/{assertionResults.length}
               </span>
             </button>
           )}
@@ -209,6 +255,8 @@ export function ResponsePanel(): React.JSX.Element {
         )}
 
         {current === 'schema' && validation && <SchemaReport validation={validation} />}
+
+        {current === 'tests' && hasTests && <TestsReport results={assertionResults} />}
       </div>
     </div>
   )
