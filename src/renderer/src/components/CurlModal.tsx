@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { parseCurl, toCurl, type ParsedCurl } from '../../../shared/curl'
 import { buildVarMap, interpolate } from '../../../shared/variables'
 import { buildAuth } from '../../../shared/auth'
 import { appendQuery } from '../../../shared/params'
@@ -8,6 +7,8 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { Modal } from './Modal'
+import { parseCurl, type ParsedCurl } from '../../../shared/curl'
+import { CODE_LANGS, generateCode, type CodeLang } from '../../../shared/codegen'
 
 type Tab = 'import' | 'export'
 
@@ -160,6 +161,7 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
   const envData = useEnvironmentStore((s) => s.data)
 
   const [resolve, setResolve] = useState(true)
+  const [lang, setLang] = useState<CodeLang>('curl')
   const [copied, setCopied] = useState(false)
 
   const activeEnv = envData.environments.find((e) => e.id === envData.activeId) ?? null
@@ -197,14 +199,14 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       }
     }
 
-    return toCurl({
+    return generateCode(lang, {
       method,
       url: appendQuery(r(url.trim()), authParts.query),
       headers: finalHeaders,
       body: finalBody,
       user: basicUser === ':' ? undefined : basicUser
     })
-  }, [method, url, headers, body, auth, resolve, activeEnv])
+  }, [method, url, headers, body, auth, resolve, activeEnv, lang])
 
   const hasPlaceholders = /\{\{\s*[\w.-]+\s*\}\}/.test(output)
 
@@ -216,6 +218,23 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
 
   return (
     <>
+      <div className="mb-3 flex items-center gap-2 text-xs text-zinc-300">
+        <span>Lenguaje</span>
+        <select
+          value={lang}
+          onChange={(e) => setLang(e.target.value as CodeLang)}
+          className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs outline-none focus:border-blue-500"
+        >
+          {CODE_LANGS.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+
+
       <label className="mb-3 flex items-center gap-2 text-xs text-zinc-300">
         <input
           type="checkbox"
@@ -233,7 +252,7 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       {hasPlaceholders && (
         <p className="mt-2 text-[11px] text-amber-400">
           ⚠ Quedan variables como {'{{nombre}}'}: son secretos, no están definidas o desactivaste la
-          resolución. Reemplázalas antes de ejecutar el comando.
+          resolución. Reemplázalas antes de ejecutarlo.
         </p>
       )}
 
@@ -248,7 +267,7 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
           onClick={copy}
           className="rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
         >
-          {copied ? '¡Copiado!' : 'Copiar cURL'}
+          {copied ? '¡Copiado!' : 'Copiar código'}
         </button>
       </div>
     </>
