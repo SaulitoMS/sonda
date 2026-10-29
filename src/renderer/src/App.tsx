@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { CurlModal } from './components/CurlModal'
 import { EnvironmentSelector } from './components/EnvironmentSelector'
 import { EnvironmentsModal } from './components/EnvironmentsModal'
 import { ImportModal } from './components/ImportModal'
@@ -10,7 +11,7 @@ import { Sidebar } from './components/Sidebar'
 import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
 
-type ModalType = 'import' | 'save' | 'envs' | null
+type ModalType = 'import' | 'save' | 'envs' | 'curl' | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
@@ -28,6 +29,12 @@ function App(): React.JSX.Element {
     clearTimeout(flashTimer.current)
     flashTimer.current = setTimeout(() => setFlash(''), 1800)
   }, [])
+
+  const onCurlImported = useCallback(
+    (warnings: string[]) =>
+      showFlash(warnings.length ? 'cURL importado (con avisos)' : 'cURL importado ✓'),
+    [showFlash]
+  )
 
   useEffect(() => {
     loadEnvironments()
@@ -75,6 +82,9 @@ function App(): React.JSX.Element {
             {flash && <span className="mr-2 text-xs text-emerald-400">{flash}</span>}
             <EnvironmentSelector onManage={() => setModal('envs')} />
             <span className="mx-1 h-4 w-px bg-zinc-800" />
+            <button className={btn} onClick={() => setModal('curl')} title="Importar o exportar cURL">
+              cURL
+            </button>
             <button className={btn} onClick={reset}>
               Nueva
             </button>
@@ -89,7 +99,7 @@ function App(): React.JSX.Element {
           </div>
         </header>
 
-        <RequestBar />
+        <RequestBar onCurlImported={onCurlImported} />
 
         <main className="flex min-h-0 flex-1 flex-col">
           <section className="flex min-h-0 flex-1 flex-col border-b border-zinc-800">
@@ -103,6 +113,9 @@ function App(): React.JSX.Element {
 
       {modal === 'import' && <ImportModal onClose={() => setModal(null)} />}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
+      {modal === 'curl' && (
+        <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />
+      )}
       {modal === 'save' && (
         <SaveModal
           onClose={() => setModal(null)}

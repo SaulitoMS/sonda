@@ -1,4 +1,6 @@
+import { looksLikeCurl, parseCurl } from '../../../shared/curl'
 import type { HttpMethod } from '../../../shared/types'
+import { applyCurl } from '../lib/applyCurl'
 import { useRequestStore } from '../store/useRequestStore'
 import { VariableInput } from './VariableInput'
 
@@ -14,8 +16,26 @@ export const METHOD_COLORS: Record<HttpMethod, string> = {
   OPTIONS: 'text-zinc-300'
 }
 
-export function RequestBar(): React.JSX.Element {
+interface Props {
+  onCurlImported?: (warnings: string[]) => void
+}
+
+export function RequestBar({ onCurlImported }: Props): React.JSX.Element {
   const { method, url, loading, setMethod, setUrl, send } = useRequestStore()
+
+  // Si lo pegado es un comando cURL válido, se importa en vez de escribirlo en la URL
+  const handlePaste = (e: React.ClipboardEvent): void => {
+    const text = e.clipboardData.getData('text')
+    if (!looksLikeCurl(text)) return
+    try {
+      const parsed = parseCurl(text)
+      e.preventDefault()
+      applyCurl(parsed)
+      onCurlImported?.(parsed.warnings)
+    } catch {
+      // Si no se puede interpretar, se pega como texto normal
+    }
+  }
 
   return (
     <div className="flex gap-2 border-b border-zinc-800 p-3">
@@ -31,12 +51,14 @@ export function RequestBar(): React.JSX.Element {
         ))}
       </select>
 
-      <VariableInput
-        value={url}
-        onChange={setUrl}
-        onEnter={send}
-        placeholder="https://api.ejemplo.com/endpoint"
-      />
+      <div className="flex flex-1" onPaste={handlePaste}>
+        <VariableInput
+          value={url}
+          onChange={setUrl}
+          onEnter={send}
+          placeholder="https://api.ejemplo.com/endpoint  (o pega un comando curl)"
+        />
+      </div>
 
       <button
         onClick={send}
