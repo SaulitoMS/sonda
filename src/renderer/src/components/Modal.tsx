@@ -4,9 +4,10 @@ interface Props {
   title: string
   onClose: () => void
   children: React.ReactNode
+  wide?: boolean
 }
 
-export function Modal({ title, onClose, children }: Props): React.JSX.Element {
+export function Modal({ title, onClose, children, wide }: Props): React.JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -21,7 +22,7 @@ export function Modal({ title, onClose, children }: Props): React.JSX.Element {
       onMouseDown={onClose}
     >
       <div
-        className="w-[480px] max-w-[90vw] rounded-lg border border-zinc-700 bg-zinc-900 p-5 shadow-xl"
+        className={`${wide ? 'w-[780px]' : 'w-[480px]'} max-w-[92vw] rounded-lg border border-zinc-700 bg-zinc-900 p-5 shadow-xl`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-sm font-bold text-zinc-100">{title}</h2>

@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { EnvironmentSelector } from './components/EnvironmentSelector'
+import { EnvironmentsModal } from './components/EnvironmentsModal'
 import { ImportModal } from './components/ImportModal'
 import { RequestBar } from './components/RequestBar'
 import { RequestPanel } from './components/RequestPanel'
 import { ResponsePanel } from './components/ResponsePanel'
 import { SaveModal } from './components/SaveModal'
 import { Sidebar } from './components/Sidebar'
+import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
 
-type ModalType = 'import' | 'save' | null
+type ModalType = 'import' | 'save' | 'envs' | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
   const name = useRequestStore((s) => s.name)
   const currentFile = useRequestStore((s) => s.currentFile)
   const reset = useRequestStore((s) => s.reset)
+  const loadEnvironments = useEnvironmentStore((s) => s.load)
 
   const [modal, setModal] = useState<ModalType>(null)
   const [flash, setFlash] = useState('')
@@ -24,6 +28,10 @@ function App(): React.JSX.Element {
     clearTimeout(flashTimer.current)
     flashTimer.current = setTimeout(() => setFlash(''), 1800)
   }, [])
+
+  useEffect(() => {
+    loadEnvironments()
+  }, [loadEnvironments])
 
   // Guardar: si ya viene de una colección, sobrescribe; si no, pide dónde guardarla
   const save = useCallback(async () => {
@@ -65,6 +73,8 @@ function App(): React.JSX.Element {
           </div>
           <div className="flex items-center gap-1">
             {flash && <span className="mr-2 text-xs text-emerald-400">{flash}</span>}
+            <EnvironmentSelector onManage={() => setModal('envs')} />
+            <span className="mx-1 h-4 w-px bg-zinc-800" />
             <button className={btn} onClick={reset}>
               Nueva
             </button>
@@ -92,6 +102,7 @@ function App(): React.JSX.Element {
       </div>
 
       {modal === 'import' && <ImportModal onClose={() => setModal(null)} />}
+      {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'save' && (
         <SaveModal
           onClose={() => setModal(null)}

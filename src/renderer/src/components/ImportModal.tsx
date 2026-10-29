@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useCollectionsStore } from '../store/useCollectionsStore'
+import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'
 
 export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Element {
   const refresh = useCollectionsStore((s) => s.refresh)
+  const loadEnvironments = useEnvironmentStore((s) => s.load)
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -19,7 +21,7 @@ export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Ele
       setError(result.error)
       return
     }
-    await refresh()
+    await Promise.all([refresh(), loadEnvironments()])
     onClose()
   }
 
@@ -27,7 +29,7 @@ export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Ele
     <Modal title="Importar Swagger / OpenAPI" onClose={onClose}>
       <p className="mb-3 text-xs text-zinc-400">
         Pega la URL del JSON/YAML de la spec o la de su documentación (Swagger UI, /docs…). Sonda
-        creará una colección con todos los endpoints.
+        creará una colección con todos los endpoints y un entorno con su baseUrl.
       </p>
 
       <input

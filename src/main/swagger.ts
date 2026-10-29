@@ -226,7 +226,7 @@ export async function importFromUrl(rawUrl: string): Promise<ImportedSpec> {
   for (const [path, pathItem] of Object.entries<any>(api.paths ?? {})) {
     for (const method of METHODS) {
       const op = pathItem?.[method]
-      if (op) requests.push(buildRequest(api, baseUrl, path, method, pathItem, op))
+      if (op) requests.push(buildRequest(api, '{{baseUrl}}', path, method, pathItem, op))
     }
   }
 

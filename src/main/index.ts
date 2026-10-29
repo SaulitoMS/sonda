@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerHttpHandlers } from './http'
 import { registerCollectionHandlers } from './collections'
+import { registerEnvironmentHandlers } from './environments'
 
 registerHttpHandlers()
 registerCollectionHandlers()
@@ -48,6 +49,8 @@ function createWindow(): void {
 app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
+
+  registerEnvironmentHandlers()
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

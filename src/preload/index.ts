@@ -11,7 +11,9 @@ const api: SondaApi = {
   saveRequest: (input) => ipcRenderer.invoke('collections:saveRequest', input),
   deleteRequest: (path) => ipcRenderer.invoke('collections:deleteRequest', path),
   openWorkspace: () => ipcRenderer.invoke('collections:openWorkspace'),
-  importSwagger: (url) => ipcRenderer.invoke('swagger:import', url)
+  importSwagger: (url) => ipcRenderer.invoke('swagger:import', url),
+  loadEnvironments: () => ipcRenderer.invoke('environments:load'),
+  saveEnvironments: (data) => ipcRenderer.invoke('environments:save', data)
 }
 
 if (process.contextIsolated) {

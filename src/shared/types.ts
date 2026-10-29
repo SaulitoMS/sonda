@@ -86,4 +86,28 @@ export interface SondaApi {
   deleteRequest: (path: string) => Promise<void>
   openWorkspace: () => Promise<void>
   importSwagger: (url: string) => Promise<ImportResult>
+  loadEnvironments: () => Promise<EnvironmentsData>
+  saveEnvironments: (data: EnvironmentsData) => Promise<void>
+}
+
+// ---------- Entornos ----------
+
+export interface EnvVariable {
+  id: string
+  key: string
+  value: string
+  /** Si es true, el valor se cifra en el keychain y no se escribe en environments.json */
+  secret: boolean
+  enabled: boolean
+}
+
+export interface Environment {
+  id: string
+  name: string
+  variables: EnvVariable[]
+}
+
+export interface EnvironmentsData {
+  activeId: string | null
+  environments: Environment[]
 }

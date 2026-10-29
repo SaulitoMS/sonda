@@ -1,5 +1,6 @@
 import type { HttpMethod } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
+import { VariableInput } from './VariableInput'
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
 
@@ -30,15 +31,11 @@ export function RequestBar(): React.JSX.Element {
         ))}
       </select>
 
-      <input
+      <VariableInput
         value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') send()
-        }}
+        onChange={setUrl}
+        onEnter={send}
         placeholder="https://api.ejemplo.com/endpoint"
-        spellCheck={false}
-        className="flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm outline-none placeholder:text-zinc-500 focus:border-blue-500"
       />
 
       <button

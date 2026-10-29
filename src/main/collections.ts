@@ -1,6 +1,7 @@
 import { app, ipcMain, shell } from 'electron'
 import { promises as fs } from 'fs'
 import { basename, join, relative, resolve, sep } from 'path'
+import { addImportedEnvironment } from './environments'
 import type {
   CollectionItem,
   FolderItem,
@@ -206,6 +207,9 @@ export function registerCollectionHandlers(): void {
           'utf-8'
         )
       }
+
+    // Crea (y activa) un entorno con la baseUrl de la spec
+      await addImportedEnvironment(spec.name, spec.baseUrl).catch(() => undefined)
 
       return { ok: true, collectionId: basename(dir), name: spec.name, count: spec.requests.length }
     } catch (err) {

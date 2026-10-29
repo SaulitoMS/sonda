@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import type { HttpMethod, SavedRequest, SendRequestResult } from '../../../shared/types'
+import { buildVarMap, interpolate } from '../../../shared/variables'
+import { useEnvironmentStore } from './useEnvironmentStore'
 
 export interface KeyValue {
   id: string
@@ -68,22 +70,48 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     const { method, url, headers, body, loading } = get()
     if (loading || !url.trim()) return
 
-    set({ loading: true })
+    // 1. Resolver {{variables}} con el entorno activo
+    const activeEnv = useEnvironmentStore.getState().getActive()
+    const vars = buildVarMap(activeEnv)
+    const missing = new Set<string>()
 
+    const resolve = (text: string): string => {
+      const result = interpolate(text, vars)
+      result.missing.forEach((m) => missing.add(m))
+      return result.text
+    }
+
+    const finalUrl = resolve(url.trim())
+    const finalBody = body.trim() ? resolve(body) : undefined
     const activeHeaders = headers
       .filter((h) => h.enabled && h.key.trim())
-      .map(({ key, value }) => ({ key, value }))
+      .map((h) => ({ key: resolve(h.key), value: resolve(h.value) }))
 
+    // 2. Si falta alguna variable, no enviamos y lo explicamos
+    if (missing.size > 0) {
+      const names = [...missing].map((n) => `{{${n}}}`).join(', ')
+      const hint = activeEnv
+        ? `Defínelas en el entorno "${activeEnv.name}".`
+        : 'Selecciona o crea un entorno en la cabecera.'
+      set({
+        response: { ok: false, error: `Variables sin definir: ${names}. ${hint}`, timeMs: 0 }
+      })
+      return
+    }
+
+    // 3. Content-Type automático para bodies JSON
     const hasContentType = activeHeaders.some((h) => h.key.toLowerCase() === 'content-type')
-    if (body.trim() && !hasContentType && looksLikeJson(body)) {
+    if (finalBody && !hasContentType && looksLikeJson(finalBody)) {
       activeHeaders.push({ key: 'Content-Type', value: 'application/json' })
     }
 
+    set({ loading: true })
+
     const response = await window.api.sendRequest({
       method,
-      url: url.trim(),
+      url: finalUrl,
       headers: activeHeaders,
-      body: body.trim() ? body : undefined
+      body: finalBody
     })
 
     set({ response, loading: false })
