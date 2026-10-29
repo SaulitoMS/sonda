@@ -82,7 +82,11 @@ function App(): React.JSX.Element {
             {flash && <span className="mr-2 text-xs text-emerald-400">{flash}</span>}
             <EnvironmentSelector onManage={() => setModal('envs')} />
             <span className="mx-1 h-4 w-px bg-zinc-800" />
-            <button className={btn} onClick={() => setModal('curl')} title="Importar o exportar cURL">
+            <button
+              className={btn}
+              onClick={() => setModal('curl')}
+              title="Importar o exportar cURL"
+            >
               cURL
             </button>
             <button className={btn} onClick={reset}>
@@ -113,9 +117,7 @@ function App(): React.JSX.Element {
 
       {modal === 'import' && <ImportModal onClose={() => setModal(null)} />}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
-      {modal === 'curl' && (
-        <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />
-      )}
+      {modal === 'curl' && <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />}
       {modal === 'save' && (
         <SaveModal
           onClose={() => setModal(null)}

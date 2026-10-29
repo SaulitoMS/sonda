@@ -17,12 +17,7 @@ interface Hover {
   left: number
 }
 
-export function VariableInput({
-  value,
-  onChange,
-  onEnter,
-  placeholder
-}: Props): React.JSX.Element {
+export function VariableInput({ value, onChange, onEnter, placeholder }: Props): React.JSX.Element {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
   const spanRefs = useRef<Map<string, HTMLSpanElement>>(new Map())
@@ -44,7 +39,12 @@ export function VariableInput({
 
     for (const [key, span] of spanRefs.current) {
       const r = span.getBoundingClientRect()
-      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+      if (
+        e.clientX >= r.left &&
+        e.clientX <= r.right &&
+        e.clientY >= r.top &&
+        e.clientY <= r.bottom
+      ) {
         const name = key.split(':')[1]
         const left = Math.max(0, r.left - wrapper.left)
         setHover((prev) => (prev?.name === name && prev.left === left ? prev : { name, left }))
@@ -55,7 +55,6 @@ export function VariableInput({
   }
 
   const parts = value.split(VAR_SPLIT)
-  spanRefs.current.clear()
 
   // Info de la variable que está bajo el cursor
   const hoveredVar = hover
@@ -80,7 +79,11 @@ export function VariableInput({
             <span
               key={i}
               ref={(el) => {
-                if (el) spanRefs.current.set(`${i}:${name}`, el)
+                // React llama al ref anterior con null antes de registrar el nuevo,
+                // así el mapa se mantiene sincronizado sin tocarlo durante el render
+                const key = `${i}:${name}`
+                if (el) spanRefs.current.set(key, el)
+                else spanRefs.current.delete(key)
               }}
               className={defined ? 'font-semibold text-blue-400' : 'font-semibold text-amber-400'}
             >
@@ -125,9 +128,7 @@ export function VariableInput({
               <div className="break-all font-mono text-zinc-200">
                 {hoveredVar.secret ? '••••••••' : hoveredVar.value || '(vacío)'}
               </div>
-              <div className="mt-1.5 text-[10px] text-zinc-500">
-                Entorno: {activeEnv?.name}
-              </div>
+              <div className="mt-1.5 text-[10px] text-zinc-500">Entorno: {activeEnv?.name}</div>
             </>
           ) : (
             <>

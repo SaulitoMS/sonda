@@ -97,7 +97,12 @@ function sample(schema: any, depth = 0): unknown {
 
 function paramValue(p: any): unknown {
   return (
-    p?.example ?? p?.schema?.example ?? p?.default ?? p?.schema?.default ?? sample(p?.schema ?? p) ?? 1
+    p?.example ??
+    p?.schema?.example ??
+    p?.default ??
+    p?.schema?.default ??
+    sample(p?.schema ?? p) ??
+    1
   )
 }
 
@@ -147,7 +152,8 @@ function buildRequest(
   for (const p of params.values()) {
     if (!p.required) continue
     if (p.in === 'query') query.set(p.name, String(paramValue(p)))
-    if (p.in === 'header') headers.push({ key: p.name, value: String(paramValue(p)), enabled: true })
+    if (p.in === 'header')
+      headers.push({ key: p.name, value: String(paramValue(p)), enabled: true })
   }
   const qs = query.toString()
 

@@ -1,20 +1,11 @@
 import { looksLikeCurl, parseCurl } from '../../../shared/curl'
 import type { HttpMethod } from '../../../shared/types'
 import { applyCurl } from '../lib/applyCurl'
+import { METHOD_COLORS } from '../lib/methodColors'
 import { useRequestStore } from '../store/useRequestStore'
 import { VariableInput } from './VariableInput'
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
-
-export const METHOD_COLORS: Record<HttpMethod, string> = {
-  GET: 'text-emerald-400',
-  POST: 'text-amber-400',
-  PUT: 'text-sky-400',
-  PATCH: 'text-violet-400',
-  DELETE: 'text-red-400',
-  HEAD: 'text-zinc-300',
-  OPTIONS: 'text-zinc-300'
-}
 
 interface Props {
   onCurlImported?: (warnings: string[]) => void

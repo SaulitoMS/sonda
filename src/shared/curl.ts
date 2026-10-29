@@ -18,11 +18,38 @@ const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIO
 const SKIPPED_HEADERS = new Set(['content-length', 'host'])
 
 const LONG_WITH_VALUE = new Set([
-  'request', 'header', 'data', 'data-raw', 'data-binary', 'data-ascii', 'data-urlencode',
-  'user', 'cookie', 'user-agent', 'referer', 'url', 'json', 'form', 'form-string',
-  'output', 'max-time', 'connect-timeout', 'proxy', 'proxy-user', 'cacert', 'cert', 'key',
-  'retry', 'write-out', 'upload-file', 'cookie-jar', 'dump-header', 'resolve', 'limit-rate',
-  'interface', 'oauth2-bearer'
+  'request',
+  'header',
+  'data',
+  'data-raw',
+  'data-binary',
+  'data-ascii',
+  'data-urlencode',
+  'user',
+  'cookie',
+  'user-agent',
+  'referer',
+  'url',
+  'json',
+  'form',
+  'form-string',
+  'output',
+  'max-time',
+  'connect-timeout',
+  'proxy',
+  'proxy-user',
+  'cacert',
+  'cert',
+  'key',
+  'retry',
+  'write-out',
+  'upload-file',
+  'cookie-jar',
+  'dump-header',
+  'resolve',
+  'limit-rate',
+  'interface',
+  'oauth2-bearer'
 ])
 
 const SHORT_WITH_VALUE = 'XHdubAeFomxEwTKcDYyz'
@@ -206,7 +233,8 @@ export function parseCurl(input: string): ParsedCurl {
       case 'data':
       case 'data-ascii':
       case 'data-binary':
-        if (value.startsWith('@')) warnings.push(`Se omitió el archivo ${value}: Sonda aún no envía archivos`)
+        if (value.startsWith('@'))
+          warnings.push(`Se omitió el archivo ${value}: Sonda aún no envía archivos`)
         else dataParts.push(value)
         break
       case 'data-raw':

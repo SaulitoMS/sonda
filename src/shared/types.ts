@@ -72,8 +72,7 @@ export interface SaveRequestInput {
 }
 
 export type ImportResult =
-  | { ok: true; collectionId: string; name: string; count: number }
-  | { ok: false; error: string }
+  { ok: true; collectionId: string; name: string; count: number } | { ok: false; error: string }
 
 /** Contrato de window.api (lo implementa preload, lo usa el renderer) */
 export interface SondaApi {

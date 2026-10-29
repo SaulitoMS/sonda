@@ -154,23 +154,26 @@ export function registerCollectionHandlers(): void {
     return { ...data, headers: data.headers ?? [], body: data.body ?? '' }
   })
 
-  ipcMain.handle('collections:saveRequest', async (_e, input: SaveRequestInput): Promise<string> => {
-    const content = JSON.stringify(input.request, null, 2) + '\n'
+  ipcMain.handle(
+    'collections:saveRequest',
+    async (_e, input: SaveRequestInput): Promise<string> => {
+      const content = JSON.stringify(input.request, null, 2) + '\n'
 
-    if (input.relPath) {
-      await fs.writeFile(safeRequestPath(input.relPath), content, 'utf-8')
-      return input.relPath
+      if (input.relPath) {
+        await fs.writeFile(safeRequestPath(input.relPath), content, 'utf-8')
+        return input.relPath
+      }
+
+      if (!input.collectionId) throw new Error('Falta la colección')
+      const dir = input.folder
+        ? safePath(input.collectionId, slug(input.folder))
+        : safePath(input.collectionId)
+      await fs.mkdir(dir, { recursive: true })
+      const file = await uniquePath(dir, slug(input.request.name), '.json')
+      await fs.writeFile(file, content, 'utf-8')
+      return toRel(file)
     }
-
-    if (!input.collectionId) throw new Error('Falta la colección')
-    const dir = input.folder
-      ? safePath(input.collectionId, slug(input.folder))
-      : safePath(input.collectionId)
-    await fs.mkdir(dir, { recursive: true })
-    const file = await uniquePath(dir, slug(input.request.name), '.json')
-    await fs.writeFile(file, content, 'utf-8')
-    return toRel(file)
-  })
+  )
 
   ipcMain.handle('collections:deleteRequest', async (_e, relPath: string): Promise<void> => {
     await fs.rm(safeRequestPath(relPath), { force: true })
@@ -208,7 +211,7 @@ export function registerCollectionHandlers(): void {
         )
       }
 
-    // Crea (y activa) un entorno con la baseUrl de la spec
+      // Crea (y activa) un entorno con la baseUrl de la spec
       await addImportedEnvironment(spec.name, spec.baseUrl).catch(() => undefined)
 
       return { ok: true, collectionId: basename(dir), name: spec.name, count: spec.requests.length }

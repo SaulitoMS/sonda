@@ -172,8 +172,8 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
               />
 
               <p className="mb-2 text-xs text-zinc-500">
-                Úsalas como <code>{'{{nombre}}'}</code> en la URL, los headers o el body. Las marcadas
-                como secreto se cifran en el keychain.
+                Úsalas como <code>{'{{nombre}}'}</code> en la URL, los headers o el body. Las
+                marcadas como secreto se cifran en el keychain.
               </p>
 
               <div className="min-h-0 flex-1 overflow-auto">

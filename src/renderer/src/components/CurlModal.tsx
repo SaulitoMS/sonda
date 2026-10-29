@@ -4,7 +4,7 @@ import { buildVarMap, interpolate } from '../../../shared/variables'
 import { applyCurl } from '../lib/applyCurl'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
-import { METHOD_COLORS } from './RequestBar'
+import { METHOD_COLORS } from '../lib/methodColors'
 import { Modal } from './Modal'
 
 type Tab = 'import' | 'export'
@@ -26,7 +26,11 @@ const looksLikeJson = (text: string): boolean => {
   }
 }
 
-export function CurlModal({ initialTab = 'import', onClose, onImported }: Props): React.JSX.Element {
+export function CurlModal({
+  initialTab = 'import',
+  onClose,
+  onImported
+}: Props): React.JSX.Element {
   const [tab, setTab] = useState<Tab>(initialTab)
 
   const tabClass = (t: Tab): string =>
