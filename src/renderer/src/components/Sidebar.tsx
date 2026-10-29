@@ -83,6 +83,23 @@ function TrashButton({
   )
 }
 
+function PlayButton({ onClick, title }: { onClick: () => void; title: string }): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className="hidden rounded p-0.5 text-zinc-500 hover:bg-zinc-700 hover:text-emerald-400 group-hover:block"
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <path d="m6 3 14 9-14 9z" />
+      </svg>
+    </button>
+  )
+}
+
 /* ---------- Fila de petición ---------- */
 
 interface RowProps {
@@ -115,7 +132,12 @@ function RequestRow({ item, active, onOpen, onDelete }: RowProps): React.JSX.Ele
 
 /* ---------- Sidebar ---------- */
 
-export function Sidebar({ onImport }: { onImport: () => void }): React.JSX.Element {
+interface SidebarProps {
+  onImport: () => void
+  onRun: (collectionId: string) => void
+}
+
+export function Sidebar({ onImport, onRun }: SidebarProps): React.JSX.Element {
   const { collections, refresh } = useCollectionsStore()
   const currentFile = useRequestStore((s) => s.currentFile)
   const loadSaved = useRequestStore((s) => s.loadSaved)
@@ -227,6 +249,9 @@ export function Sidebar({ onImport }: { onImport: () => void }): React.JSX.Eleme
                 <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 group-hover:hidden">
                   {total}
                 </span>
+                {total > 0 && (
+                  <PlayButton onClick={() => onRun(c.id)} title="Ejecutar todas las peticiones" />
+                )}
                 <TrashButton
                   onClick={() => removeCollection(c.id, c.name)}
                   title="Eliminar colección"

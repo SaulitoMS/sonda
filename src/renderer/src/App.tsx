@@ -6,12 +6,13 @@ import { ImportModal } from './components/ImportModal'
 import { RequestBar } from './components/RequestBar'
 import { RequestPanel } from './components/RequestPanel'
 import { ResponsePanel } from './components/ResponsePanel'
+import { RunnerModal } from './components/RunnerModal'
 import { SaveModal } from './components/SaveModal'
 import { Sidebar } from './components/Sidebar'
 import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
 
-type ModalType = 'import' | 'save' | 'envs' | 'curl' | null
+type ModalType = 'import' | 'save' | 'envs' | 'curl' | 'runner' | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
@@ -21,6 +22,7 @@ function App(): React.JSX.Element {
   const loadEnvironments = useEnvironmentStore((s) => s.load)
 
   const [modal, setModal] = useState<ModalType>(null)
+  const [runCollectionId, setRunCollectionId] = useState('')
   const [flash, setFlash] = useState('')
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -68,7 +70,13 @@ function App(): React.JSX.Element {
 
   return (
     <div className="flex h-full bg-zinc-900 text-zinc-200">
-      <Sidebar onImport={() => setModal('import')} />
+      <Sidebar
+        onImport={() => setModal('import')}
+        onRun={(id) => {
+          setRunCollectionId(id)
+          setModal('runner')
+        }}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-10 items-center justify-between border-b border-zinc-800 px-4">
@@ -116,6 +124,9 @@ function App(): React.JSX.Element {
       </div>
 
       {modal === 'import' && <ImportModal onClose={() => setModal(null)} />}
+      {modal === 'runner' && (
+        <RunnerModal collectionId={runCollectionId} onClose={() => setModal(null)} />
+      )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'curl' && <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />}
       {modal === 'save' && (

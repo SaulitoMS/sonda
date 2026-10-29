@@ -6,8 +6,7 @@ import type {
   SchemaValidation,
   SendRequestResult
 } from '../../../shared/types'
-import { validateResponse } from '../../../shared/validate'
-import { buildVarMap, interpolate } from '../../../shared/variables'
+import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from './useEnvironmentStore'
 
 export interface KeyValue {
@@ -54,15 +53,6 @@ interface RequestState {
   reset: () => void
 }
 
-const looksLikeJson = (text: string): boolean => {
-  try {
-    JSON.parse(text)
-    return true
-  } catch {
-    return false
-  }
-}
-
 export const useRequestStore = create<RequestState>((set, get) => ({
   method: 'GET',
   url: 'https://jsonplaceholder.typicode.com/todos/1',
@@ -84,63 +74,11 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     const { method, url, headers, body, loading, responseSchemas } = get()
     if (loading || !url.trim()) return
 
-    // 1. Resolver {{variables}} con el entorno activo
-    const activeEnv = useEnvironmentStore.getState().getActive()
-    const vars = buildVarMap(activeEnv)
-    const missing = new Set<string>()
-
-    const resolve = (text: string): string => {
-      const result = interpolate(text, vars)
-      result.missing.forEach((m) => missing.add(m))
-      return result.text
-    }
-
-    const finalUrl = resolve(url.trim())
-    const finalBody = body.trim() ? resolve(body) : undefined
-    const activeHeaders = headers
-      .filter((h) => h.enabled && h.key.trim())
-      .map((h) => ({ key: resolve(h.key), value: resolve(h.value) }))
-
-    // 2. Si falta alguna variable, no enviamos y lo explicamos
-    if (missing.size > 0) {
-      const names = [...missing].map((n) => `{{${n}}}`).join(', ')
-      const hint = activeEnv
-        ? `Defínelas en el entorno "${activeEnv.name}".`
-        : 'Selecciona o crea un entorno en la cabecera.'
-      set({
-        response: { ok: false, error: `Variables sin definir: ${names}. ${hint}`, timeMs: 0 },
-        validation: null
-      })
-      return
-    }
-
-    // 3. Content-Type automático para bodies JSON
-    const hasContentType = activeHeaders.some((h) => h.key.toLowerCase() === 'content-type')
-    if (finalBody && !hasContentType && looksLikeJson(finalBody)) {
-      activeHeaders.push({ key: 'Content-Type', value: 'application/json' })
-    }
-
     set({ loading: true })
-
-    const response = await window.api.sendRequest({
-      method,
-      url: finalUrl,
-      headers: activeHeaders,
-      body: finalBody
-    })
-
-    // 4. Si la petición viene de una spec OpenAPI, validar la respuesta contra su schema
-    const validation =
-      response.ok && responseSchemas
-        ? validateResponse({
-            schemas: responseSchemas,
-            status: response.status,
-            method,
-            headers: response.headers,
-            body: response.body
-          })
-        : null
-
+    const { response, validation } = await executeRequest(
+      { method, url, headers, body, responseSchemas },
+      useEnvironmentStore.getState().getActive()
+    )
     set({ response, validation, loading: false })
   },
 
