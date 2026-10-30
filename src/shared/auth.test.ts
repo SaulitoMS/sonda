@@ -83,7 +83,6 @@ describe('buildAuth', () => {
   })
 })
 
-
 describe('resolveAuth', () => {
   const bearer = (token: string): AuthConfig => make({ type: 'bearer', token })
   const inherit = make({ type: 'inherit' })

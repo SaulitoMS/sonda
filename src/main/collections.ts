@@ -328,10 +328,9 @@ export function registerCollectionHandlers(): void {
       const dir = folder ? safePath(collectionId, folder) : safePath(collectionId)
       await writeScopeAuth(dir, auth)
     }
-    
   )
 
-    ipcMain.handle(
+  ipcMain.handle(
     'collections:moveRequest',
     async (_e, relPath: string, collectionId: string, folder: string | null): Promise<string> => {
       if (folder && /[\\/]/.test(folder)) throw new Error('Carpeta no válida')
@@ -382,11 +381,7 @@ export function registerCollectionHandlers(): void {
         for (const key of Object.keys(meta.endpoints)) {
           if (key.startsWith(`${folder}/`)) delete meta.endpoints[key]
         }
-        await fs.writeFile(
-          join(fromRoot, META_FILE),
-          JSON.stringify(meta, null, 2) + '\n',
-          'utf-8'
-        )
+        await fs.writeFile(join(fromRoot, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
       }
       return basename(to)
     }

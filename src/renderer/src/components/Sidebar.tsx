@@ -238,6 +238,17 @@ type DragItem =
   | { kind: 'folder'; collectionId: string; name: string }
   | { kind: 'collection'; id: string }
 
+/** Una zona donde se puede soltar */
+interface DropZone {
+  /** Identifica la zona para resaltarla (coincide con dropTarget) */
+  key: string
+  /** ¿Esta zona se ocupa de lo que se arrastra? Si no, el evento sigue subiendo a la zona de arriba */
+  handles: (d: DragItem) => boolean
+  /** ¿Se puede soltar aquí? Si no, el cursor muestra que no se permite */
+  accepts: (d: DragItem) => boolean
+  onDrop: (d: DragItem) => void
+}
+
 /** Resaltado de la fila sobre la que se puede soltar */
 const DROP_RING = 'bg-blue-500/10 ring-1 ring-inset ring-blue-400'
 
@@ -354,7 +365,8 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
   const [query, setQuery] = useState('')
   const [authScope, setAuthScope] = useState<AuthScope | null>(null)
   const [headersScope, setHeadersScope] = useState<HeadersScope | null>(null)
-  const [drag, setDrag] = useState<DragItem | null>(null)
+  // Lo que se arrastra vive en un ref: así los eventos de soltar no dependen de un re-render
+  const dragRef = useRef<DragItem | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
 
   useEffect(() => {
@@ -446,51 +458,61 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     e.stopPropagation()
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', label)
-    setDrag(item)
+    dragRef.current = item
   }
 
   const endDrag = (): void => {
-    setDrag(null)
+    dragRef.current = null
     setDropTarget(null)
   }
 
-  /** Eventos de una zona donde se puede soltar. Si no acepta lo que se arrastra, no hace nada */
-  const dropProps = (
-    key: string,
-    accepts: boolean,
-    onDrop: () => void
-  ): React.HTMLAttributes<HTMLDivElement> =>
-    accepts
-      ? {
-          onDragOver: (e) => {
-            e.preventDefault()
-            e.dataTransfer.dropEffect = 'move'
-            if (dropTarget !== key) setDropTarget(key)
-          },
-          onDragLeave: () => setDropTarget((t) => (t === key ? null : t)),
-          onDrop: (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            endDrag()
-            onDrop()
-          }
-        }
-      : {}
+  /** Eventos de una zona donde se puede soltar. Se evalúa al momento del evento, no al renderizar */
+  const dropZone = (zone: DropZone): React.HTMLAttributes<HTMLDivElement> => {
+    const over = (e: React.DragEvent): void => {
+      const d = dragRef.current
+      if (!d || !zone.handles(d)) return
+      e.stopPropagation()
+      if (!zone.accepts(d)) {
+        setDropTarget((t) => (t === null ? t : null))
+        return
+      }
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      setDropTarget((t) => (t === zone.key ? t : zone.key))
+    }
 
-  const acceptsOnCollection = (c: CollectionItem): boolean => {
-    if (!drag) return false
-    if (drag.kind === 'request') {
-      const parts = drag.item.path.split('/')
+    return {
+      onDragEnter: over,
+      onDragOver: over,
+      onDragLeave: (e) => {
+        // Al pasar sobre un hijo también se dispara dragleave: se ignora
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+        setDropTarget((t) => (t === zone.key ? null : t))
+      },
+      onDrop: (e) => {
+        const d = dragRef.current
+        if (!d || !zone.handles(d) || !zone.accepts(d)) return
+        e.preventDefault()
+        e.stopPropagation()
+        endDrag()
+        zone.onDrop(d)
+      }
+    }
+  }
+
+  const acceptsOnCollection = (c: CollectionItem, d: DragItem): boolean => {
+    if (d.kind === 'request') {
+      const parts = d.item.path.split('/')
       // Misma colección: solo tiene sentido si la petición está en una carpeta (pasa a la raíz)
       return parts[0] !== c.id || parts.length > 2
     }
-    if (drag.kind === 'folder') return drag.collectionId !== c.id
-    return drag.id !== c.id
+    if (d.kind === 'folder') return d.collectionId !== c.id
+    return d.id !== c.id
   }
 
-  const acceptsOnFolder = (collectionId: string, folder: string): boolean => {
-    if (drag?.kind !== 'request') return false
-    const parts = drag.item.path.split('/')
+  const acceptsOnFolder = (collectionId: string, folder: string, d: DragItem): boolean => {
+    if (d.kind !== 'request') return false
+    const parts = d.item.path.split('/')
     return !(parts.length > 2 && parts[0] === collectionId && parts[1] === folder)
   }
 
@@ -554,16 +576,29 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     }
   }
 
-  const dropOnCollection = (c: CollectionItem): void => {
-    if (!drag) return
-    if (drag.kind === 'request') void moveRequest(drag.item, c.id, null)
-    else if (drag.kind === 'folder') void moveFolder(drag.collectionId, drag.name, c.id)
-    else void reorderCollection(drag.id, c.id)
-  }
+  /** Toda la colección (encabezado y contenido) acepta peticiones, carpetas y otras colecciones */
+  const collectionZone = (c: CollectionItem): React.HTMLAttributes<HTMLDivElement> =>
+    dropZone({
+      key: `c:${c.id}`,
+      handles: () => true,
+      accepts: (d) => acceptsOnCollection(c, d),
+      onDrop: (d) => {
+        if (d.kind === 'request') void moveRequest(d.item, c.id, null)
+        else if (d.kind === 'folder') void moveFolder(d.collectionId, d.name, c.id)
+        else void reorderCollection(d.id, c.id)
+      }
+    })
 
-  const dropOnFolder = (collectionId: string, folder: string): void => {
-    if (drag?.kind === 'request') void moveRequest(drag.item, collectionId, folder)
-  }
+  /** Toda la carpeta (encabezado y peticiones) acepta peticiones. Lo demás sube a la colección */
+  const folderZone = (collectionId: string, folder: string): React.HTMLAttributes<HTMLDivElement> =>
+    dropZone({
+      key: `f:${collectionId}/${folder}`,
+      handles: (d) => d.kind === 'request',
+      accepts: (d) => acceptsOnFolder(collectionId, folder, d),
+      onDrop: (d) => {
+        if (d.kind === 'request') void moveRequest(d.item, collectionId, folder)
+      }
+    })
 
   // Búsqueda: cada palabra debe aparecer en el método, el nombre o la ruta (colección/carpeta)
   const terms = norm(query).split(/\s+/).filter(Boolean)
@@ -662,14 +697,13 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
           const isOpen = searching || !!expanded[c.id]
 
           return (
-            <div key={c.id} className="mb-1.5">
+            <div key={c.id} className="mb-1.5" {...collectionZone(c)}>
               {/* Colección (padre) */}
               <div
                 onClick={() => toggle(c.id)}
                 draggable
                 onDragStart={(e) => startDrag(e, { kind: 'collection', id: c.id }, c.name)}
                 onDragEnd={endDrag}
-                {...dropProps(`c:${c.id}`, acceptsOnCollection(c), () => dropOnCollection(c))}
                 className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors hover:bg-zinc-800/70 ${
                   isOpen ? 'bg-zinc-800/40 text-zinc-100' : 'text-zinc-200'
                 } ${dropTarget === `c:${c.id}` ? DROP_RING : ''}`}
@@ -729,17 +763,18 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                     const folderOpen = searching || !!expanded[key]
 
                     return (
-                      <div key={key}>
+                      <div key={key} {...folderZone(c.id, f.name)}>
                         <div
                           onClick={() => toggle(key)}
                           draggable
                           onDragStart={(e) =>
-                            startDrag(e, { kind: 'folder', collectionId: c.id, name: f.name }, f.name)
+                            startDrag(
+                              e,
+                              { kind: 'folder', collectionId: c.id, name: f.name },
+                              f.name
+                            )
                           }
                           onDragEnd={endDrag}
-                          {...dropProps(`f:${key}`, acceptsOnFolder(c.id, f.name), () =>
-                            dropOnFolder(c.id, f.name)
-                          )}
                           className={`group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70 ${
                             dropTarget === `f:${key}` ? DROP_RING : ''
                           }`}
