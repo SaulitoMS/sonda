@@ -19,7 +19,10 @@ const api: SondaApi = {
   loadEnvironments: () => ipcRenderer.invoke('environments:load'),
   saveEnvironments: (data) => ipcRenderer.invoke('environments:save', data),
   previewSync: (id) => ipcRenderer.invoke('swagger:previewSync', id),
-  applySync: (id, options) => ipcRenderer.invoke('swagger:applySync', id, options)
+  applySync: (id, options) => ipcRenderer.invoke('swagger:applySync', id, options),
+  listCookies: () => ipcRenderer.invoke('cookies:list'),
+  deleteCookie: (id) => ipcRenderer.invoke('cookies:delete', id),
+  clearCookies: () => ipcRenderer.invoke('cookies:clear')
 }
 
 if (process.contextIsolated) {
