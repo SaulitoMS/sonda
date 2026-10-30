@@ -16,6 +16,7 @@ import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
 import { useTabsStore } from './store/useTabsStore'
 import { CommandPalette } from './components/CommandPalette'
+import { CookiesModal } from './components/CookiesModal'
 
 type ModalType =
   | 'import'
@@ -26,6 +27,7 @@ type ModalType =
   | 'history'
   | 'sync'
   | 'palette'
+  | 'cookies'
   | null
 
 function App(): React.JSX.Element {
@@ -122,6 +124,13 @@ function App(): React.JSX.Element {
             </button>
             <button
               className={btn}
+              onClick={() => setModal('cookies')}
+              title="Cookies guardadas de las respuestas"
+            >
+              Cookies
+            </button>
+            <button
+              className={btn}
               onClick={() => setModal('curl')}
               title="Importar o exportar cURL"
             >
@@ -163,6 +172,7 @@ function App(): React.JSX.Element {
         />
       )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
+      {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'curl' && <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />}
       {modal === 'history' && (
         <HistoryModal
