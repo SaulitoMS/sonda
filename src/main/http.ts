@@ -5,7 +5,6 @@ import { Agent } from 'undici'
 // Un solo agente reutilizable para peticiones con SSL relajado
 const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } })
 
-
 export function registerHttpHandlers(): void {
   ipcMain.handle(
     'http:send',

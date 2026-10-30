@@ -3,7 +3,7 @@ import { useState } from 'react'
 const isContainer = (v: unknown): v is object => v !== null && typeof v === 'object'
 
 function Primitive({ value }: { value: unknown }): React.JSX.Element {
-  if (typeof value === 'string') return <span className="text-emerald-300">"{value}"</span>
+  if (typeof value === 'string') return <span className="text-emerald-300">{`"${value}"`}</span>
   if (typeof value === 'number') return <span className="text-amber-300">{String(value)}</span>
   if (typeof value === 'boolean') return <span className="text-sky-300">{String(value)}</span>
   return <span className="text-zinc-500">null</span>

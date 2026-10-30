@@ -163,7 +163,6 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
   const { collections, refresh } = useCollectionsStore()
   const currentFile = useRequestStore((s) => s.currentFile)
 
-
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')

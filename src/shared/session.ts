@@ -1,4 +1,11 @@
-import type { Assertion, AuthConfig, Extraction, HttpMethod, JsonSchema, ResponseSchemas } from './types'
+import type {
+  Assertion,
+  AuthConfig,
+  Extraction,
+  HttpMethod,
+  JsonSchema,
+  ResponseSchemas
+} from './types'
 
 export const SESSION_VERSION = 1 as const
 export const MAX_TABS = 30

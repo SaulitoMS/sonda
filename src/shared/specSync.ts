@@ -61,8 +61,7 @@ function sortKeys(value: unknown): unknown {
 }
 
 /** JSON con las claves ordenadas, para comparar objetos sin depender del orden */
-export const stableStringify = (value: unknown): string =>
-  JSON.stringify(sortKeys(value ?? null))
+export const stableStringify = (value: unknown): string => JSON.stringify(sortKeys(value ?? null))
 
 const differs = (a: unknown, b: unknown): boolean => stableStringify(a) !== stableStringify(b)
 

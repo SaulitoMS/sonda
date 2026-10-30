@@ -129,7 +129,14 @@ describe('mergeChange', () => {
 
   it('conserva aserciones, extracciones y auth, y agrega los headers que faltan', () => {
     const assertions = [
-      { id: '1', enabled: true, kind: 'status' as const, target: '', op: 'eq' as const, expected: '200' }
+      {
+        id: '1',
+        enabled: true,
+        kind: 'status' as const,
+        target: '',
+        op: 'eq' as const,
+        expected: '200'
+      }
     ]
     const nuevo = ep('POST /pet', {
       headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }]

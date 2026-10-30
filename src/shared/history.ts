@@ -47,7 +47,8 @@ export function filterHistory(list: HistoryEntry[], query: string): HistoryEntry
 /** "Hoy", "Ayer" o la fecha en español */
 export function dayLabel(at: number, now = new Date()): string {
   const d = new Date(at)
-  const startOf = (x: Date): number => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const startOf = (x: Date): number =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
   const diff = Math.round((startOf(now) - startOf(d)) / 86_400_000)
   if (diff === 0) return 'Hoy'
   if (diff === 1) return 'Ayer'

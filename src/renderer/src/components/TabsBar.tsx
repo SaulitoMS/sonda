@@ -97,7 +97,11 @@ export function TabsBar(): React.JSX.Element {
                   requestClose(t.id, label, view.dirty)
                 }}
                 className={`shrink-0 rounded px-1 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-200 ${
-                  view.dirty ? 'hidden group-hover:block' : active ? '' : 'invisible group-hover:visible'
+                  view.dirty
+                    ? 'hidden group-hover:block'
+                    : active
+                      ? ''
+                      : 'invisible group-hover:visible'
                 }`}
                 title="Cerrar pestaña"
               >

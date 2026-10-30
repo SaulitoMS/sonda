@@ -183,7 +183,10 @@ export function SyncModal({ collectionId, collectionName, onClose }: Props): Rea
 
   return (
     <Modal title={title} onClose={onClose} wide>
-      <p className="selectable mb-3 truncate font-mono text-[11px] text-zinc-500" title={preview.source}>
+      <p
+        className="selectable mb-3 truncate font-mono text-[11px] text-zinc-500"
+        title={preview.source}
+      >
         {preview.source}
       </p>
 

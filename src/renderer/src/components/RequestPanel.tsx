@@ -76,25 +76,25 @@ export function RequestPanel(): React.JSX.Element {
   const bodyDisabled = method === 'GET' || method === 'HEAD'
 
   const jsonError = useMemo<string | null>(() => {
-  const text = body.trim()
-  if (!text || !/^[[{]/.test(text)) return null
-  // Con {{variables}} no es JSON válido todavía; no molestamos
-  if (/\{\{.*?\}\}/.test(text)) return null
-  try {
-    JSON.parse(text)
-    return null
-  } catch (e) {
-    return e instanceof Error ? e.message : 'JSON inválido'
-  }
-}, [body])
+    const text = body.trim()
+    if (!text || !/^[[{]/.test(text)) return null
+    // Con {{variables}} no es JSON válido todavía; no molestamos
+    if (/\{\{.*?\}\}/.test(text)) return null
+    try {
+      JSON.parse(text)
+      return null
+    } catch (e) {
+      return e instanceof Error ? e.message : 'JSON inválido'
+    }
+  }, [body])
 
-const formatBody = (): void => {
-  try {
-    setBody(JSON.stringify(JSON.parse(body), null, 2))
-  } catch {
-    /* si no es JSON, no se toca */
+  const formatBody = (): void => {
+    try {
+      setBody(JSON.stringify(JSON.parse(body), null, 2))
+    } catch {
+      /* si no es JSON, no se toca */
+    }
   }
-}
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

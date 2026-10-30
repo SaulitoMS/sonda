@@ -14,7 +14,8 @@ const statusClass = (e: HistoryEntry): string => {
   return 'bg-emerald-500/20 text-emerald-400'
 }
 
-const statusText = (e: HistoryEntry): string => (e.response.ok ? String(e.response.status) : 'Error')
+const statusText = (e: HistoryEntry): string =>
+  e.response.ok ? String(e.response.status) : 'Error'
 
 const hour = (at: number): string =>
   new Date(at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
@@ -90,7 +91,9 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
                 <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusClass(e)}`}>
                   {statusText(e)}
                 </span>
-                <span className="w-14 shrink-0 text-right text-zinc-500">{e.response.timeMs} ms</span>
+                <span className="w-14 shrink-0 text-right text-zinc-500">
+                  {e.response.timeMs} ms
+                </span>
                 <span className="w-12 shrink-0 text-right text-zinc-600 group-hover:hidden">
                   {hour(e.at)}
                 </span>

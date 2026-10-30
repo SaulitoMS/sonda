@@ -43,7 +43,15 @@ describe('pushEntry', () => {
 describe('truncateResponse', () => {
   it('recorta bodies largos', () => {
     const r = truncateResponse(
-      { ok: true, status: 200, statusText: 'OK', headers: {}, body: 'x'.repeat(100), timeMs: 1, sizeBytes: 100 },
+      {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        body: 'x'.repeat(100),
+        timeMs: 1,
+        sizeBytes: 100
+      },
       10
     )
     expect(r.ok && r.body).toHaveLength(10)
