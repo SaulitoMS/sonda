@@ -194,7 +194,8 @@ export interface SaveRequestInput {
 }
 
 export type ImportResult =
-  { ok: true; collectionId: string; name: string; count: number } | { ok: false; error: string }
+  | { ok: true; collectionId: string; name: string; count: number; warnings?: string[] }
+  | { ok: false; error: string }
 
 /** Contrato de window.api (lo implementa preload, lo usa el renderer) */
 export interface SondaApi {
@@ -208,6 +209,8 @@ export interface SondaApi {
   deleteRequest: (path: string) => Promise<void>
   openWorkspace: () => Promise<void>
   importSwagger: (url: string) => Promise<ImportResult>
+  /** Abre el selector de archivos e importa una colección de Postman. null = el usuario canceló */
+  importPostman: () => Promise<ImportResult | null>
   loadEnvironments: () => Promise<EnvironmentsData>
   saveEnvironments: (data: EnvironmentsData) => Promise<void>
   previewSync: (collectionId: string) => Promise<SyncPreviewResult>

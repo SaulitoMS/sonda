@@ -4,6 +4,7 @@ import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useTabsStore } from '../store/useTabsStore'
+import { useEnvironmentStore } from '../store/useEnvironmentStore'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -153,6 +154,13 @@ function RequestRow({ item, active, onOpen, onDelete }: RowProps): React.JSX.Ele
 
 /* ---------- Sidebar ---------- */
 
+/** Minúsculas y sin acentos, para que "autenticacion" encuentre "Autenticación" */
+const norm = (text: string): string =>
+  text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
 interface SidebarProps {
   onImport: () => void
   onRun: (collectionId: string) => void
@@ -166,6 +174,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     refresh()
@@ -201,28 +210,83 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     await refresh()
   }
 
+  const importPostman = async (): Promise<void> => {
+    const result = await window.api.importPostman()
+    if (!result) return
+    if (!result.ok) {
+      alert(result.error)
+      return
+    }
+    await Promise.all([refresh(), useEnvironmentStore.getState().load()])
+    setExpanded((e) => ({ ...e, [result.collectionId]: true }))
+    if (result.warnings?.length) {
+      alert(`Se importaron ${result.count} peticiones.\n\n${result.warnings.join('\n')}`)
+    }
+  }
+
+  // Búsqueda: cada palabra debe aparecer en el método, el nombre o la ruta (colección/carpeta)
+  const terms = norm(query).split(/\s+/).filter(Boolean)
+  const searching = terms.length > 0
+  const matches = (r: RequestItem): boolean => {
+    const haystack = norm(`${r.method} ${r.name} ${r.path}`)
+    return terms.every((t) => haystack.includes(t))
+  }
+
+  const shown = collections
+    .map((c) => {
+      if (!searching) return { c, requests: c.requests, folders: c.folders }
+      return {
+        c,
+        requests: c.requests.filter(matches),
+        folders: c.folders
+          .map((f) => ({ ...f, requests: f.requests.filter(matches) }))
+          .filter((f) => f.requests.length > 0)
+      }
+    })
+    .filter((x) => !searching || x.requests.length + x.folders.length > 0)
+
   return (
     <aside className="flex w-72 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950/40">
       <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
         <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
           Colecciones
         </span>
-        <div className="flex gap-1">
+        <div className="flex gap-0.5">
           <button
             onClick={onImport}
-            className="rounded px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+            className="rounded px-1.5 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
             title="Importar Swagger / OpenAPI"
           >
             ⇣ Swagger
           </button>
           <button
+            onClick={importPostman}
+            className="rounded px-1.5 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+            title="Importar colección de Postman (.json)"
+          >
+            ⇣ Postman
+          </button>
+          <button
             onClick={() => setCreating(true)}
-            className="rounded px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+            className="rounded px-1.5 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
             title="Nueva colección"
           >
             +
           </button>
         </div>
+      </div>
+
+      <div className="border-b border-zinc-800 p-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setQuery('')
+          }}
+          placeholder="Buscar peticiones…"
+          spellCheck={false}
+          className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2">
@@ -247,9 +311,14 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
           </p>
         )}
 
-        {collections.map((c) => {
-          const total = c.requests.length + c.folders.reduce((n, f) => n + f.requests.length, 0)
-          const isOpen = !!expanded[c.id]
+        {searching && shown.length === 0 && (
+          <p className="p-2 text-xs text-zinc-500">Sin resultados para «{query.trim()}».</p>
+        )}
+
+        {shown.map(({ c, requests, folders }) => {
+          const total = requests.length + folders.reduce((n, f) => n + f.requests.length, 0)
+          // Al buscar, todo se muestra abierto para ver las coincidencias
+          const isOpen = searching || !!expanded[c.id]
 
           return (
             <div key={c.id} className="mb-1.5">
@@ -288,9 +357,9 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
               {/* Hijos, unidos al padre con una línea guía */}
               {isOpen && (
                 <div className="ml-[18px] mt-0.5 flex flex-col gap-0.5 border-l border-zinc-800 pl-2">
-                  {c.folders.map((f) => {
+                  {folders.map((f) => {
                     const key = `${c.id}/${f.name}`
-                    const folderOpen = !!expanded[key]
+                    const folderOpen = searching || !!expanded[key]
 
                     return (
                       <div key={key}>
@@ -324,7 +393,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                     )
                   })}
 
-                  {c.requests.map((r) => (
+                  {requests.map((r) => (
                     <RequestRow
                       key={r.path}
                       item={r}

@@ -1,7 +1,7 @@
-import { app, ipcMain, shell } from 'electron'
+import { app, dialog, ipcMain, shell } from 'electron'
 import { promises as fs } from 'fs'
 import { basename, dirname, join, relative, resolve, sep } from 'path'
-import { addImportedEnvironment } from './environments'
+import { addEnvironmentWithVariables, addImportedEnvironment } from './environments'
 import type {
   CollectionItem,
   FolderItem,
@@ -23,6 +23,7 @@ import {
   type ExistingFile
 } from '../shared/specSync'
 import { importFromUrl } from './swagger'
+import { parsePostmanCollection } from '../shared/postman'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -287,6 +288,52 @@ export function registerCollectionHandlers(): void {
       await addImportedEnvironment(spec.name, spec.baseUrl).catch(() => undefined)
 
       return { ok: true, collectionId: basename(dir), name: spec.name, count: spec.requests.length }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  })
+
+    ipcMain.handle('postman:import', async (): Promise<ImportResult | null> => {
+    const picked = await dialog.showOpenDialog({
+      title: 'Importar colección de Postman',
+      properties: ['openFile'],
+      filters: [{ name: 'Colección de Postman', extensions: ['json'] }]
+    })
+    if (picked.canceled || !picked.filePaths[0]) return null
+
+    try {
+      let json: unknown
+      try {
+        json = JSON.parse(await fs.readFile(picked.filePaths[0], 'utf-8'))
+      } catch {
+        throw new Error('El archivo no es un JSON válido')
+      }
+      const parsed = parsePostmanCollection(json)
+
+      await fs.mkdir(getRoot(), { recursive: true })
+      const dir = await uniquePath(getRoot(), slug(parsed.name), '')
+      await fs.mkdir(dir, { recursive: true })
+
+      for (const item of parsed.requests) {
+        const folderDir = item.folder ? join(dir, slug(item.folder)) : dir
+        await fs.mkdir(folderDir, { recursive: true })
+        const file = await uniquePath(folderDir, slug(item.request.name), '.json')
+        await fs.writeFile(file, JSON.stringify(item.request, null, 2) + '\n', 'utf-8')
+      }
+
+      await writeMeta(dir, { name: parsed.name })
+
+      if (parsed.variables.length > 0) {
+        await addEnvironmentWithVariables(parsed.name, parsed.variables).catch(() => undefined)
+      }
+
+      return {
+        ok: true,
+        collectionId: basename(dir),
+        name: parsed.name,
+        count: parsed.requests.length,
+        warnings: parsed.warnings
+      }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
     }

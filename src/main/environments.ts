@@ -88,6 +88,26 @@ export async function addImportedEnvironment(name: string, baseUrl: string): Pro
   await saveEnvironments({ activeId: env.id, environments: [...data.environments, env] })
 }
 
+/** Lo usa el importador de Postman: crea un entorno con las variables de la colección y lo activa */
+export async function addEnvironmentWithVariables(
+  name: string,
+  variables: { key: string; value: string }[]
+): Promise<void> {
+  const data = await loadEnvironments()
+  const env: Environment = {
+    id: randomUUID(),
+    name,
+    variables: variables.map((v) => ({
+      id: randomUUID(),
+      key: v.key,
+      value: v.value,
+      secret: false,
+      enabled: true
+    }))
+  }
+  await saveEnvironments({ activeId: env.id, environments: [...data.environments, env] })
+}
+
 export function registerEnvironmentHandlers(): void {
   ipcMain.handle('environments:load', () => loadEnvironments())
   ipcMain.handle('environments:save', (_e, data: EnvironmentsData) => saveEnvironments(data))
