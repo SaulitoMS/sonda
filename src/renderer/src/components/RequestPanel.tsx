@@ -214,7 +214,7 @@ export function RequestPanel(): React.JSX.Element {
                   onChange={setBody}
                   onKeyDown={onBodyKeyDown}
                   placeholder={'{\n  "nombre": "Sonda"\n}'}
-                  className="min-h-48 w-full flex-1 resize-none rounded-md border border-zinc-700 bg-zinc-800 p-3 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
+                  className="min-h-48 flex-1"
                 />
                 {bodyCheck && <RequestSchemaStatus validation={bodyCheck} />}
               </>
