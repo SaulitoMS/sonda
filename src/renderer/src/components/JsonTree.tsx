@@ -1,16 +1,35 @@
-import { useState } from 'react'
+import { createContext, useContext, useState } from 'react'
+import { childPath, type TreeSearch } from '../lib/search'
+import { Highlight } from './Highlight'
 
 const isContainer = (v: unknown): v is object => v !== null && typeof v === 'object'
 
-/** Ruta en el formato que usan el filtro, las aserciones y las extracciones: data.items[0].name */
-const childPath = (parent: string, key: string, isArray: boolean): string =>
-  isArray ? `${parent}[${key}]` : parent ? `${parent}.${key}` : key
+/** Búsqueda activa: la lee cada nodo para resaltar y para abrirse si tiene coincidencias dentro */
+interface SearchState {
+  query: string
+  active: number
+  tree: TreeSearch
+}
+const SearchContext = createContext<SearchState | null>(null)
 
-function Primitive({ value }: { value: unknown }): React.JSX.Element {
-  if (typeof value === 'string') return <span className="text-emerald-300">{`"${value}"`}</span>
-  if (typeof value === 'number') return <span className="text-amber-300">{String(value)}</span>
-  if (typeof value === 'boolean') return <span className="text-sky-300">{String(value)}</span>
-  return <span className="text-zinc-500">null</span>
+function Primitive({ value, path }: { value: unknown; path: string }): React.JSX.Element {
+  const search = useContext(SearchContext)
+  const start = search?.tree.starts.get(`${path}|v`)
+  const hl = (text: string): React.JSX.Element => (
+    <Highlight text={text} query={search?.query ?? ''} start={start} active={search?.active ?? -1} />
+  )
+
+  if (typeof value === 'string')
+    return (
+      <span className="text-emerald-300">
+        {'"'}
+        {hl(value)}
+        {'"'}
+      </span>
+    )
+  if (typeof value === 'number') return <span className="text-amber-300">{hl(String(value))}</span>
+  if (typeof value === 'boolean') return <span className="text-sky-300">{hl(String(value))}</span>
+  return <span className="text-zinc-500">{hl('null')}</span>
 }
 
 function Node({
@@ -24,9 +43,12 @@ function Node({
   depth: number
   path: string
 }): React.JSX.Element {
+  const search = useContext(SearchContext)
   // Los primeros 2 niveles abiertos; el resto colapsado para respuestas grandes
   const [open, setOpen] = useState(depth < 2)
   const [copied, setCopied] = useState(false)
+  // Mientras se busca, las ramas con coincidencias dentro se mantienen abiertas
+  const isOpen = open || (search?.tree.open.has(path) ?? false)
 
   const copyPath = async (): Promise<void> => {
     await navigator.clipboard.writeText(path)
@@ -41,7 +63,16 @@ function Node({
         title={`Clic para copiar la ruta: ${path}`}
         className={`${copied ? 'text-emerald-300' : 'text-blue-300'} hover:underline`}
       >
-        {copied ? '✓ ruta copiada' : name}
+        {copied ? (
+          '✓ ruta copiada'
+        ) : (
+          <Highlight
+            text={name}
+            query={search?.query ?? ''}
+            start={search?.tree.starts.get(`${path}|k`)}
+            active={search?.active ?? -1}
+          />
+        )}
       </button>
       <span className="text-blue-300">: </span>
     </>
@@ -51,7 +82,7 @@ function Node({
     return (
       <div className="pl-4">
         {label}
-        <Primitive value={value} />
+        <Primitive value={value} path={path} />
       </div>
     )
   }
@@ -64,19 +95,16 @@ function Node({
 
   return (
     <div className="pl-4">
-      <button onClick={() => setOpen((o) => !o)} className="mr-1 text-zinc-500 hover:text-white">
-        {open ? '▾' : '▸'}
+      <button onClick={() => setOpen(!isOpen)} className="mr-1 text-zinc-500 hover:text-white">
+        {isOpen ? '▾' : '▸'}
       </button>
       {label}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="text-left text-zinc-400 hover:text-white"
-      >
+      <button onClick={() => setOpen(!isOpen)} className="text-left text-zinc-400 hover:text-white">
         {openBr}
-        {!open && ` ${entries.length} ${isArray ? 'items' : 'campos'} `}
-        {!open && closeBr}
+        {!isOpen && ` ${entries.length} ${isArray ? 'items' : 'campos'} `}
+        {!isOpen && closeBr}
       </button>
-      {open && (
+      {isOpen && (
         <>
           {entries.map(([k, v]) => (
             <Node
@@ -94,10 +122,18 @@ function Node({
   )
 }
 
-export function JsonTree({ value }: { value: unknown }): React.JSX.Element {
+export function JsonTree({
+  value,
+  search
+}: {
+  value: unknown
+  search?: SearchState
+}): React.JSX.Element {
   return (
-    <div className="selectable -ml-4 font-mono text-xs text-zinc-200">
-      <Node value={value} depth={0} path="" />
-    </div>
+    <SearchContext.Provider value={search ?? null}>
+      <div className="selectable -ml-4 font-mono text-xs text-zinc-200">
+        <Node value={value} depth={0} path="" />
+      </div>
+    </SearchContext.Provider>
   )
 }

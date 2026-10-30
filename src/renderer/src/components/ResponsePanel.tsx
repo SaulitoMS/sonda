@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { summarizeAssertions } from '../../../shared/assertions'
 import type { AssertionResult, ExtractionResult, SchemaValidation } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
@@ -13,6 +13,8 @@ import { downloadBase64, downloadText } from '../lib/download'
 import { BinaryView } from './BinaryView'
 import { getByPath, parsePath } from '../../../shared/assertions'
 import { JsonTree } from './JsonTree'
+import { Highlight } from './Highlight'
+import { MAX_MATCHES, buildTreeSearch, countMatches } from '../lib/search'
 import { usePreviousDiff, type PreviousDiff } from '../lib/usePreviousDiff'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes'
@@ -264,6 +266,62 @@ export function ResponsePanel(): React.JSX.Element {
     return getByPath(parsed.value, tokens)
   }, [parsed, filter])
 
+  // ── Búsqueda dentro del body (Ctrl/Cmd+F) ──
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState(0)
+  const searchInput = useRef<HTMLInputElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  const canSearch = !!response?.ok && !response.binary && current === 'body'
+  const searchQuery = searchOpen && canSearch ? query : ''
+  const treeView = parsed.ok && view === 'tree'
+
+  const treeSearch = useMemo(
+    () =>
+      treeView && filtered.found && searchQuery
+        ? buildTreeSearch(filtered.value, searchQuery)
+        : null,
+    [treeView, filtered, searchQuery]
+  )
+  const rawTotal = useMemo(
+    () => (!treeView && searchQuery ? countMatches(prettyBody, searchQuery) : 0),
+    [treeView, prettyBody, searchQuery]
+  )
+  const total = treeView ? (treeSearch?.total ?? 0) : rawTotal
+  const activeIdx = total ? Math.min(active, total - 1) : 0
+
+  const closeSearch = (): void => {
+    setSearchOpen(false)
+    setQuery('')
+    setActive(0)
+  }
+
+  const goMatch = (dir: 1 | -1): void => {
+    if (total) setActive((activeIdx + dir + total) % total)
+  }
+
+  useEffect(() => {
+    if (!canSearch) return
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setSearchOpen(true)
+        requestAnimationFrame(() => searchInput.current?.select())
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [canSearch])
+
+  // Lleva la coincidencia activa al centro de la vista
+  useEffect(() => {
+    if (!searchQuery) return
+    bodyRef.current
+      ?.querySelector('[data-search-active="true"]')
+      ?.scrollIntoView({ block: 'center' })
+  }, [activeIdx, searchQuery, total, view])
+
   const copy = async (): Promise<void> => {
     await navigator.clipboard.writeText(prettyBody)
     setCopied(true)
@@ -417,7 +475,57 @@ export function ResponsePanel(): React.JSX.Element {
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-auto p-3">
+      {searchOpen && canSearch && (
+        <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-1.5 text-xs">
+          <input
+            ref={searchInput}
+            autoFocus
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setActive(0)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') goMatch(e.shiftKey ? -1 : 1)
+              if (e.key === 'Escape') closeSearch()
+            }}
+            placeholder="Buscar en la respuesta…  (Enter: siguiente · Shift+Enter: anterior)"
+            spellCheck={false}
+            className="flex-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 outline-none placeholder:text-zinc-500 focus:border-blue-500"
+          />
+          <span className="w-20 text-right tabular-nums text-zinc-500">
+            {query &&
+              (total
+                ? `${activeIdx + 1}/${total >= MAX_MATCHES ? `${MAX_MATCHES}+` : total}`
+                : 'Sin resultados')}
+          </span>
+          <button
+            onClick={() => goMatch(-1)}
+            disabled={!total}
+            title="Anterior (Shift+Enter)"
+            className="rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+          >
+            ↑
+          </button>
+          <button
+            onClick={() => goMatch(1)}
+            disabled={!total}
+            title="Siguiente (Enter)"
+            className="rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+          >
+            ↓
+          </button>
+          <button
+            onClick={closeSearch}
+            title="Cerrar (Esc)"
+            className="rounded px-2 py-1 text-zinc-400 hover:bg-zinc-800"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      <div ref={bodyRef} className="relative min-h-0 flex-1 overflow-auto p-3">
         {current === 'body' && response.binary && (
           <BinaryView
             binary={response.binary}
@@ -453,9 +561,16 @@ export function ResponsePanel(): React.JSX.Element {
               {copied ? '¡Copiado!' : 'Copiar'}
             </button>
 
-            {parsed.ok && view === 'tree' ? (
+            {treeView ? (
               filtered.found ? (
-                <JsonTree value={filtered.value} />
+                <JsonTree
+                  value={filtered.value}
+                  search={
+                    treeSearch
+                      ? { query: searchQuery, active: activeIdx, tree: treeSearch }
+                      : undefined
+                  }
+                />
               ) : (
                 <p className="text-xs text-amber-400">
                   {filtered.invalid ? 'Ruta mal escrita' : `No existe "${filter}" en la respuesta`}
@@ -463,7 +578,12 @@ export function ResponsePanel(): React.JSX.Element {
               )
             ) : (
               <pre className="selectable whitespace-pre-wrap break-all font-mono text-xs text-zinc-200">
-                {prettyBody || '(respuesta vacía)'}
+                <Highlight
+                  text={prettyBody || '(respuesta vacía)'}
+                  query={searchQuery}
+                  start={0}
+                  active={activeIdx}
+                />
               </pre>
             )}
           </>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DYNAMIC_VARIABLES, isDynamicVariable } from '../../../shared/dynamicVariables'
 import {
   openVariableAt,
@@ -10,6 +10,7 @@ import {
 import { buildVarMap } from '../../../shared/variables'
 import { applyEdit } from '../lib/applyEdit'
 import { caretPosition } from '../lib/caretPosition'
+import { findAll } from '../lib/search'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 
 const LIST_WIDTH = 360
@@ -54,7 +55,13 @@ export function VariableTextarea({
 }: Props): React.JSX.Element {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
+  const findInputRef = useRef<HTMLInputElement>(null)
   const [suggest, setSuggest] = useState<SuggestState | null>(null)
+
+  // ── Buscar dentro del body (Ctrl/Cmd+F) ──
+  const [findOpen, setFindOpen] = useState(false)
+  const [findQuery, setFindQuery] = useState('')
+  const [findActive, setFindActive] = useState(0)
 
   const data = useEnvironmentStore((s) => s.data)
   const activeEnv = data.environments.find((e) => e.id === data.activeId)
@@ -79,6 +86,49 @@ export function VariableTextarea({
     observer.observe(textarea)
     return () => observer.disconnect()
   }, [])
+
+  const matches = useMemo(
+    () => (findOpen ? findAll(value, findQuery) : []),
+    [findOpen, value, findQuery]
+  )
+  const activeIdx = matches.length ? Math.min(findActive, matches.length - 1) : 0
+
+  /** Desplaza el textarea para que la coincidencia en `index` quede a la vista */
+  const reveal = (index: number): void => {
+    const el = textareaRef.current
+    if (!el) return
+    const box = el.getBoundingClientRect()
+    const pos = caretPosition(el, index)
+    if (pos.top < box.top + PADDING || pos.bottom > box.bottom - PADDING) {
+      el.scrollTop += pos.top - box.top - el.clientHeight / 2
+      if (backdropRef.current) syncBackdrop(el, backdropRef.current)
+    }
+  }
+
+  const goFind = (dir: 1 | -1): void => {
+    if (matches.length === 0) return
+    const next = (activeIdx + dir + matches.length) % matches.length
+    setFindActive(next)
+    reveal(matches[next])
+  }
+
+  const closeFind = (): void => {
+    setFindOpen(false)
+    setFindQuery('')
+    setFindActive(0)
+    textareaRef.current?.focus()
+  }
+
+  const openFind = (el: HTMLTextAreaElement | null): void => {
+    // Si hay texto seleccionado (de una sola línea), se usa como búsqueda inicial
+    const selected = el ? el.value.slice(el.selectionStart, el.selectionEnd) : ''
+    if (selected && !selected.includes('\n')) {
+      setFindQuery(selected)
+      setFindActive(0)
+    }
+    setFindOpen(true)
+    requestAnimationFrame(() => findInputRef.current?.select())
+  }
 
   // Abre o cierra la lista según lo que haya antes del cursor
   const refresh = (el: HTMLTextAreaElement): void => {
@@ -118,6 +168,14 @@ export function VariableTextarea({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+      e.preventDefault()
+      // Evita que el Ctrl+F de la respuesta también se abra
+      e.stopPropagation()
+      openFind(e.currentTarget)
+      return
+    }
+
     if (suggest) {
       const n = suggest.items.length
       if (e.key === 'ArrowDown') {
@@ -153,6 +211,39 @@ export function VariableTextarea({
 
   const parts = value.split(VAR_SPLIT)
 
+  // Resalta las coincidencias de la búsqueda dentro de un trozo del texto que empieza en `from`
+  const qlen = findQuery.length
+  const renderPart = (part: string, from: number): React.ReactNode => {
+    if (matches.length === 0) return part
+    const to = from + part.length
+    const first = matches.findIndex((m) => m + qlen > from)
+    if (first === -1) return part
+    const out: React.ReactNode[] = []
+    let cursor = from
+    for (let j = first; j < matches.length && matches[j] < to; j++) {
+      const s = Math.max(matches[j], from)
+      const end = Math.min(matches[j] + qlen, to)
+      if (s > cursor) out.push(part.slice(cursor - from, s - from))
+      out.push(
+        <mark
+          key={j}
+          className={`rounded-sm text-black ${j === activeIdx ? 'bg-orange-400' : 'bg-yellow-300'}`}
+        >
+          {part.slice(s - from, end - from)}
+        </mark>
+      )
+      cursor = end
+    }
+    if (cursor < to) out.push(part.slice(cursor - from))
+    return out
+  }
+  const offsets: number[] = []
+  let acc = 0
+  for (const part of parts) {
+    offsets.push(acc)
+    acc += part.length
+  }
+
   return (
     <div
       className={`relative rounded-md border border-zinc-700 bg-zinc-800 focus-within:border-blue-500 ${className}`}
@@ -165,7 +256,7 @@ export function VariableTextarea({
         className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words font-mono text-xs text-zinc-200"
       >
         {parts.map((part, i) => {
-          if (i % 2 === 0) return <span key={i}>{part}</span>
+          if (i % 2 === 0) return <span key={i}>{renderPart(part, offsets[i])}</span>
           const name = part.match(VAR_NAME)?.[1] ?? ''
           const dynamic = isDynamicVariable(name)
           const defined = dynamic || Object.prototype.hasOwnProperty.call(vars, name)
@@ -176,7 +267,7 @@ export function VariableTextarea({
                 dynamic ? 'text-emerald-400' : defined ? 'text-blue-400' : 'text-amber-400'
               }`}
             >
-              {part}
+              {renderPart(part, offsets[i])}
             </span>
           )
         })}
@@ -203,6 +294,64 @@ export function VariableTextarea({
         style={{ padding: PADDING }}
         className="absolute inset-0 h-full w-full resize-none bg-transparent font-mono text-xs text-transparent caret-zinc-200 outline-none selection:bg-blue-500/30 placeholder:text-zinc-500"
       />
+
+      {findOpen && (
+        <div className="absolute right-4 top-2 z-10 flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 p-1.5 text-xs shadow-lg">
+          <input
+            ref={findInputRef}
+            autoFocus
+            value={findQuery}
+            onChange={(e) => {
+              const q = e.target.value
+              setFindQuery(q)
+              setFindActive(0)
+              const first = findAll(value, q)[0]
+              if (first !== undefined) reveal(first)
+            }}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+                e.preventDefault()
+                e.stopPropagation()
+                findInputRef.current?.select()
+              }
+              if (e.key === 'Enter') goFind(e.shiftKey ? -1 : 1)
+              if (e.key === 'Escape') {
+                e.stopPropagation()
+                closeFind()
+              }
+            }}
+            placeholder="Buscar en el body…"
+            spellCheck={false}
+            className="w-44 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 outline-none placeholder:text-zinc-500 focus:border-blue-500"
+          />
+          <span className="w-14 text-center tabular-nums text-zinc-500">
+            {findQuery && (matches.length ? `${activeIdx + 1}/${matches.length}` : '0')}
+          </span>
+          <button
+            onClick={() => goFind(-1)}
+            disabled={matches.length === 0}
+            title="Anterior (Shift+Enter)"
+            className="rounded px-1.5 py-1 text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+          >
+            ↑
+          </button>
+          <button
+            onClick={() => goFind(1)}
+            disabled={matches.length === 0}
+            title="Siguiente (Enter)"
+            className="rounded px-1.5 py-1 text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+          >
+            ↓
+          </button>
+          <button
+            onClick={closeFind}
+            title="Cerrar (Esc)"
+            className="rounded px-1.5 py-1 text-zinc-400 hover:bg-zinc-800"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {suggest && (
         <div
