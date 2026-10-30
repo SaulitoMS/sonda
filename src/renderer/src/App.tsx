@@ -17,9 +17,20 @@ import { useRequestStore } from './store/useRequestStore'
 import { useTabsStore } from './store/useTabsStore'
 import { CommandPalette } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
+import { SettingsModal } from './components/SettingsModal'
 
 type ModalType =
-  'import' | 'save' | 'envs' | 'curl' | 'runner' | 'history' | 'sync' | 'palette' | 'cookies' | null
+  | 'import'
+  | 'save'
+  | 'envs'
+  | 'curl'
+  | 'runner'
+  | 'history'
+  | 'sync'
+  | 'palette'
+  | 'cookies'
+  | 'settings'
+  | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
@@ -120,6 +131,9 @@ function App(): React.JSX.Element {
             >
               Cookies
             </button>
+            <button className={btn} onClick={() => setModal('settings')} title="Ajustes globales">
+              Ajustes
+            </button>
             <button
               className={btn}
               onClick={() => setModal('curl')}
@@ -164,6 +178,9 @@ function App(): React.JSX.Element {
       )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
+      {modal === 'settings' && (
+        <SettingsModal onClose={() => setModal(null)} onSaved={() => showFlash('Ajustes guardados ✓')} />
+      )}
       {modal === 'curl' && <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />}
       {modal === 'history' && (
         <HistoryModal
