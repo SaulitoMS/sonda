@@ -8,8 +8,7 @@ export interface OAuthParams {
 }
 
 export type OAuthTokenResult =
-  | { ok: true; token: string; cached: boolean }
-  | { ok: false; error: string }
+  { ok: true; token: string; cached: boolean } | { ok: false; error: string }
 
 interface CachedToken {
   token: string

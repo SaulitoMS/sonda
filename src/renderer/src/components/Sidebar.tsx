@@ -62,6 +62,30 @@ function FolderIcon({ open }: { open: boolean }): React.JSX.Element {
   )
 }
 
+function DuplicateButton({
+  onClick,
+  title
+}: {
+  onClick: () => void
+  title: string
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className="hidden rounded p-0.5 text-zinc-500 hover:bg-zinc-700 hover:text-blue-400 group-hover:block"
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <rect x="9" y="9" width="13" height="13" rx="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+    </button>
+  )
+}
+
 function TrashButton({
   onClick,
   title
@@ -154,9 +178,10 @@ interface RowProps {
   active: boolean
   onOpen: () => void
   onDelete: () => void
+  onDuplicate: () => void
 }
 
-function RequestRow({ item, active, onOpen, onDelete }: RowProps): React.JSX.Element {
+function RequestRow({ item, active, onOpen, onDelete, onDuplicate }: RowProps): React.JSX.Element {
   return (
     <div
       onClick={onOpen}
@@ -172,6 +197,7 @@ function RequestRow({ item, active, onOpen, onDelete }: RowProps): React.JSX.Ele
       <span className="flex-1 truncate" title={item.name}>
         {item.name}
       </span>
+      <DuplicateButton onClick={onDuplicate} title="Duplicar" />
       <TrashButton onClick={onDelete} title="Eliminar" />
     </div>
   )
@@ -217,6 +243,20 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     await window.api.deleteRequest(item.path)
     useTabsStore.getState().detachMatching((file) => file === item.path)
     await refresh()
+  }
+
+  const duplicateRequest = async (item: RequestItem): Promise<void> => {
+    const saved = await window.api.readRequest(item.path)
+    // La ruta es "coleccion/archivo.json" o "coleccion/carpeta/archivo.json"
+    const parts = item.path.split('/')
+    const newPath = await window.api.saveRequest({
+      collectionId: parts[0],
+      folder: parts.length > 2 ? parts[1] : undefined,
+      request: { ...saved, name: `${saved.name} (copia)` }
+    })
+    await refresh()
+    const copy = await window.api.readRequest(newPath)
+    useTabsStore.getState().openSaved(copy, newPath)
   }
 
   const removeCollection = async (id: string, name: string): Promise<void> => {
@@ -420,6 +460,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                                 active={currentFile === r.path}
                                 onOpen={() => open(r)}
                                 onDelete={() => removeRequest(r)}
+                                onDuplicate={() => duplicateRequest(r)}
                               />
                             ))}
                             {f.requests.length === 0 && (
@@ -438,6 +479,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                       active={currentFile === r.path}
                       onOpen={() => open(r)}
                       onDelete={() => removeRequest(r)}
+                      onDuplicate={() => duplicateRequest(r)}
                     />
                   ))}
 
