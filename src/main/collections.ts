@@ -28,6 +28,7 @@ import {
 import { importFromUrl } from './swagger'
 import { parsePostmanCollection } from '../shared/postman'
 import { buildPostmanCollection } from '../shared/postmanExport'
+import { sortByOrder } from '../shared/reorder'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -42,6 +43,8 @@ interface CollectionMeta {
   /** Cómo era cada endpoint al importarlo, por ruta relativa a la colección */
   endpoints?: Record<string, EndpointStamp>
   createdAt: string
+  /** Orden manual de las carpetas y peticiones de este directorio (nombres de carpeta y de archivo) */
+  order?: string[]
 }
 
 const getRoot = (): string => join(app.getPath('documents'), 'Sonda')
@@ -108,6 +111,13 @@ async function writeScopeAuth(dir: string, auth: AuthConfig | null): Promise<voi
   await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
 }
 
+/** Guarda el orden manual de un directorio en su sonda.collection.json, sin tocar lo demás */
+async function writeScopeOrder(dir: string, order: string[]): Promise<void> {
+  const meta: Partial<CollectionMeta> = (await readMeta(dir)) ?? {}
+  meta.order = order
+  await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+}
+
 const orderFile = (): string => join(getRoot(), '.sonda', 'collections-order.json')
 
 /** Orden de las colecciones que eligió el usuario (ids). Vacío = alfabético */
@@ -168,7 +178,7 @@ async function readRequestItem(file: string): Promise<RequestItem | null> {
   }
 }
 
-async function listRequests(dir: string): Promise<RequestItem[]> {
+async function listRequests(dir: string, order?: string[]): Promise<RequestItem[]> {
   const entries = await fs.readdir(dir, { withFileTypes: true })
   const items: RequestItem[] = []
   for (const e of entries) {
@@ -176,7 +186,12 @@ async function listRequests(dir: string): Promise<RequestItem[]> {
     const item = await readRequestItem(join(dir, e.name))
     if (item) items.push(item)
   }
-  return items.sort((a, b) => a.name.localeCompare(b.name))
+  return sortByOrder(
+    items,
+    order,
+    (r) => basename(r.path),
+    (r) => r.name
+  )
 }
 
 async function listCollections(): Promise<CollectionItem[]> {
@@ -196,12 +211,17 @@ async function listCollections(): Promise<CollectionItem[]> {
       const folderMeta = await readMeta(join(dir, child.name))
       folders.push({
         name: child.name,
-        requests: await listRequests(join(dir, child.name)),
+        requests: await listRequests(join(dir, child.name), folderMeta?.order),
         ...(folderMeta?.auth ? { auth: folderMeta.auth } : {}),
         ...(folderMeta?.headers?.length ? { headers: folderMeta.headers } : {})
       })
     }
-    folders.sort((a, b) => a.name.localeCompare(b.name))
+    const orderedFolders = sortByOrder(
+      folders,
+      meta?.order,
+      (f) => f.name,
+      (f) => f.name
+    )
 
     collections.push({
       id: entry.name,
@@ -210,8 +230,8 @@ async function listCollections(): Promise<CollectionItem[]> {
       source: meta?.source,
       ...(meta?.auth ? { auth: meta.auth } : {}),
       ...(meta?.headers?.length ? { headers: meta.headers } : {}),
-      requests: await listRequests(dir),
-      folders
+      requests: await listRequests(dir, meta?.order),
+      folders: orderedFolders
     })
   }
 
@@ -390,6 +410,20 @@ export function registerCollectionHandlers(): void {
   ipcMain.handle('collections:reorder', async (_e, ids: string[]): Promise<void> => {
     await writeCollectionOrder(ids.filter((id) => typeof id === 'string'))
   })
+
+  ipcMain.handle(
+    'collections:reorderItems',
+    async (_e, collectionId: string, folder: string | null, names: string[]): Promise<void> => {
+      if (folder && /[\\/]/.test(folder)) throw new Error('Carpeta no válida')
+      const dir = folder ? safePath(collectionId, folder) : safePath(collectionId)
+      if (!(await isDirectory(dir))) throw new Error('El destino ya no existe')
+
+      const clean = (Array.isArray(names) ? names : []).filter(
+        (n): n is string => typeof n === 'string' && n !== '' && !/[\\/]/.test(n)
+      )
+      await writeScopeOrder(dir, clean)
+    }
+  )
 
   ipcMain.handle('collections:openWorkspace', async (): Promise<void> => {
     await fs.mkdir(getRoot(), { recursive: true })

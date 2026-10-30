@@ -239,6 +239,11 @@ export interface SondaApi {
   moveFolder: (collectionId: string, folder: string, targetCollectionId: string) => Promise<string>
   /** Guarda el orden de las colecciones (lista de ids) */
   reorderCollections: (ids: string[]) => Promise<void>
+  /**
+   * Guarda el orden de las carpetas y peticiones de una colección (folder = null) o de una carpeta.
+   * `names` son nombres de carpeta y de archivo (.json), en el orden que debe verse
+   */
+  reorderItems: (collectionId: string, folder: string | null, names: string[]) => Promise<void>
   /** Guarda la auth de una colección (folder = null) o de una de sus carpetas. null = quitarla */
   setScopeAuth: (
     collectionId: string,

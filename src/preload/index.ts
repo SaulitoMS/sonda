@@ -17,6 +17,8 @@ const api: SondaApi = {
   moveFolder: (collectionId, folder, targetCollectionId) =>
     ipcRenderer.invoke('collections:moveFolder', collectionId, folder, targetCollectionId),
   reorderCollections: (ids) => ipcRenderer.invoke('collections:reorder', ids),
+  reorderItems: (collectionId, folder, names) =>
+    ipcRenderer.invoke('collections:reorderItems', collectionId, folder, names),
   setScopeAuth: (collectionId, folder, auth) =>
     ipcRenderer.invoke('collections:setAuth', collectionId, folder, auth),
   setScopeHeaders: (collectionId, folder, headers) =>

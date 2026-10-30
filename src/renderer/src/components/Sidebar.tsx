@@ -7,6 +7,7 @@ import { useTabsStore } from '../store/useTabsStore'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { ScopeAuthModal, type AuthScope } from './ScopeAuthModal'
 import { ScopeHeadersModal, type HeadersScope } from './ScopeHeadersModal'
+import { placeItem, type Place } from '../../../shared/reorder'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -368,6 +369,8 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
   // Lo que se arrastra vive en un ref: así los eventos de soltar no dependen de un re-render
   const dragRef = useRef<DragItem | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
+  // Línea azul que muestra si se soltará arriba o abajo de una fila
+  const [dropLine, setDropLine] = useState<{ key: string; place: Place } | null>(null)
 
   useEffect(() => {
     refresh()
@@ -464,6 +467,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
   const endDrag = (): void => {
     dragRef.current = null
     setDropTarget(null)
+    setDropLine(null)
   }
 
   /** Eventos de una zona donde se puede soltar. Se evalúa al momento del evento, no al renderizar */
@@ -520,7 +524,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     item: RequestItem,
     collectionId: string,
     folder: string | null
-  ): Promise<void> => {
+  ): Promise<string | null> => {
     try {
       const newPath = await window.api.moveRequest(item.path, collectionId, folder)
       useTabsStore.getState().remapFiles((file) => (file === item.path ? newPath : null))
@@ -530,8 +534,10 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
         ...(folder ? { [`${collectionId}/${folder}`]: true } : {})
       }))
       await refresh()
+      return newPath
     } catch (err) {
       failed(err)
+      return null
     }
   }
 
@@ -575,6 +581,132 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
       failed(err)
     }
   }
+
+    /* ---------- Reordenar carpetas y peticiones ---------- */
+
+  const fileName = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
+  const dirOf = (path: string): string => path.slice(0, path.lastIndexOf('/'))
+
+  /** Nombres (carpetas y archivos) de un directorio, en el orden en que se ven */
+  const namesIn = (collectionId: string, folder: string | null): string[] => {
+    const c = collections.find((x) => x.id === collectionId)
+    if (!c) return []
+    if (folder) {
+      return c.folders.find((f) => f.name === folder)?.requests.map((r) => fileName(r.path)) ?? []
+    }
+    return [...c.folders.map((f) => f.name), ...c.requests.map((r) => fileName(r.path))]
+  }
+
+  /** Suelta una petición arriba o abajo de otra; si venía de otra carpeta, primero la mueve */
+  const dropRequestAt = async (
+    dragged: RequestItem,
+    target: RequestItem,
+    place: Place
+  ): Promise<void> => {
+    const parts = target.path.split('/')
+    const collectionId = parts[0]
+    const folder = parts.length > 2 ? parts[1] : null
+
+    try {
+      let draggedFile = fileName(dragged.path)
+      if (dirOf(dragged.path) !== dirOf(target.path)) {
+        const newPath = await moveRequest(dragged, collectionId, folder)
+        if (!newPath) return
+        draggedFile = fileName(newPath)
+      }
+      const next = placeItem(namesIn(collectionId, folder), draggedFile, fileName(target.path), place)
+      if (next) await window.api.reorderItems(collectionId, folder, next)
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
+  /** Suelta una carpeta arriba o abajo de otra de la misma colección */
+  const dropFolderAt = async (
+    collectionId: string,
+    dragged: string,
+    target: string,
+    place: Place
+  ): Promise<void> => {
+    const next = placeItem(namesIn(collectionId, null), dragged, target, place)
+    if (!next) return
+    try {
+      await window.api.reorderItems(collectionId, null, next)
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
+  /** Eventos de una fila donde se puede soltar "arriba" o "abajo" de ella */
+  const rowDrop = (row: {
+    key: string
+    accepts: (d: DragItem) => boolean
+    onDrop: (d: DragItem, place: Place) => void
+  }): React.HTMLAttributes<HTMLDivElement> => {
+    const placeOf = (e: React.DragEvent): Place => {
+      const rect = e.currentTarget.getBoundingClientRect()
+      return e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+    }
+
+    const over = (e: React.DragEvent): void => {
+      const d = dragRef.current
+      if (!d || !row.accepts(d)) return
+      e.preventDefault()
+      e.stopPropagation()
+      e.dataTransfer.dropEffect = 'move'
+      const place = placeOf(e)
+      setDropTarget(null)
+      setDropLine((l) => (l?.key === row.key && l.place === place ? l : { key: row.key, place }))
+    }
+
+    return {
+      onDragEnter: over,
+      onDragOver: over,
+      onDragLeave: (e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+        setDropLine((l) => (l?.key === row.key ? null : l))
+      },
+      onDrop: (e) => {
+        const d = dragRef.current
+        if (!d || !row.accepts(d)) return
+        e.preventDefault()
+        e.stopPropagation()
+        const place = placeOf(e)
+        endDrag()
+        row.onDrop(d, place)
+      }
+    }
+  }
+
+  const requestRowDrop = (target: RequestItem): React.HTMLAttributes<HTMLDivElement> =>
+    rowDrop({
+      key: `r:${target.path}`,
+      accepts: (d) => d.kind === 'request' && d.item.path !== target.path,
+      onDrop: (d, place) => {
+        if (d.kind === 'request') void dropRequestAt(d.item, target, place)
+      }
+    })
+
+  const folderRowDrop = (collectionId: string, name: string): React.HTMLAttributes<HTMLDivElement> =>
+    rowDrop({
+      key: `fo:${collectionId}/${name}`,
+      accepts: (d) => d.kind === 'folder' && d.collectionId === collectionId && d.name !== name,
+      onDrop: (d, place) => {
+        if (d.kind === 'folder') void dropFolderAt(collectionId, d.name, name, place)
+      }
+    })
+
+  /** La línea azul que marca dónde caerá lo que se arrastra */
+  const dropLineFor = (key: string): React.JSX.Element | null =>
+    dropLine?.key === key ? (
+      <div
+        className={`pointer-events-none absolute inset-x-1 z-10 h-0.5 rounded bg-blue-400 ${
+          dropLine.place === 'before' ? '-top-[2px]' : '-bottom-[2px]'
+        }`}
+      />
+    ) : null
 
   /** Toda la colección (encabezado y contenido) acepta peticiones, carpetas y otras colecciones */
   const collectionZone = (c: CollectionItem): React.HTMLAttributes<HTMLDivElement> =>
@@ -775,7 +907,8 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                             )
                           }
                           onDragEnd={endDrag}
-                          className={`group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70 ${
+                          {...folderRowDrop(c.id, f.name)}
+                          className={`group relative flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70 ${
                             dropTarget === `f:${key}` ? DROP_RING : ''
                           }`}
                         >
@@ -809,24 +942,28 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                             }
                             title="Headers de la carpeta"
                           />
+
+                          {dropLineFor(`fo:${key}`)}
                         </div>
 
                         {folderOpen && (
                           <div className="ml-[13px] mt-0.5 flex flex-col gap-0.5 border-l border-zinc-800 pl-2">
                             {f.requests.map((r) => (
-                              <RequestRow
-                                key={r.path}
-                                item={r}
-                                active={currentFile === r.path}
-                                onOpen={() => open(r)}
-                                onDelete={() => removeRequest(r)}
-                                onDuplicate={() => duplicateRequest(r)}
-                                onRename={(name) => renameRequest(r, name)}
-                                onDragStart={(e) =>
-                                  startDrag(e, { kind: 'request', item: r }, r.path)
-                                }
-                                onDragEnd={endDrag}
-                              />
+                              <div key={r.path} {...requestRowDrop(r)} className="relative">
+                                <RequestRow
+                                  item={r}
+                                  active={currentFile === r.path}
+                                  onOpen={() => open(r)}
+                                  onDelete={() => removeRequest(r)}
+                                  onDuplicate={() => duplicateRequest(r)}
+                                  onRename={(name) => renameRequest(r, name)}
+                                  onDragStart={(e) =>
+                                    startDrag(e, { kind: 'request', item: r }, r.path)
+                                  }
+                                  onDragEnd={endDrag}
+                                />
+                                {dropLineFor(`r:${r.path}`)}
+                              </div>
                             ))}
                             {f.requests.length === 0 && (
                               <p className="px-2 py-1 text-xs text-zinc-600">Vacía</p>
@@ -838,17 +975,19 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                   })}
 
                   {requests.map((r) => (
-                    <RequestRow
-                      key={r.path}
-                      item={r}
-                      active={currentFile === r.path}
-                      onOpen={() => open(r)}
-                      onDelete={() => removeRequest(r)}
-                      onDuplicate={() => duplicateRequest(r)}
-                      onRename={(name) => renameRequest(r, name)}
-                      onDragStart={(e) => startDrag(e, { kind: 'request', item: r }, r.path)}
-                      onDragEnd={endDrag}
-                    />
+                    <div key={r.path} {...requestRowDrop(r)} className="relative">
+                      <RequestRow
+                        item={r}
+                        active={currentFile === r.path}
+                        onOpen={() => open(r)}
+                        onDelete={() => removeRequest(r)}
+                        onDuplicate={() => duplicateRequest(r)}
+                        onRename={(name) => renameRequest(r, name)}
+                        onDragStart={(e) => startDrag(e, { kind: 'request', item: r }, r.path)}
+                        onDragEnd={endDrag}
+                      />
+                      {dropLineFor(`r:${r.path}`)}
+                    </div>
                   ))}
 
                   {total === 0 && <p className="px-2 py-1 text-xs text-zinc-600">Vacía</p>}
