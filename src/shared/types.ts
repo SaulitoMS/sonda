@@ -202,6 +202,17 @@ export type ExportResult =
   | { ok: true; path: string; count: number }
   | { ok: false; error: string }
 
+export interface CookieInfo {
+  id: string
+  name: string
+  value: string
+  domain: string
+  path: string
+  secure: boolean
+  /** Marca de tiempo en ms. null = cookie de sesión */
+  expiresAt: number | null
+}
+
 /** Contrato de window.api (lo implementa preload, lo usa el renderer) */
 export interface SondaApi {
   sendRequest: (input: SendRequestInput) => Promise<SendRequestResult>
@@ -223,6 +234,9 @@ export interface SondaApi {
   previewSync: (collectionId: string) => Promise<SyncPreviewResult>
   applySync: (collectionId: string, options: SyncOptions) => Promise<SyncResult>
   pickFile: () => Promise<string | null>
+  listCookies: () => Promise<CookieInfo[]>
+  deleteCookie: (id: string) => Promise<void>
+  clearCookies: () => Promise<void>
 }
 
 // ---------- Entornos ----------
