@@ -29,6 +29,8 @@ interface TabsState {
   patchSnapshot: (id: string, patch: Partial<RequestSnapshot>) => void
   /** Marca como "sin guardar" las pestañas cuyo archivo ya no existe */
   detachMatching: (matches: (file: string) => boolean) => void
+  /** Cambia la ruta de las pestañas cuyo archivo se movió. `map` devuelve la ruta nueva, o null si no cambia */
+  remapFiles: (map: (file: string) => string | null) => void
   /** Vuelve a leer del disco las pestañas de esos archivos, salvo las que tienen cambios sin guardar */
   refreshFiles: (paths: string[]) => Promise<void>
 }
@@ -132,6 +134,21 @@ export const useTabsStore = create<TabsState>((set, get) => {
             ? { ...t, snapshot: { ...t.snapshot, currentFile: null } }
             : t
         )
+      }))
+    },
+
+    remapFiles: (map) => {
+      // La pestaña activa vive en useRequestStore; la ruta no entra en la firma de "sin guardar"
+      const live = useRequestStore.getState()
+      const liveNext = live.currentFile ? map(live.currentFile) : null
+      if (liveNext) useRequestStore.setState({ currentFile: liveNext })
+
+      set((state) => ({
+        tabs: state.tabs.map((t) => {
+          const file = t.snapshot?.currentFile
+          const next = file ? map(file) : null
+          return next && t.snapshot ? { ...t, snapshot: { ...t.snapshot, currentFile: next } } : t
+        })
       }))
     },
 

@@ -12,6 +12,11 @@ const api: SondaApi = {
   readRequest: (path) => ipcRenderer.invoke('collections:readRequest', path),
   saveRequest: (input) => ipcRenderer.invoke('collections:saveRequest', input),
   deleteRequest: (path) => ipcRenderer.invoke('collections:deleteRequest', path),
+  moveRequest: (path, collectionId, folder) =>
+    ipcRenderer.invoke('collections:moveRequest', path, collectionId, folder),
+  moveFolder: (collectionId, folder, targetCollectionId) =>
+    ipcRenderer.invoke('collections:moveFolder', collectionId, folder, targetCollectionId),
+  reorderCollections: (ids) => ipcRenderer.invoke('collections:reorder', ids),
   setScopeAuth: (collectionId, folder, auth) =>
     ipcRenderer.invoke('collections:setAuth', collectionId, folder, auth),
   setScopeHeaders: (collectionId, folder, headers) =>

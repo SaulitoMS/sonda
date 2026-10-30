@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { HttpMethod, RequestItem } from '../../../shared/types'
+import type { CollectionItem, HttpMethod, RequestItem } from '../../../shared/types'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { METHOD_COLORS } from '../lib/methodColors'
@@ -232,6 +232,15 @@ function ExportButton({
 
 /* ---------- Fila de petición ---------- */
 
+/** Qué se está arrastrando */
+type DragItem =
+  | { kind: 'request'; item: RequestItem }
+  | { kind: 'folder'; collectionId: string; name: string }
+  | { kind: 'collection'; id: string }
+
+/** Resaltado de la fila sobre la que se puede soltar */
+const DROP_RING = 'bg-blue-500/10 ring-1 ring-inset ring-blue-400'
+
 interface RowProps {
   item: RequestItem
   active: boolean
@@ -239,6 +248,8 @@ interface RowProps {
   onDelete: () => void
   onDuplicate: () => void
   onRename: (name: string) => void
+  onDragStart: (e: React.DragEvent) => void
+  onDragEnd: () => void
 }
 
 function RequestRow({
@@ -247,7 +258,9 @@ function RequestRow({
   onOpen,
   onDelete,
   onDuplicate,
-  onRename
+  onRename,
+  onDragStart,
+  onDragEnd
 }: RowProps): React.JSX.Element {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.name)
@@ -269,6 +282,9 @@ function RequestRow({
   return (
     <div
       onClick={onOpen}
+      draggable={!editing}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors ${
         active
           ? 'bg-blue-500/15 text-zinc-100 ring-1 ring-inset ring-blue-500/30'
@@ -338,7 +354,8 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
   const [query, setQuery] = useState('')
   const [authScope, setAuthScope] = useState<AuthScope | null>(null)
   const [headersScope, setHeadersScope] = useState<HeadersScope | null>(null)
-
+  const [drag, setDrag] = useState<DragItem | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
 
   useEffect(() => {
     refresh()
@@ -419,6 +436,135 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     }
     alert(`Se exportaron ${result.count} peticiones a:\n${result.path}`)
   }
+
+  /* ---------- Arrastrar y soltar ---------- */
+
+  const failed = (err: unknown): void =>
+    alert(err instanceof Error ? err.message : 'No se pudo mover')
+
+  const startDrag = (e: React.DragEvent, item: DragItem, label: string): void => {
+    e.stopPropagation()
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', label)
+    setDrag(item)
+  }
+
+  const endDrag = (): void => {
+    setDrag(null)
+    setDropTarget(null)
+  }
+
+  /** Eventos de una zona donde se puede soltar. Si no acepta lo que se arrastra, no hace nada */
+  const dropProps = (
+    key: string,
+    accepts: boolean,
+    onDrop: () => void
+  ): React.HTMLAttributes<HTMLDivElement> =>
+    accepts
+      ? {
+          onDragOver: (e) => {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
+            if (dropTarget !== key) setDropTarget(key)
+          },
+          onDragLeave: () => setDropTarget((t) => (t === key ? null : t)),
+          onDrop: (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            endDrag()
+            onDrop()
+          }
+        }
+      : {}
+
+  const acceptsOnCollection = (c: CollectionItem): boolean => {
+    if (!drag) return false
+    if (drag.kind === 'request') {
+      const parts = drag.item.path.split('/')
+      // Misma colección: solo tiene sentido si la petición está en una carpeta (pasa a la raíz)
+      return parts[0] !== c.id || parts.length > 2
+    }
+    if (drag.kind === 'folder') return drag.collectionId !== c.id
+    return drag.id !== c.id
+  }
+
+  const acceptsOnFolder = (collectionId: string, folder: string): boolean => {
+    if (drag?.kind !== 'request') return false
+    const parts = drag.item.path.split('/')
+    return !(parts.length > 2 && parts[0] === collectionId && parts[1] === folder)
+  }
+
+  const moveRequest = async (
+    item: RequestItem,
+    collectionId: string,
+    folder: string | null
+  ): Promise<void> => {
+    try {
+      const newPath = await window.api.moveRequest(item.path, collectionId, folder)
+      useTabsStore.getState().remapFiles((file) => (file === item.path ? newPath : null))
+      setExpanded((e) => ({
+        ...e,
+        [collectionId]: true,
+        ...(folder ? { [`${collectionId}/${folder}`]: true } : {})
+      }))
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
+  const moveFolder = async (
+    fromCollection: string,
+    folder: string,
+    toCollection: string
+  ): Promise<void> => {
+    try {
+      const newName = await window.api.moveFolder(fromCollection, folder, toCollection)
+      const oldPrefix = `${fromCollection}/${folder}/`
+      const newPrefix = `${toCollection}/${newName}/`
+      useTabsStore
+        .getState()
+        .remapFiles((file) =>
+          file.startsWith(oldPrefix) ? newPrefix + file.slice(oldPrefix.length) : null
+        )
+      setExpanded((e) => ({
+        ...e,
+        [toCollection]: true,
+        [`${toCollection}/${newName}`]: true
+      }))
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
+  /** La colección arrastrada toma el lugar de la colección sobre la que se suelta */
+  const reorderCollection = async (draggedId: string, targetId: string): Promise<void> => {
+    const ids = collections.map((c) => c.id)
+    const from = ids.indexOf(draggedId)
+    const to = ids.indexOf(targetId)
+    if (from === -1 || to === -1) return
+    ids.splice(from, 1)
+    ids.splice(to, 0, draggedId)
+    try {
+      await window.api.reorderCollections(ids)
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
+  const dropOnCollection = (c: CollectionItem): void => {
+    if (!drag) return
+    if (drag.kind === 'request') void moveRequest(drag.item, c.id, null)
+    else if (drag.kind === 'folder') void moveFolder(drag.collectionId, drag.name, c.id)
+    else void reorderCollection(drag.id, c.id)
+  }
+
+  const dropOnFolder = (collectionId: string, folder: string): void => {
+    if (drag?.kind === 'request') void moveRequest(drag.item, collectionId, folder)
+  }
+
   // Búsqueda: cada palabra debe aparecer en el método, el nombre o la ruta (colección/carpeta)
   const terms = norm(query).split(/\s+/).filter(Boolean)
   const searching = terms.length > 0
@@ -520,9 +666,13 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
               {/* Colección (padre) */}
               <div
                 onClick={() => toggle(c.id)}
+                draggable
+                onDragStart={(e) => startDrag(e, { kind: 'collection', id: c.id }, c.name)}
+                onDragEnd={endDrag}
+                {...dropProps(`c:${c.id}`, acceptsOnCollection(c), () => dropOnCollection(c))}
                 className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors hover:bg-zinc-800/70 ${
                   isOpen ? 'bg-zinc-800/40 text-zinc-100' : 'text-zinc-200'
-                }`}
+                } ${dropTarget === `c:${c.id}` ? DROP_RING : ''}`}
               >
                 <ChevronIcon open={isOpen} />
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-500/15 text-blue-400">
@@ -582,7 +732,17 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                       <div key={key}>
                         <div
                           onClick={() => toggle(key)}
-                          className="group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70"
+                          draggable
+                          onDragStart={(e) =>
+                            startDrag(e, { kind: 'folder', collectionId: c.id, name: f.name }, f.name)
+                          }
+                          onDragEnd={endDrag}
+                          {...dropProps(`f:${key}`, acceptsOnFolder(c.id, f.name), () =>
+                            dropOnFolder(c.id, f.name)
+                          )}
+                          className={`group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70 ${
+                            dropTarget === `f:${key}` ? DROP_RING : ''
+                          }`}
                         >
                           <ChevronIcon open={folderOpen} />
                           <FolderIcon open={folderOpen} />
@@ -627,6 +787,10 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                                 onDelete={() => removeRequest(r)}
                                 onDuplicate={() => duplicateRequest(r)}
                                 onRename={(name) => renameRequest(r, name)}
+                                onDragStart={(e) =>
+                                  startDrag(e, { kind: 'request', item: r }, r.path)
+                                }
+                                onDragEnd={endDrag}
                               />
                             ))}
                             {f.requests.length === 0 && (
@@ -647,6 +811,8 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                       onDelete={() => removeRequest(r)}
                       onDuplicate={() => duplicateRequest(r)}
                       onRename={(name) => renameRequest(r, name)}
+                      onDragStart={(e) => startDrag(e, { kind: 'request', item: r }, r.path)}
+                      onDragEnd={endDrag}
                     />
                   ))}
 
@@ -666,7 +832,6 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
       </button>
 
       {authScope && <ScopeAuthModal scope={authScope} onClose={() => setAuthScope(null)} />}
-
       {headersScope && (
         <ScopeHeadersModal scope={headersScope} onClose={() => setHeadersScope(null)} />
       )}

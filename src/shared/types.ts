@@ -233,6 +233,12 @@ export interface SondaApi {
   readRequest: (path: string) => Promise<SavedRequest>
   saveRequest: (input: SaveRequestInput) => Promise<string>
   deleteRequest: (path: string) => Promise<void>
+  /** Mueve una petición a una colección (folder = null) o a una de sus carpetas. Devuelve la ruta nueva */
+  moveRequest: (path: string, collectionId: string, folder: string | null) => Promise<string>
+  /** Mueve una carpeta a otra colección. Devuelve el nombre final de la carpeta (puede cambiar si ya existía) */
+  moveFolder: (collectionId: string, folder: string, targetCollectionId: string) => Promise<string>
+  /** Guarda el orden de las colecciones (lista de ids) */
+  reorderCollections: (ids: string[]) => Promise<void>
   /** Guarda la auth de una colección (folder = null) o de una de sus carpetas. null = quitarla */
   setScopeAuth: (
     collectionId: string,

@@ -108,6 +108,43 @@ async function writeScopeAuth(dir: string, auth: AuthConfig | null): Promise<voi
   await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
 }
 
+const orderFile = (): string => join(getRoot(), '.sonda', 'collections-order.json')
+
+/** Orden de las colecciones que eligió el usuario (ids). Vacío = alfabético */
+async function readCollectionOrder(): Promise<string[]> {
+  try {
+    const data: unknown = JSON.parse(await fs.readFile(orderFile(), 'utf-8'))
+    return Array.isArray(data) ? data.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+async function writeCollectionOrder(ids: string[]): Promise<void> {
+  await fs.mkdir(join(getRoot(), '.sonda'), { recursive: true })
+  await fs.writeFile(orderFile(), JSON.stringify(ids, null, 2) + '\n', 'utf-8')
+}
+
+/**
+ * Colecciones importadas de una spec: el "sello" de cada endpoint va por ruta de archivo.
+ * Si el archivo sigue en la misma colección el sello se renombra (toRel); si salió de ella, se quita.
+ */
+async function moveEndpointStamp(
+  collectionDir: string,
+  fromRel: string,
+  toRel: string | null
+): Promise<void> {
+  const meta = await readMeta(collectionDir)
+  const stamp = meta?.endpoints?.[fromRel]
+  if (!meta?.endpoints || !stamp) return
+  delete meta.endpoints[fromRel]
+  if (toRel) meta.endpoints[toRel] = stamp
+  await fs.writeFile(join(collectionDir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+}
+
+const isDirectory = async (p: string): Promise<boolean> =>
+  (await fs.stat(p).catch(() => null))?.isDirectory() ?? false
+
 /** Guarda (o quita) los headers heredables en el sonda.collection.json de una colección o carpeta, sin tocar lo demás */
 async function writeScopeHeaders(dir: string, headers: KeyValueData[] | null): Promise<void> {
   const meta: Partial<CollectionMeta> = (await readMeta(dir)) ?? {}
@@ -177,7 +214,14 @@ async function listCollections(): Promise<CollectionItem[]> {
       folders
     })
   }
-  return collections.sort((a, b) => a.name.localeCompare(b.name))
+
+  // Primero las que el usuario ordenó a mano; las demás, alfabéticas al final
+  const order = await readCollectionOrder()
+  const rank = (id: string): number => {
+    const i = order.indexOf(id)
+    return i === -1 ? order.length : i
+  }
+  return collections.sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name))
 }
 
 /* ---------- Re-sincronizar con la spec ---------- */
@@ -284,7 +328,73 @@ export function registerCollectionHandlers(): void {
       const dir = folder ? safePath(collectionId, folder) : safePath(collectionId)
       await writeScopeAuth(dir, auth)
     }
+    
   )
+
+    ipcMain.handle(
+    'collections:moveRequest',
+    async (_e, relPath: string, collectionId: string, folder: string | null): Promise<string> => {
+      if (folder && /[\\/]/.test(folder)) throw new Error('Carpeta no válida')
+      const from = safeRequestPath(relPath)
+      const targetDir = folder ? safePath(collectionId, folder) : safePath(collectionId)
+      if (!(await isDirectory(targetDir))) throw new Error('El destino ya no existe')
+      if (dirname(from) === targetDir) return relPath
+
+      const to = await uniquePath(targetDir, basename(from, '.json'), '.json')
+      await fs.rename(from, to)
+
+      const fromCollection = safePath(relPath.split('/')[0])
+      const sameCollection = fromCollection === safePath(collectionId)
+      await moveEndpointStamp(
+        fromCollection,
+        relative(fromCollection, from).split(sep).join('/'),
+        sameCollection ? relative(fromCollection, to).split(sep).join('/') : null
+      )
+      return toRel(to)
+    }
+  )
+
+  ipcMain.handle(
+    'collections:moveFolder',
+    async (
+      _e,
+      collectionId: string,
+      folder: string,
+      targetCollectionId: string
+    ): Promise<string> => {
+      if (/[\\/]/.test(folder)) throw new Error('Carpeta no válida')
+      if (collectionId === targetCollectionId) return folder
+
+      const from = safePath(collectionId, folder)
+      const targetRoot = safePath(targetCollectionId)
+      if (!(await isDirectory(from)) || !(await isDirectory(targetRoot))) {
+        throw new Error('La carpeta o el destino ya no existen')
+      }
+
+      // Si ya hay una carpeta con ese nombre en el destino, se renombra (nombre-2)
+      const to = await uniquePath(targetRoot, folder, '')
+      await fs.rename(from, to)
+
+      // Los sellos de la spec de la colección de origen ya no aplican a esos archivos
+      const fromRoot = safePath(collectionId)
+      const meta = await readMeta(fromRoot)
+      if (meta?.endpoints) {
+        for (const key of Object.keys(meta.endpoints)) {
+          if (key.startsWith(`${folder}/`)) delete meta.endpoints[key]
+        }
+        await fs.writeFile(
+          join(fromRoot, META_FILE),
+          JSON.stringify(meta, null, 2) + '\n',
+          'utf-8'
+        )
+      }
+      return basename(to)
+    }
+  )
+
+  ipcMain.handle('collections:reorder', async (_e, ids: string[]): Promise<void> => {
+    await writeCollectionOrder(ids.filter((id) => typeof id === 'string'))
+  })
 
   ipcMain.handle('collections:openWorkspace', async (): Promise<void> => {
     await fs.mkdir(getRoot(), { recursive: true })
