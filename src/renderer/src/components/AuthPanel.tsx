@@ -6,7 +6,8 @@ const TYPES: { value: AuthType; label: string }[] = [
   { value: 'none', label: 'Sin autenticación' },
   { value: 'bearer', label: 'Bearer Token' },
   { value: 'basic', label: 'Basic Auth' },
-  { value: 'apikey', label: 'API Key' }
+  { value: 'apikey', label: 'API Key' },
+  { value: 'oauth2', label: 'OAuth 2.0 (Client Credentials)' }
 ]
 
 function Field({
@@ -104,6 +105,43 @@ export function AuthPanel(): React.JSX.Element {
               <option value="query">Query param</option>
             </select>
           </Field>
+        </>
+      )}
+
+      {auth.type === 'oauth2' && (
+        <>
+          <Field label="URL del token">
+            <VariableInput
+              value={auth.oauthTokenUrl ?? ''}
+              onChange={(oauthTokenUrl) => patch({ oauthTokenUrl })}
+              placeholder="{{baseUrl}}/oauth/token"
+            />
+          </Field>
+          <Field label="Client ID">
+            <VariableInput
+              value={auth.oauthClientId ?? ''}
+              onChange={(oauthClientId) => patch({ oauthClientId })}
+              placeholder="{{clientId}}"
+            />
+          </Field>
+          <Field label="Client Secret">
+            <VariableInput
+              value={auth.oauthClientSecret ?? ''}
+              onChange={(oauthClientSecret) => patch({ oauthClientSecret })}
+              placeholder="{{clientSecret}}"
+            />
+          </Field>
+          <Field label="Scope">
+            <VariableInput
+              value={auth.oauthScope ?? ''}
+              onChange={(oauthScope) => patch({ oauthScope })}
+              placeholder="read write (opcional)"
+            />
+          </Field>
+          <p className="text-[11px] leading-relaxed text-zinc-500">
+            Sonda pide el token al enviar y lo reutiliza hasta que caduca (solo en memoria). Se
+            envía como <span className="font-mono text-zinc-400">Authorization: Bearer …</span>.
+          </p>
         </>
       )}
 

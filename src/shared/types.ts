@@ -78,7 +78,7 @@ export interface SavedRequest {
 
 // ---------- Autenticación ----------
 
-export type AuthType = 'none' | 'bearer' | 'basic' | 'apikey'
+export type AuthType = 'none' | 'bearer' | 'basic' | 'apikey' | 'oauth2'
 
 /** Todos los campos viven juntos para no perder lo escrito al cambiar de tipo */
 export interface AuthConfig {
@@ -92,6 +92,11 @@ export interface AuthConfig {
   keyName: string
   keyValue: string
   keyIn: 'header' | 'query'
+  /** OAuth 2.0 (client credentials). Opcionales: solo existen si el usuario eligió este tipo */
+  oauthTokenUrl?: string
+  oauthClientId?: string
+  oauthClientSecret?: string
+  oauthScope?: string
 }
 
 // ---------- Aserciones ----------

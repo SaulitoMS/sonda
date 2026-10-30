@@ -1,5 +1,6 @@
 import { evaluateAssertions } from '../../../shared/assertions'
 import { buildAuth } from '../../../shared/auth'
+import { clearOAuthCache, getOAuthToken } from './oauth'
 import { formDataParts, urlencodedBody } from '../../../shared/bodyForm'
 import { evaluateExtractions } from '../../../shared/extract'
 import { appendQuery } from '../../../shared/params'
@@ -94,6 +95,15 @@ export async function executeRequest(
 
   // La auth se resuelve antes de revisar variables faltantes para reportarlas también
   const authParts = buildAuth(draft.auth, resolve)
+  const oauth =
+    draft.auth?.type === 'oauth2'
+      ? {
+          tokenUrl: resolve((draft.auth.oauthTokenUrl ?? '').trim()),
+          clientId: resolve((draft.auth.oauthClientId ?? '').trim()),
+          clientSecret: resolve(draft.auth.oauthClientSecret ?? ''),
+          scope: resolve(draft.auth.oauthScope ?? '')
+        }
+      : null
 
   if (missing.size > 0) {
     const names = [...missing].map((n) => `{{${n}}}`).join(', ')
@@ -108,6 +118,24 @@ export async function executeRequest(
       extractions: [],
       warnings: []
     }
+  }
+
+  // OAuth 2.0: pide el token (o reutiliza el que sigue vigente) y lo manda como Bearer
+  let oauthFromCache = false
+  if (oauth) {
+    const result = await getOAuthToken(oauth)
+    if (!result.ok) {
+      return {
+        response: { ok: false, error: result.error, timeMs: 0 },
+        validation: null,
+        requestValidation: null,
+        assertionResults: [],
+        extractions: [],
+        warnings: []
+      }
+    }
+    oauthFromCache = result.cached
+    authParts.headers.push({ key: 'Authorization', value: `Bearer ${result.token}` })
   }
 
   // Un header escrito a mano tiene prioridad sobre el que genera la pestaña Auth
@@ -148,6 +176,12 @@ export async function executeRequest(
     formData: formParts,
     requestId: options.requestId
   })
+
+  // Un 401 con un token reutilizado suele ser un token caducado: se descarta para que el próximo envío pida otro
+  if (oauth && oauthFromCache && response.ok && response.status === 401) {
+    clearOAuthCache()
+    warnings.push('El token OAuth guardado fue rechazado (401). Se descartó: vuelve a enviar.')
+  }
 
   const validation =
     response.ok && draft.responseSchemas

@@ -27,6 +27,17 @@ function exportAuth(auth: AuthConfig | undefined): Json | undefined {
         type: 'apikey',
         apikey: [entry('key', auth.keyName), entry('value', auth.keyValue), entry('in', auth.keyIn)]
       }
+    case 'oauth2':
+      return {
+        type: 'oauth2',
+        oauth2: [
+          entry('grant_type', 'client_credentials'),
+          entry('accessTokenUrl', auth.oauthTokenUrl ?? ''),
+          entry('clientId', auth.oauthClientId ?? ''),
+          entry('clientSecret', auth.oauthClientSecret ?? ''),
+          entry('scope', auth.oauthScope ?? '')
+        ]
+      }
   }
 }
 
