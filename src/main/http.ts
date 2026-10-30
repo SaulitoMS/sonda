@@ -4,6 +4,7 @@ import { stat } from 'fs/promises'
 import { basename } from 'path'
 import type { FormPart, SendRequestInput, SendRequestResult } from '../shared/types'
 import { Agent } from 'undici'
+import { cookieHeaderFor, storeCookies } from './cookieJar'
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
@@ -99,6 +100,12 @@ export function registerHttpHandlers(): void {
           if (h.key.trim()) headers.append(h.key.trim(), h.value)
         }
 
+        // Cookies guardadas de respuestas anteriores (salvo que el usuario ponga su propio Cookie)
+        if (!headers.has('cookie')) {
+          const cookie = cookieHeaderFor(url)
+          if (cookie) headers.set('cookie', cookie)
+        }
+
         const canHaveBody = !['GET', 'HEAD'].includes(input.method)
         let body: string | FormData | undefined
         if (canHaveBody && input.formData) {
@@ -117,6 +124,9 @@ export function registerHttpHandlers(): void {
           redirect: input.followRedirects === false ? 'manual' : 'follow',
           ...(insecure && url.protocol === 'https:' ? { dispatcher: insecureAgent } : {})
         })
+
+        // Guarda las cookies de la respuesta (res.url es la URL final si hubo redirecciones)
+        storeCookies(new URL(res.url || url.href), res.headers.getSetCookie())
 
         const buffer = await res.arrayBuffer()
         const timeMs = Math.round(performance.now() - start)
