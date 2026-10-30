@@ -20,6 +20,7 @@ import { CookiesModal } from './components/CookiesModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
 import { FuzzModal } from './components/FuzzModal'
+import { SnapshotModal } from './components/SnapshotModal'
 import { MockModal } from './components/MockModal'
 import { ThemeToggle } from './components/ThemeToggle'
 
@@ -36,6 +37,7 @@ type ModalType =
   | 'settings'
   | 'bench'
   | 'fuzz'
+  | 'snapshot'
   | 'mock'
   | null
 
@@ -154,6 +156,13 @@ function App(): React.JSX.Element {
             </button>
             <button
               className={btn}
+              onClick={() => setModal('snapshot')}
+              title="Guardar una respuesta como línea base y detectar cambios en la API"
+            >
+              Snapshot
+            </button>
+            <button
+              className={btn}
               onClick={() => setModal('mock')}
               title="Levantar un servidor local con respuestas de ejemplo de una colección"
             >
@@ -209,6 +218,7 @@ function App(): React.JSX.Element {
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'bench' && <BenchmarkModal onClose={() => setModal(null)} />}
       {modal === 'fuzz' && <FuzzModal onClose={() => setModal(null)} />}
+      {modal === 'snapshot' && <SnapshotModal onClose={() => setModal(null)} />}
       {modal === 'mock' && <MockModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
