@@ -22,6 +22,8 @@ import type {
 import { validateRequestBody, validateResponse } from '../../../shared/validate'
 import { buildVarMap, interpolate } from '../../../shared/variables'
 import { resolveHeadersForPath } from './inheritedHeaders'
+import { retryDelayMs, shouldRetry } from '../../../shared/retry'
+import { isCancelled } from './inFlight'
 
 export interface RequestDraft {
   method: HttpMethod
@@ -180,14 +182,33 @@ export async function executeRequest(
     )
   }
 
-  const response = await window.api.sendRequest({
+  const settings = await window.api.loadSettings()
+  const sendInput = {
     method: draft.method,
     url: finalUrl,
     headers,
     body: finalBody,
     formData: formParts,
     requestId: options.requestId
-  })
+  }
+
+  let response = await window.api.sendRequest(sendInput)
+
+  // Reintentos automáticos (solo métodos idempotentes, ver shared/retry.ts)
+  let retried = 0
+  while (retried < settings.retries && shouldRetry(draft.method, response)) {
+    const wait = retryDelayMs(retried + 1, settings.retryDelayMs, response)
+    await new Promise((resolve) => setTimeout(resolve, wait))
+    // Si el usuario canceló mientras esperaba, se conserva la última respuesta y no se reintenta
+    if (options.requestId && isCancelled(options.requestId)) break
+    retried++
+    response = await window.api.sendRequest(sendInput)
+  }
+  if (retried > 0) {
+    warnings.push(
+      `Se reintentó ${retried} ${retried === 1 ? 'vez' : 'veces'} antes de obtener esta respuesta.`
+    )
+  }
 
   // Un 401 con un token reutilizado suele ser un token caducado: se descarta para que el próximo envío pida otro
   if (oauth && oauthFromCache && response.ok && response.status === 401) {

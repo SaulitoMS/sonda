@@ -279,6 +279,10 @@ export interface AppSettings {
   sslMode: SslMode
   /** Proxy http(s) para todas las peticiones salvo las de localhost. Vacío = sin proxy */
   proxyUrl: string
+  /** Reintentos automáticos ante errores de red / 429 / 502 / 503 / 504. 0 = desactivado */
+  retries: number
+  /** Espera base entre reintentos en ms (se duplica en cada intento) */
+  retryDelayMs: number
 }
 
 // ---------- Entornos ----------

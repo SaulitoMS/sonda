@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { MAX_TIMEOUT_S, MIN_TIMEOUT_S } from '../../../shared/settings'
+import {
+  MAX_RETRIES,
+  MAX_RETRY_DELAY_MS,
+  MAX_TIMEOUT_S,
+  MIN_RETRIES,
+  MIN_RETRY_DELAY_MS,
+  MIN_TIMEOUT_S
+} from '../../../shared/settings'
 import type { AppSettings, SslMode } from '../../../shared/types'
 import { Modal } from './Modal'
 
@@ -102,6 +109,39 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
               className={field}
             />
             <p className={hint}>Vacío = sin proxy. Las peticiones a localhost no lo usan.</p>
+          </div>
+
+                    <div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={label}>Reintentos automáticos</label>
+                <input
+                  type="number"
+                  min={MIN_RETRIES}
+                  max={MAX_RETRIES}
+                  value={draft.retries}
+                  onChange={(e) => set('retries', Number(e.target.value))}
+                  className={field}
+                />
+              </div>
+              <div>
+                <label className={label}>Espera base (ms)</label>
+                <input
+                  type="number"
+                  min={MIN_RETRY_DELAY_MS}
+                  max={MAX_RETRY_DELAY_MS}
+                  step={100}
+                  value={draft.retryDelayMs}
+                  disabled={draft.retries === 0}
+                  onChange={(e) => set('retryDelayMs', Number(e.target.value))}
+                  className={`${field} disabled:opacity-50`}
+                />
+              </div>
+            </div>
+            <p className={hint}>
+              0 = sin reintentos. Se reintenta ante errores de red, timeout y status 429/502/503/504,
+              solo en GET, HEAD, OPTIONS, PUT y DELETE. La espera se duplica en cada intento.
+            </p>
           </div>
 
           {error && <p className="text-xs text-red-400">{error}</p>}
