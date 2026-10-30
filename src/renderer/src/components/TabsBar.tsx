@@ -1,3 +1,4 @@
+import { isDirtyState } from '../../../shared/dirty'
 import { tabLabel } from '../../../shared/tabs'
 import type { HttpMethod } from '../../../shared/types'
 import { METHOD_COLORS } from '../lib/methodColors'
@@ -26,6 +27,12 @@ export function TabsBar(): React.JSX.Element {
   const liveUrl = useRequestStore((s) => s.url)
   const liveMethod = useRequestStore((s) => s.method)
   const liveLoading = useRequestStore((s) => s.loading)
+  const liveDirty = useRequestStore((s) => isDirtyState(s))
+
+  const requestClose = (id: string, label: string, dirty: boolean): void => {
+    if (dirty && !confirm(`"${label}" tiene cambios sin guardar. ¿Cerrar sin guardar?`)) return
+    close(id)
+  }
 
   return (
     <div className="flex min-w-0 flex-1 items-stretch">
@@ -33,12 +40,19 @@ export function TabsBar(): React.JSX.Element {
         {tabs.map((t) => {
           const active = t.id === activeId
           const view = active
-            ? { name: liveName, url: liveUrl, method: liveMethod, loading: liveLoading }
+            ? {
+                name: liveName,
+                url: liveUrl,
+                method: liveMethod,
+                loading: liveLoading,
+                dirty: liveDirty
+              }
             : {
                 name: t.snapshot?.name ?? '',
                 url: t.snapshot?.url ?? '',
                 method: t.snapshot?.method ?? ('GET' as HttpMethod),
-                loading: t.snapshot?.loading ?? false
+                loading: t.snapshot?.loading ?? false,
+                dirty: t.snapshot ? isDirtyState(t.snapshot) : false
               }
           const label = tabLabel(view)
 
@@ -50,7 +64,7 @@ export function TabsBar(): React.JSX.Element {
               onAuxClick={(e) => {
                 if (e.button === 1) {
                   e.preventDefault()
-                  close(t.id)
+                  requestClose(t.id, label, view.dirty)
                 }
               }}
               className={`group flex min-w-28 max-w-48 shrink-0 cursor-pointer items-center gap-2 border-b-2 px-3 text-xs transition-colors ${
@@ -68,13 +82,22 @@ export function TabsBar(): React.JSX.Element {
               {view.loading && (
                 <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-blue-400" />
               )}
+              {/* Con cambios sin guardar se ve un punto; al pasar el cursor, la ✕ */}
+              {view.dirty && (
+                <span
+                  className="shrink-0 text-[10px] text-amber-400 group-hover:hidden"
+                  title="Cambios sin guardar"
+                >
+                  ●
+                </span>
+              )}
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  close(t.id)
+                  requestClose(t.id, label, view.dirty)
                 }}
                 className={`shrink-0 rounded px-1 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-200 ${
-                  active ? '' : 'invisible group-hover:visible'
+                  view.dirty ? 'hidden group-hover:block' : active ? '' : 'invisible group-hover:visible'
                 }`}
                 title="Cerrar pestaña"
               >
