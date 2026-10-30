@@ -122,6 +122,31 @@ function SyncButton({ onClick, title }: { onClick: () => void; title: string }):
   )
 }
 
+function ExportButton({
+  onClick,
+  title
+}: {
+  onClick: () => void
+  title: string
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className="hidden rounded p-0.5 text-zinc-500 hover:bg-zinc-700 hover:text-amber-400 group-hover:block"
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <path d="m7 10 5 5 5-5" />
+        <path d="M12 15V3" />
+      </svg>
+    </button>
+  )
+}
+
 /* ---------- Fila de petición ---------- */
 
 interface RowProps {
@@ -224,6 +249,15 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     }
   }
 
+    const exportPostman = async (id: string): Promise<void> => {
+    const result = await window.api.exportPostman(id)
+    if (!result) return
+    if (!result.ok) {
+      alert(result.error)
+      return
+    }
+    alert(`Se exportaron ${result.count} peticiones a:\n${result.path}`)
+  }
   // Búsqueda: cada palabra debe aparecer en el método, el nombre o la ruta (colección/carpeta)
   const terms = norm(query).split(/\s+/).filter(Boolean)
   const searching = terms.length > 0
@@ -346,8 +380,15 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                   />
                 )}
                 {total > 0 && (
+                  <ExportButton
+                    onClick={() => exportPostman(c.id)}
+                    title="Exportar a Postman"
+                  />
+                )}
+                {total > 0 && (
                   <PlayButton onClick={() => onRun(c.id)} title="Ejecutar todas las peticiones" />
                 )}
+                
                 <TrashButton
                   onClick={() => removeCollection(c.id, c.name)}
                   title="Eliminar colección"

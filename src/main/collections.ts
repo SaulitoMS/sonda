@@ -4,6 +4,7 @@ import { basename, dirname, join, relative, resolve, sep } from 'path'
 import { addEnvironmentWithVariables, addImportedEnvironment } from './environments'
 import type {
   CollectionItem,
+  ExportResult,
   FolderItem,
   HttpMethod,
   ImportResult,
@@ -24,6 +25,7 @@ import {
 } from '../shared/specSync'
 import { importFromUrl } from './swagger'
 import { parsePostmanCollection } from '../shared/postman'
+import { buildPostmanCollection } from '../shared/postmanExport'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -334,6 +336,29 @@ export function registerCollectionHandlers(): void {
         count: parsed.requests.length,
         warnings: parsed.warnings
       }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  })
+
+    ipcMain.handle('postman:export', async (_e, id: string): Promise<ExportResult | null> => {
+    try {
+      const dir = safePath(id)
+      const meta = await readMeta(dir)
+      const files = await readCollectionFiles(dir)
+      if (files.length === 0) throw new Error('La colección no tiene peticiones para exportar')
+
+      const name = meta?.name ?? id
+      const picked = await dialog.showSaveDialog({
+        title: 'Exportar colección a Postman',
+        defaultPath: join(app.getPath('documents'), `${slug(name)}.postman_collection.json`),
+        filters: [{ name: 'Colección de Postman', extensions: ['json'] }]
+      })
+      if (picked.canceled || !picked.filePath) return null
+
+      const collection = buildPostmanCollection(name, meta?.baseUrl, files)
+      await fs.writeFile(picked.filePath, JSON.stringify(collection, null, 2) + '\n', 'utf-8')
+      return { ok: true, path: picked.filePath, count: files.length }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
     }
