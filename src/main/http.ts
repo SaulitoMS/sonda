@@ -17,6 +17,28 @@ const isLoopbackHost = (hostname: string): boolean =>
   hostname === '[::1]' ||
   /^127(\.\d{1,3}){3}$/.test(hostname)
 
+
+ /** Peticiones en curso: id → función que las cancela */
+const inFlight = new Map<string, () => void>()
+
+const MAX_BINARY_BYTES = 20 * 1024 * 1024
+
+/** ¿La respuesta es un archivo y no texto? Se decide por Content-Type y, si no basta, por el contenido */
+function isBinaryResponse(contentType: string, bytes: Uint8Array): boolean {
+  const type = contentType.split(';')[0].trim().toLowerCase()
+  if (type === 'image/svg+xml') return false
+  if (/^(image|audio|video|font)\//.test(type)) return true
+  if (
+    /[/+.-](pdf|zip|gzip|tar|rar|7z-compressed|wasm|msword|officedocument|ms-excel|ms-powerpoint)/.test(
+      type
+    )
+  ) {
+    return true
+  }
+  // Cualquier otro tipo (o ninguno): un byte NUL al inicio delata un archivo
+  return bytes.subarray(0, 1024).includes(0)
+} 
+
 /** Arma el multipart leyendo los archivos desde disco, sin cargarlos enteros en memoria */
 async function buildFormData(parts: FormPart[]): Promise<FormData> {
   const form = new FormData()
@@ -62,6 +84,15 @@ export function registerHttpHandlers(): void {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), input.timeoutMs ?? 30_000)
 
+      // Distingue "el usuario canceló" de "se acabó el tiempo"
+      const state = { cancelled: false }
+      if (input.requestId) {
+        inFlight.set(input.requestId, () => {
+          state.cancelled = true
+          controller.abort()
+        })
+      }
+
       try {
         const headers = new Headers()
         for (const h of input.headers) {
@@ -95,19 +126,40 @@ export function registerHttpHandlers(): void {
           resHeaders[key] = value
         })
 
+        const bytes = new Uint8Array(buffer)
+        const contentType = res.headers.get('content-type') ?? ''
+        const binary = isBinaryResponse(contentType, bytes)
+        const tooBig = buffer.byteLength > MAX_BINARY_BYTES
+
         return {
           ok: true,
           status: res.status,
           statusText: res.statusText,
           headers: resHeaders,
-          body: new TextDecoder('utf-8').decode(buffer),
+          body: binary ? '' : new TextDecoder('utf-8').decode(bytes),
+          ...(binary
+            ? {
+                binary: {
+                  contentType:
+                    contentType.split(';')[0].trim().toLowerCase() || 'application/octet-stream',
+                  base64: tooBig ? '' : Buffer.from(buffer).toString('base64'),
+                  truncated: tooBig
+                }
+              }
+            : {}),
           timeMs,
           sizeBytes: buffer.byteLength
         }
       } catch (err) {
         const timeMs = Math.round(performance.now() - start)
         if (err instanceof Error && err.name === 'AbortError') {
-          return { ok: false, error: 'La petición excedió el tiempo límite', timeMs }
+          return {
+            ok: false,
+            error: state.cancelled
+              ? 'Petición cancelada'
+              : 'La petición excedió el tiempo límite',
+            timeMs
+          }
         }
         const cause =
           err instanceof Error && err.cause instanceof Error ? ` (${err.cause.message})` : ''
@@ -118,9 +170,14 @@ export function registerHttpHandlers(): void {
         }
       } finally {
         clearTimeout(timeout)
+        if (input.requestId) inFlight.delete(input.requestId)
       }
     }
   )
+
+  ipcMain.handle('http:cancel', (_event, requestId: string): void => {
+    inFlight.get(requestId)?.()
+  })
 
   ipcMain.handle('files:pick', async (): Promise<string | null> => {
     const result = await dialog.showOpenDialog({ properties: ['openFile'] })

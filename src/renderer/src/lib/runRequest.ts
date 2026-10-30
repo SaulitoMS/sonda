@@ -64,7 +64,8 @@ const looksLikeJson = (text: string): boolean => {
  */
 export async function executeRequest(
   draft: RequestDraft,
-  env: Environment | null
+  env: Environment | null,
+  options: { requestId?: string } = {}
 ): Promise<ExecuteResult> {
   const vars = buildVarMap(env)
   const missing = new Set<string>()
@@ -144,7 +145,8 @@ export async function executeRequest(
     url: finalUrl,
     headers,
     body: finalBody,
-    formData: formParts
+    formData: formParts,
+    requestId: options.requestId
   })
 
   const validation =

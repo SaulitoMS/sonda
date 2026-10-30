@@ -21,6 +21,7 @@ import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from './useEnvironmentStore'
 import { useHistoryStore } from './useHistoryStore'
 import { useTabsStore } from './useTabsStore'
+import { finishInFlight, startInFlight } from '../lib/inFlight'
 
 export interface KeyValue {
   id: string
@@ -229,6 +230,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
 
     // La pestaña desde la que se envía: el usuario puede cambiar de pestaña mientras responde
     const tabId = useTabsStore.getState().activeId
+    const requestId = startInFlight(tabId)
 
     set({ loading: true })
     const {
@@ -250,8 +252,11 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         requestSchema,
         responseSchemas
       },
-      useEnvironmentStore.getState().getActive()
+      useEnvironmentStore.getState().getActive(),
+      { requestId }
     )
+    const wasCancelled = finishInFlight(tabId)
+
     // Los valores extraídos pasan al entorno para que la siguiente petición ya los use
     const persistWarnings = await persistExtractions(extractionResults)
 
@@ -266,8 +271,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     if (useTabsStore.getState().activeId === tabId) set(result)
     else useTabsStore.getState().patchSnapshot(tabId, result)
 
-    // Lo que no llegó a enviarse (variables sin definir, URL inválida) no entra al historial
-    if (response.ok || response.timeMs > 0) {
+    // Lo que no llegó a enviarse (variables sin definir, URL inválida) o se canceló no entra al historial
+    if (!wasCancelled && (response.ok || response.timeMs > 0)) {
       useHistoryStore.getState().add({ method, url, headers, body, bodyForm, auth, response })
     }
   },

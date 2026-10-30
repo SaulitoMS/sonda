@@ -4,6 +4,7 @@ import type { SondaApi } from '../shared/types'
 
 const api: SondaApi = {
   sendRequest: (input) => ipcRenderer.invoke('http:send', input),
+  cancelRequest: (requestId) => ipcRenderer.invoke('http:cancel', requestId),
   pickFile: () => ipcRenderer.invoke('files:pick'),
   listCollections: () => ipcRenderer.invoke('collections:list'),
   createCollection: (name) => ipcRenderer.invoke('collections:create', name),

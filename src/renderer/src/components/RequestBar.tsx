@@ -1,8 +1,10 @@
 import { looksLikeCurl, parseCurl } from '../../../shared/curl'
 import type { HttpMethod } from '../../../shared/types'
 import { applyCurl } from '../lib/applyCurl'
+import { cancelInFlight } from '../lib/inFlight'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useRequestStore } from '../store/useRequestStore'
+import { useTabsStore } from '../store/useTabsStore'
 import { VariableInput } from './VariableInput'
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
@@ -51,13 +53,22 @@ export function RequestBar({ onCurlImported }: Props): React.JSX.Element {
         />
       </div>
 
-      <button
-        onClick={send}
-        disabled={loading || !url.trim()}
-        className="rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? 'Enviando…' : 'Enviar'}
-      </button>
+      {loading ? (
+        <button
+          onClick={() => cancelInFlight(useTabsStore.getState().activeId)}
+          className="rounded-md bg-red-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
+        >
+          Cancelar
+        </button>
+      ) : (
+        <button
+          onClick={send}
+          disabled={!url.trim()}
+          className="rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Enviar
+        </button>
+      )}
     </div>
   )
 }

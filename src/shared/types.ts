@@ -12,6 +12,18 @@ export interface SendRequestInput {
   followRedirects?: boolean
   formData?: FormPart[]
   bodyForm?: BodyFormData
+  /** Identificador para poder cancelar esta petición con cancelRequest */
+  requestId?: string
+}
+
+/** Respuesta que no es texto (imagen, PDF, zip…) */
+export interface BinaryBody {
+  /** Content-Type sin parámetros, ej: image/png */
+  contentType: string
+  /** Contenido en base64. Vacío si superó el límite o si se descartó (historial) */
+  base64: string
+  /** true si el archivo superó el límite y no se incluyó */
+  truncated: boolean
 }
 
 export type SendRequestResult =
@@ -20,7 +32,10 @@ export type SendRequestResult =
       status: number
       statusText: string
       headers: Record<string, string>
+      /** Texto de la respuesta. Vacío si es binaria (ver `binary`) */
       body: string
+      /** Solo existe si la respuesta no es texto */
+      binary?: BinaryBody
       timeMs: number
       sizeBytes: number
     }
@@ -184,6 +199,7 @@ export type ImportResult =
 /** Contrato de window.api (lo implementa preload, lo usa el renderer) */
 export interface SondaApi {
   sendRequest: (input: SendRequestInput) => Promise<SendRequestResult>
+  cancelRequest: (requestId: string) => Promise<void>
   listCollections: () => Promise<CollectionItem[]>
   createCollection: (name: string) => Promise<CollectionItem>
   deleteCollection: (id: string) => Promise<void>
