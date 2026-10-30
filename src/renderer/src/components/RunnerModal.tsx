@@ -24,6 +24,7 @@ import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { Modal } from './Modal'
+import { timingStats } from '../../../shared/timing'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -102,6 +103,11 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
 
   const planned = includeWrites ? all : all.filter((e) => SAFE_METHODS.includes(e.item.method))
   const writeCount = all.length - all.filter((e) => SAFE_METHODS.includes(e.item.method)).length
+
+  const stats = useMemo(
+    () => timingStats(rows.map((r) => ({ name: r.entry.item.name, timeMs: r.timeMs }))),
+    [rows]
+  )
 
   /** Envía una petición de la cola y la valida (sin reintentos) */
   const runOne = async (entry: Entry): Promise<Row> => {
@@ -301,13 +307,22 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
 
       {started && (
         <>
-          <div className="mb-3 flex items-center gap-4 text-xs">
-            <span className="text-emerald-400">✓ {count('pass')}</span>
-            <span className="text-amber-400">⚠ {count('warn')}</span>
-            <span className="text-red-400">✗ {count('fail')}</span>
-            <span className="text-zinc-500">
-              {rows.length}/{total}
-            </span>
+          <div className="mb-3 space-y-1 text-xs">
+            <div className="flex items-center gap-4">
+              <span className="text-emerald-400">✓ {count('pass')}</span>
+              <span className="text-amber-400">⚠ {count('warn')}</span>
+              <span className="text-red-400">✗ {count('fail')}</span>
+              <span className="text-zinc-500">
+                {rows.length}/{total}
+              </span>
+            </div>
+            {stats && (
+              <p className="text-zinc-500">
+                Promedio {stats.avg} ms · p50 {stats.p50} ms · p95 {stats.p95} ms · más lenta:{' '}
+                <span className="text-zinc-300">{stats.slowest.name}</span> ({stats.slowest.timeMs}{' '}
+                ms)
+              </p>
+            )}
           </div>
 
           <div className="max-h-[50vh] overflow-auto rounded-md border border-zinc-800">
