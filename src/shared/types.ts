@@ -234,6 +234,20 @@ export interface SondaApi {
   listCookies: () => Promise<CookieInfo[]>
   deleteCookie: (id: string) => Promise<void>
   clearCookies: () => Promise<void>
+  loadSettings: () => Promise<AppSettings>
+  saveSettings: (settings: AppSettings) => Promise<AppSettings>
+}
+
+export type SslMode = 'auto' | 'verify' | 'ignore'
+
+export interface AppSettings {
+  /** Tiempo máximo de espera por petición */
+  timeoutSeconds: number
+  followRedirects: boolean
+  /** auto: tolera certificados inválidos solo en localhost · verify: siempre verifica · ignore: nunca verifica */
+  sslMode: SslMode
+  /** Proxy http(s) para todas las peticiones salvo las de localhost. Vacío = sin proxy */
+  proxyUrl: string
 }
 
 // ---------- Entornos ----------
