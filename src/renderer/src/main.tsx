@@ -4,6 +4,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { restoreSession, startSessionPersistence } from './lib/session'
+import { applyTheme, getStoredTheme } from './lib/theme'
+
+// Antes de renderizar, para que no se vea un instante el tema equivocado
+applyTheme(getStoredTheme())
 
 // Antes de renderizar, para que no se vea un instante la pestaña por defecto
 restoreSession()

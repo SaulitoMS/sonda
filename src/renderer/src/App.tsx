@@ -20,6 +20,7 @@ import { CookiesModal } from './components/CookiesModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
 import { MockModal } from './components/MockModal'
+import { ThemeToggle } from './components/ThemeToggle'
 
 type ModalType =
   | 'import'
@@ -167,6 +168,8 @@ function App(): React.JSX.Element {
             <button className={`${btn} font-semibold`} onClick={save}>
               Guardar
             </button>
+            <span className="mx-1 h-4 w-px bg-zinc-800" />
+            <ThemeToggle />
           </div>
         </header>
 

@@ -36,3 +36,43 @@ code {
     monospace;
   font-size: 85%;
 }
+
+/* ───────────── Tema ─────────────
+   Tailwind v4 lee sus colores de variables CSS (--color-zinc-*). En modo claro
+   se invierte la escala zinc y se oscurecen los acentos para que tengan contraste
+   sobre fondo claro. Así no hay que tocar ningún componente. */
+:root {
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-background: #fafafa;
+  --color-background-soft: #f4f4f5;
+  --color-background-mute: #e4e4e7;
+  --color-text: #18181b;
+
+  --color-zinc-50: #09090b;
+  --color-zinc-100: #18181b;
+  --color-zinc-200: #27272a;
+  --color-zinc-300: #3f3f46;
+  --color-zinc-400: #52525b;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #a1a1aa;
+  --color-zinc-700: #d4d4d8;
+  --color-zinc-800: #e4e4e7;
+  --color-zinc-900: #fafafa;
+  --color-zinc-950: #f4f4f5;
+
+  --color-blue-300: #1e40af;
+  --color-blue-400: #1d4ed8;
+  --color-red-300: #b91c1c;
+  --color-red-400: #dc2626;
+  --color-amber-300: #92400e;
+  --color-amber-400: #b45309;
+  --color-emerald-300: #065f46;
+  --color-emerald-400: #047857;
+  --color-sky-300: #075985;
+  --color-sky-400: #0369a1;
+}
