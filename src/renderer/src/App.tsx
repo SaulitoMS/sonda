@@ -15,8 +15,18 @@ import { TabsBar } from './components/TabsBar'
 import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
 import { useTabsStore } from './store/useTabsStore'
+import { CommandPalette } from './components/CommandPalette'
 
-type ModalType = 'import' | 'save' | 'envs' | 'curl' | 'runner' | 'history' | 'sync' | null
+type ModalType =
+  | 'import'
+  | 'save'
+  | 'envs'
+  | 'curl'
+  | 'runner'
+  | 'history'
+  | 'sync'
+  | 'palette'
+  | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
@@ -70,6 +80,10 @@ function App(): React.JSX.Element {
       if (e.key === 't') {
         e.preventDefault()
         newTab()
+      }
+      if (e.key === 'k') {
+        e.preventDefault()
+        setModal((m) => (m === 'palette' ? null : 'palette'))
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -137,6 +151,7 @@ function App(): React.JSX.Element {
       </div>
 
       {modal === 'import' && <ImportModal onClose={() => setModal(null)} />}
+      {modal === 'palette' && <CommandPalette onClose={() => setModal(null)} />}
       {modal === 'runner' && (
         <RunnerModal collectionId={runCollectionId} onClose={() => setModal(null)} />
       )}
