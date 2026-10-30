@@ -60,3 +60,20 @@ describe('catálogo', () => {
     expect(getDynamicVariable('$uuid')?.description).toBeTruthy()
   })
 })
+
+describe('variables de registro aleatorio', () => {
+  it('generan el formato esperado', () => {
+    expect(resolveDynamic('$randomFullName')).toMatch(/^\S+ \S+$/)
+    expect(resolveDynamic('$randomUsername')).toMatch(/^[a-z]+_[a-z0-9]{4}$/)
+    expect(resolveDynamic('$randomPhone')).toMatch(/^[1-9]\d{9}$/)
+    expect(resolveDynamic('$randomPassword')).toMatch(/^[A-Z][a-z0-9]{8}\d!$/)
+    expect(resolveDynamic('$randomIp')).toMatch(/^(\d{1,3}\.){3}\d{1,3}$/)
+    expect(resolveDynamic('$randomColor')).toMatch(/^#[0-9a-f]{6}$/)
+    expect(resolveDynamic('$randomDecimal')).toMatch(/^\d{1,4}\.\d{2}$/)
+  })
+
+  it('las fechas pasada y futura quedan a los lados de hoy', () => {
+    expect(resolveDynamic('$randomPastDate', lowest)! < '2026-10-29').toBe(true)
+    expect(resolveDynamic('$randomFutureDate', lowest)! > '2026-10-29').toBe(true)
+  })
+})
