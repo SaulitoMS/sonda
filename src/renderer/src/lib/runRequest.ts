@@ -124,7 +124,9 @@ export async function executeRequest(
     method: draft.method,
     url: finalUrl,
     headers,
-    body: finalBody
+    body: finalBody,
+    // Solo para localhost: no relajamos SSL en hosts públicos
+    insecure: /^https:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(finalUrl)
   })
 
   const validation =

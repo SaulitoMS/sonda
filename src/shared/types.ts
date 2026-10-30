@@ -6,6 +6,10 @@ export interface SendRequestInput {
   headers: { key: string; value: string }[]
   body?: string
   timeoutMs?: number
+  /** Acepta certificados autofirmados (útil en https://localhost) */
+  insecure?: boolean
+  /** Si es false, no sigue redirecciones y devuelve el 3xx tal cual */
+  followRedirects?: boolean
 }
 
 export type SendRequestResult =

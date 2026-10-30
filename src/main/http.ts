@@ -1,5 +1,10 @@
 import { ipcMain } from 'electron'
 import type { SendRequestInput, SendRequestResult } from '../shared/types'
+import { Agent } from 'undici'
+
+// Un solo agente reutilizable para peticiones con SSL relajado
+const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } })
+
 
 export function registerHttpHandlers(): void {
   ipcMain.handle(
@@ -32,7 +37,9 @@ export function registerHttpHandlers(): void {
           headers,
           body: canHaveBody && input.body ? input.body : undefined,
           signal: controller.signal,
-          redirect: 'follow'
+          redirect: input.followRedirects === false ? 'manual' : 'follow',
+          // `dispatcher` es de undici y no está en los tipos de fetch
+          ...(input.insecure ? ({ dispatcher: insecureAgent } as object) : {})
         })
 
         const buffer = await res.arrayBuffer()
