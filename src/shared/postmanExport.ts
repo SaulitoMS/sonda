@@ -25,11 +25,7 @@ function exportAuth(auth: AuthConfig | undefined): Json | undefined {
     case 'apikey':
       return {
         type: 'apikey',
-        apikey: [
-          entry('key', auth.keyName),
-          entry('value', auth.keyValue),
-          entry('in', auth.keyIn)
-        ]
+        apikey: [entry('key', auth.keyName), entry('value', auth.keyValue), entry('in', auth.keyIn)]
       }
   }
 }

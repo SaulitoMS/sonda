@@ -19,16 +19,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
 
 type ModalType =
-  | 'import'
-  | 'save'
-  | 'envs'
-  | 'curl'
-  | 'runner'
-  | 'history'
-  | 'sync'
-  | 'palette'
-  | 'cookies'
-  | null
+  'import' | 'save' | 'envs' | 'curl' | 'runner' | 'history' | 'sync' | 'palette' | 'cookies' | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)

@@ -249,7 +249,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     }
   }
 
-    const exportPostman = async (id: string): Promise<void> => {
+  const exportPostman = async (id: string): Promise<void> => {
     const result = await window.api.exportPostman(id)
     if (!result) return
     if (!result.ok) {
@@ -380,15 +380,12 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                   />
                 )}
                 {total > 0 && (
-                  <ExportButton
-                    onClick={() => exportPostman(c.id)}
-                    title="Exportar a Postman"
-                  />
+                  <ExportButton onClick={() => exportPostman(c.id)} title="Exportar a Postman" />
                 )}
                 {total > 0 && (
                   <PlayButton onClick={() => onRun(c.id)} title="Ejecutar todas las peticiones" />
                 )}
-                
+
                 <TrashButton
                   onClick={() => removeCollection(c.id, c.name)}
                   title="Eliminar colección"

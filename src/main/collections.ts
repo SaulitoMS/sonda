@@ -295,7 +295,7 @@ export function registerCollectionHandlers(): void {
     }
   })
 
-    ipcMain.handle('postman:import', async (): Promise<ImportResult | null> => {
+  ipcMain.handle('postman:import', async (): Promise<ImportResult | null> => {
     const picked = await dialog.showOpenDialog({
       title: 'Importar colección de Postman',
       properties: ['openFile'],
@@ -341,7 +341,7 @@ export function registerCollectionHandlers(): void {
     }
   })
 
-    ipcMain.handle('postman:export', async (_e, id: string): Promise<ExportResult | null> => {
+  ipcMain.handle('postman:export', async (_e, id: string): Promise<ExportResult | null> => {
     try {
       const dir = safePath(id)
       const meta = await readMeta(dir)

@@ -197,10 +197,7 @@ export type ImportResult =
   | { ok: true; collectionId: string; name: string; count: number; warnings?: string[] }
   | { ok: false; error: string }
 
-
-export type ExportResult =
-  | { ok: true; path: string; count: number }
-  | { ok: false; error: string }
+export type ExportResult = { ok: true; path: string; count: number } | { ok: false; error: string }
 
 export interface CookieInfo {
   id: string

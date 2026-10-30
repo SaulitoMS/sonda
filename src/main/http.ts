@@ -18,8 +18,7 @@ const isLoopbackHost = (hostname: string): boolean =>
   hostname === '[::1]' ||
   /^127(\.\d{1,3}){3}$/.test(hostname)
 
-
- /** Peticiones en curso: id → función que las cancela */
+/** Peticiones en curso: id → función que las cancela */
 const inFlight = new Map<string, () => void>()
 
 const MAX_BINARY_BYTES = 20 * 1024 * 1024
@@ -38,7 +37,7 @@ function isBinaryResponse(contentType: string, bytes: Uint8Array): boolean {
   }
   // Cualquier otro tipo (o ninguno): un byte NUL al inicio delata un archivo
   return bytes.subarray(0, 1024).includes(0)
-} 
+}
 
 /** Arma el multipart leyendo los archivos desde disco, sin cargarlos enteros en memoria */
 async function buildFormData(parts: FormPart[]): Promise<FormData> {
@@ -165,9 +164,7 @@ export function registerHttpHandlers(): void {
         if (err instanceof Error && err.name === 'AbortError') {
           return {
             ok: false,
-            error: state.cancelled
-              ? 'Petición cancelada'
-              : 'La petición excedió el tiempo límite',
+            error: state.cancelled ? 'Petición cancelada' : 'La petición excedió el tiempo límite',
             timeMs
           }
         }

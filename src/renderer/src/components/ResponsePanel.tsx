@@ -122,7 +122,6 @@ function TestsReport({ results }: { results: AssertionResult[] }): React.JSX.Ele
   )
 }
 
-
 const showValue = (v: unknown): string => {
   const text = JSON.stringify(v) ?? 'undefined'
   return text.length > 80 ? `${text.slice(0, 77)}…` : text
