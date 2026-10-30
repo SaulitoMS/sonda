@@ -16,6 +16,7 @@ import type {
 import { persistExtractions } from '../lib/persistExtractions'
 import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from './useEnvironmentStore'
+import { useHistoryStore } from './useHistoryStore'
 
 export interface KeyValue {
   id: string
@@ -141,6 +142,11 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       warnings: [...warnings, ...persistWarnings],
       loading: false
     })
+
+    // Lo que no llegó a enviarse (variables sin definir, URL inválida) no entra al historial
+    if (response.ok || response.timeMs > 0) {
+      useHistoryStore.getState().add({ method, url, headers, body, auth, response })
+    }
   },
 
   loadSaved: (saved, path) =>

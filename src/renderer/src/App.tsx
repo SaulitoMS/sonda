@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CurlModal } from './components/CurlModal'
 import { EnvironmentSelector } from './components/EnvironmentSelector'
 import { EnvironmentsModal } from './components/EnvironmentsModal'
+import { HistoryModal } from './components/HistoryModal'
 import { ImportModal } from './components/ImportModal'
 import { RequestBar } from './components/RequestBar'
 import { RequestPanel } from './components/RequestPanel'
@@ -12,7 +13,7 @@ import { Sidebar } from './components/Sidebar'
 import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
 
-type ModalType = 'import' | 'save' | 'envs' | 'curl' | 'runner' | null
+type ModalType = 'import' | 'save' | 'envs' | 'curl' | 'runner' | 'history' | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
@@ -92,6 +93,13 @@ function App(): React.JSX.Element {
             <span className="mx-1 h-4 w-px bg-zinc-800" />
             <button
               className={btn}
+              onClick={() => setModal('history')}
+              title="Historial de peticiones"
+            >
+              Historial
+            </button>
+            <button
+              className={btn}
               onClick={() => setModal('curl')}
               title="Importar o exportar cURL"
             >
@@ -129,6 +137,12 @@ function App(): React.JSX.Element {
       )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'curl' && <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />}
+      {modal === 'history' && (
+        <HistoryModal
+          onClose={() => setModal(null)}
+          onRestored={() => showFlash('Petición restaurada ✓')}
+        />
+      )}
       {modal === 'save' && (
         <SaveModal
           onClose={() => setModal(null)}
