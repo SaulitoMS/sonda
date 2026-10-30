@@ -3,8 +3,19 @@ import { openAsBlob } from 'fs'
 import { stat } from 'fs/promises'
 import { basename } from 'path'
 import type { FormPart, SendRequestInput, SendRequestResult } from '../shared/types'
+import { Agent } from 'undici'
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+
+/** Cliente que acepta certificados autofirmados (https://localhost con cert de desarrollo) */
+const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } })
+
+/** En localhost no hay un tercero que suplantar, así que se tolera el cert autofirmado */
+const isLoopbackHost = (hostname: string): boolean =>
+  hostname === 'localhost' ||
+  hostname.endsWith('.localhost') ||
+  hostname === '[::1]' ||
+  /^127(\.\d{1,3}){3}$/.test(hostname)
 
 /** Arma el multipart leyendo los archivos desde disco, sin cargarlos enteros en memoria */
 async function buildFormData(parts: FormPart[]): Promise<FormData> {
@@ -45,6 +56,9 @@ export function registerHttpHandlers(): void {
         return { ok: false, error: 'Solo se permiten URLs http y https', timeMs: 0 }
       }
 
+      // Si no se indica, se tolera el certificado autofirmado solo en localhost
+      const insecure = input.insecure ?? isLoopbackHost(url.hostname)
+
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), input.timeoutMs ?? 30_000)
 
@@ -69,7 +83,8 @@ export function registerHttpHandlers(): void {
           headers,
           body,
           signal: controller.signal,
-          redirect: 'follow'
+          redirect: input.followRedirects === false ? 'manual' : 'follow',
+          ...(insecure && url.protocol === 'https:' ? { dispatcher: insecureAgent } : {})
         })
 
         const buffer = await res.arrayBuffer()
