@@ -10,6 +10,7 @@ import { AssertionsPanel } from './AssertionsPanel'
 import { AuthPanel } from './AuthPanel'
 import { BodyFormEditor } from './BodyFormEditor'
 import { ExtractionsPanel } from './ExtractionsPanel'
+import { GraphQLModal } from './GraphQLModal'
 import { KeyValueEditor } from './KeyValueEditor'
 import { RequestSchemaStatus } from './RequestSchemaStatus'
 import { editForKey } from '../../../shared/jsonEditing'
@@ -20,6 +21,7 @@ type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'extract'
 
 export function RequestPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('params')
+  const [gqlOpen, setGqlOpen] = useState(false)
   const {
     url,
     headers,
@@ -201,13 +203,22 @@ export function RequestPanel(): React.JSX.Element {
                   <span className={`text-xs ${jsonError ? 'text-red-400' : 'text-zinc-500'}`}>
                     {jsonError ? `JSON inválido: ${jsonError}` : 'JSON'}
                   </span>
-                  <button
-                    onClick={formatBody}
-                    disabled={!body.trim()}
-                    className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
-                  >
-                    Formatear
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setGqlOpen(true)}
+                      className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+                      title="Armar el body de una petición GraphQL (query + variables)"
+                    >
+                      GraphQL
+                    </button>
+                    <button
+                      onClick={formatBody}
+                      disabled={!body.trim()}
+                      className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                    >
+                      Formatear
+                    </button>
+                  </div>
                 </div>
                 <VariableTextarea
                   value={body}
@@ -228,6 +239,8 @@ export function RequestPanel(): React.JSX.Element {
           </div>
         )}
       </div>
+
+      {gqlOpen && <GraphQLModal onClose={() => setGqlOpen(false)} />}
     </div>
   )
 }
