@@ -3,13 +3,27 @@ import { openAsBlob } from 'fs'
 import { stat } from 'fs/promises'
 import { basename } from 'path'
 import type { FormPart, SendRequestInput, SendRequestResult } from '../shared/types'
-import { Agent } from 'undici'
+import { Agent, ProxyAgent, type Dispatcher } from 'undici'
 import { cookieHeaderFor, storeCookies } from './cookieJar'
+import { proxyError } from '../shared/settings'
+import { loadSettings } from './settings'
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
-/** Cliente que acepta certificados autofirmados (https://localhost con cert de desarrollo) */
-const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } })
+const dispatchers = new Map<string, Dispatcher>()
+
+/** Reutiliza un cliente por combinación de proxy + verificación TLS */
+function dispatcherFor(proxyUrl: string, ignoreTls: boolean): Dispatcher {
+  const key = `${proxyUrl}|${ignoreTls}`
+  let dispatcher = dispatchers.get(key)
+  if (!dispatcher) {
+    dispatcher = proxyUrl
+      ? new ProxyAgent({ uri: proxyUrl, requestTls: { rejectUnauthorized: !ignoreTls } })
+      : new Agent({ connect: { rejectUnauthorized: !ignoreTls } })
+    dispatchers.set(key, dispatcher)
+  }
+  return dispatcher
+}
 
 /** En localhost no hay un tercero que suplantar, así que se tolera el cert autofirmado */
 const isLoopbackHost = (hostname: string): boolean =>
@@ -78,11 +92,23 @@ export function registerHttpHandlers(): void {
         return { ok: false, error: 'Solo se permiten URLs http y https', timeMs: 0 }
       }
 
-      // Si no se indica, se tolera el certificado autofirmado solo en localhost
-      const insecure = input.insecure ?? isLoopbackHost(url.hostname)
+      const settings = await loadSettings()
+      const loopback = isLoopbackHost(url.hostname)
+
+      // Lo que venga en la petición tiene prioridad sobre los ajustes globales
+      const insecure =
+        input.insecure ??
+        (settings.sslMode === 'ignore' || (settings.sslMode === 'auto' && loopback))
+      const ignoreTls = insecure && url.protocol === 'https:'
+      // localhost nunca pasa por el proxy
+      const proxyUrl =
+        settings.proxyUrl && !proxyError(settings.proxyUrl) && !loopback ? settings.proxyUrl : ''
 
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), input.timeoutMs ?? 30_000)
+      const timeout = setTimeout(
+        () => controller.abort(),
+        input.timeoutMs ?? settings.timeoutSeconds * 1000
+      )
 
       // Distingue "el usuario canceló" de "se acabó el tiempo"
       const state = { cancelled: false }
@@ -120,8 +146,8 @@ export function registerHttpHandlers(): void {
           headers,
           body,
           signal: controller.signal,
-          redirect: input.followRedirects === false ? 'manual' : 'follow',
-          ...(insecure && url.protocol === 'https:' ? { dispatcher: insecureAgent } : {})
+          redirect: (input.followRedirects ?? settings.followRedirects) ? 'follow' : 'manual',
+          ...(ignoreTls || proxyUrl ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls) } : {})
         })
 
         // Guarda las cookies de la respuesta (res.url es la URL final si hubo redirecciones)
@@ -164,7 +190,9 @@ export function registerHttpHandlers(): void {
         if (err instanceof Error && err.name === 'AbortError') {
           return {
             ok: false,
-            error: state.cancelled ? 'Petición cancelada' : 'La petición excedió el tiempo límite',
+            error: state.cancelled
+              ? 'Petición cancelada'
+              : 'La petición excedió el tiempo límite',
             timeMs
           }
         }
