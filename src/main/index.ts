@@ -5,9 +5,11 @@ import icon from '../../resources/icon.png?asset'
 import { registerHttpHandlers } from './http'
 import { registerCollectionHandlers } from './collections'
 import { registerEnvironmentHandlers } from './environments'
+import { registerCookieHandlers } from './cookieJar'
 
 registerHttpHandlers()
 registerCollectionHandlers()
+registerCookieHandlers()
 
 function createWindow(): void {
   // Create the browser window.
