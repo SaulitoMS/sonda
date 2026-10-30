@@ -1,3 +1,6 @@
+import { ipcMain } from 'electron'
+import type { CookieInfo } from '../shared/types'
+
 interface StoredCookie {
   name: string
   value: string
@@ -107,4 +110,34 @@ export function cookieHeaderFor(url: URL): string | null {
 
 export function clearCookies(): void {
   jar.clear()
+}
+
+export function listCookies(): CookieInfo[] {
+  const now = Date.now()
+  const out: CookieInfo[] = []
+
+  for (const [id, c] of jar) {
+    if (c.expiresAt !== null && c.expiresAt <= now) {
+      jar.delete(id)
+      continue
+    }
+    out.push({
+      id,
+      name: c.name,
+      value: c.value,
+      domain: c.domain,
+      path: c.path,
+      secure: c.secure,
+      expiresAt: c.expiresAt
+    })
+  }
+  return out.sort((a, b) => a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name))
+}
+
+export function registerCookieHandlers(): void {
+  ipcMain.handle('cookies:list', (): CookieInfo[] => listCookies())
+  ipcMain.handle('cookies:delete', (_event, id: string): void => {
+    jar.delete(id)
+  })
+  ipcMain.handle('cookies:clear', (): void => clearCookies())
 }
