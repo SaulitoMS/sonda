@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { buildVarMap, interpolate } from '../../../shared/variables'
-import { buildAuth } from '../../../shared/auth'
 import { appendQuery } from '../../../shared/params'
 import { applyCurl } from '../lib/applyCurl'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
