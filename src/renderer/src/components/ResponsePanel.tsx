@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { summarizeAssertions } from '../../../shared/assertions'
-import type { AssertionResult, SchemaValidation } from '../../../shared/types'
+import type { AssertionResult, ExtractionResult, SchemaValidation } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
+
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests'
 
@@ -110,6 +111,24 @@ function TestsReport({ results }: { results: AssertionResult[] }): React.JSX.Ele
   )
 }
 
+const clip = (text: string): string => (text.length > 60 ? `${text.slice(0, 57)}…` : text)
+
+function ExtractionsBanner({ results }: { results: ExtractionResult[] }): React.JSX.Element | null {
+  if (results.length === 0) return null
+  return (
+    <div className="selectable border-b border-zinc-800 bg-zinc-900/60 px-3 py-2 font-mono text-xs">
+      {results.map((r) => (
+        <p key={r.id} className={r.ok ? 'text-emerald-400' : 'text-red-400'}>
+          {r.ok ? '✓' : '✗'} {`{{${r.variable || '?'}}}`}
+          <span className="text-zinc-400">
+            {r.ok ? ` = ${r.secret ? '••••••••' : clip(r.value ?? '')}` : ` · ${r.message}`}
+          </span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
 function WarningsBanner({ warnings }: { warnings: string[] }): React.JSX.Element | null {
   if (warnings.length === 0) return null
   return (
@@ -122,7 +141,8 @@ function WarningsBanner({ warnings }: { warnings: string[] }): React.JSX.Element
 }
 
 export function ResponsePanel(): React.JSX.Element {
-  const { response, loading, validation, assertionResults, warnings } = useRequestStore()
+  const { response, loading, validation, assertionResults, extractionResults, warnings } =
+    useRequestStore()
   const [tab, setTab] = useState<Tab>('body')
   // Si la nueva respuesta no tiene validación, la pestaña "Schema" no existe: volver a Body
   const hasTests = assertionResults.length > 0
@@ -184,6 +204,7 @@ export function ResponsePanel(): React.JSX.Element {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <WarningsBanner warnings={warnings} />
+      <ExtractionsBanner results={extractionResults} />
 
       <div className="flex items-center justify-between border-b border-zinc-800 px-2">
         <div className="flex">

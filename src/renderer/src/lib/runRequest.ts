@@ -1,11 +1,14 @@
 import { evaluateAssertions } from '../../../shared/assertions'
 import { buildAuth } from '../../../shared/auth'
+import { evaluateExtractions } from '../../../shared/extract'
 import { appendQuery } from '../../../shared/params'
 import type {
   Assertion,
   AssertionResult,
   AuthConfig,
   Environment,
+  Extraction,
+  ExtractionResult,
   HttpMethod,
   JsonSchema,
   ResponseSchemas,
@@ -25,6 +28,8 @@ export interface RequestDraft {
   /** Schema del body que espera la spec; si existe, se valida lo que se va a enviar */
   requestSchema?: JsonSchema | null
   assertions?: Assertion[] | null
+  /** Valores de la respuesta que se guardarán en el entorno (lo hace quien llama) */
+  extractions?: Extraction[] | null
 }
 
 export interface ExecuteResult {
@@ -34,6 +39,8 @@ export interface ExecuteResult {
   requestValidation: SchemaValidation | null
   /** Resultado de cada aserción activa (vacío si no hay o si la petición no llegó a responder) */
   assertionResults: AssertionResult[]
+  /** Qué se pudo (o no) extraer de la respuesta. Aquí solo se calcula: guardarlo en el entorno es cosa de quien llama */
+  extractions: ExtractionResult[]
   /** Avisos que no impiden enviar (ej: la auth quedó vacía y se omitió) */
   warnings: string[]
 }
@@ -83,6 +90,7 @@ export async function executeRequest(
       validation: null,
       requestValidation: null,
       assertionResults: [],
+      extractions: [],
       warnings: []
     }
   }
@@ -132,5 +140,7 @@ export async function executeRequest(
 
   const assertionResults = response.ok ? evaluateAssertions(draft.assertions, response) : []
 
-  return { response, validation, requestValidation, assertionResults, warnings }
+  const extractions = response.ok ? evaluateExtractions(draft.extractions, response) : []
+
+  return { response, validation, requestValidation, assertionResults, extractions, warnings }
 }

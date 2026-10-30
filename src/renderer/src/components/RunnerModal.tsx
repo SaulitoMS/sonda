@@ -9,6 +9,7 @@ import type {
   SendRequestResult
 } from '../../../shared/types'
 import { METHOD_COLORS } from '../lib/methodColors'
+import { persistExtractions } from '../lib/persistExtractions'
 import { executeRequest } from '../lib/runRequest'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
@@ -76,21 +77,31 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
 
   const run = async (): Promise<void> => {
     const myRun = ++runId.current
-    const env = useEnvironmentStore.getState().getActive()
     setRows([])
     setFinished(false)
     setRunning(true)
 
     for (const entry of planned) {
       if (runId.current !== myRun) return
+      // El entorno se lee en cada vuelta: una petición anterior pudo guardar variables (ej: token)
+      const env = useEnvironmentStore.getState().getActive()
       let row: Row
       try {
         const saved = await window.api.readRequest(entry.item.path)
-        const { response, validation, requestValidation, assertionResults } = await executeRequest(
-          saved,
-          env
-        )
-        const verdict = classifyResult(response, validation, assertionResults, requestValidation)
+        const { response, validation, requestValidation, assertionResults, extractions } =
+          await executeRequest(saved, env)
+        const persistWarnings = await persistExtractions(extractions)
+        const problems = [
+          ...extractions
+            .filter((e) => !e.ok)
+            .map((e) => `No se extrajo {{${e.variable || '?'}}}: ${e.message}`),
+          ...persistWarnings
+        ]
+        const base = classifyResult(response, validation, assertionResults, requestValidation)
+        const verdict =
+          base.status === 'pass' && problems.length > 0
+            ? { status: 'warn' as RunStatus, detail: problems[0] }
+            : base
         row = {
           entry,
           ...verdict,

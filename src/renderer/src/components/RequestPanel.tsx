@@ -7,10 +7,11 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore, type KeyValue } from '../store/useRequestStore'
 import { AssertionsPanel } from './AssertionsPanel'
 import { AuthPanel } from './AuthPanel'
+import { ExtractionsPanel } from './ExtractionsPanel'
 import { KeyValueEditor } from './KeyValueEditor'
 import { RequestSchemaStatus } from './RequestSchemaStatus'
 
-type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests'
+type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'extract'
 
 export function RequestPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('params')
@@ -20,6 +21,7 @@ export function RequestPanel(): React.JSX.Element {
     body,
     auth,
     assertions,
+    extractions,
     requestSchema,
     method,
     setUrl,
@@ -97,6 +99,10 @@ export function RequestPanel(): React.JSX.Element {
           Tests{' '}
           {assertions.length > 0 && <span className="text-blue-400">({assertions.length})</span>}
         </button>
+        <button className={tabClass('extract')} onClick={() => setTab('extract')}>
+          Extraer{' '}
+          {extractions.length > 0 && <span className="text-blue-400">({extractions.length})</span>}
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
@@ -114,6 +120,8 @@ export function RequestPanel(): React.JSX.Element {
         {tab === 'headers' && <KeyValueEditor rows={headers} onChange={setHeaders} />}
 
         {tab === 'tests' && <AssertionsPanel />}
+
+        {tab === 'extract' && <ExtractionsPanel />}
 
         {tab === 'body' && (
           <div className="flex h-full flex-col gap-3">

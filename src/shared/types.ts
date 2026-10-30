@@ -49,6 +49,8 @@ export interface SavedRequest {
   auth?: AuthConfig
   /** Aserciones propias que se evalúan junto al schema. Si no existe, no hay reglas */
   assertions?: Assertion[]
+  /** Valores de la respuesta que se guardan en variables del entorno. Si no existe, no se extrae nada */
+  extractions?: Extraction[]
 }
 
 // ---------- Autenticación ----------
@@ -106,6 +108,34 @@ export interface AssertionResult {
   /** Valor real encontrado, ya como texto corto */
   actual?: string
   /** Explicación cuando falla (vacío si pasó) */
+  message: string
+}
+
+// ---------- Extracción de valores ----------
+
+/** De dónde se toma el valor */
+export type ExtractionSource = 'body' | 'header'
+
+export interface Extraction {
+  id: string
+  enabled: boolean
+  source: ExtractionSource
+  /** Ruta dentro del JSON (data.token) o nombre del header. En body, vacío = body completo */
+  path: string
+  /** Variable de entorno donde se guarda, sin llaves (ej: token) */
+  variable: string
+  /** Si la variable aún no existe en el entorno, se crea como secreta (cifrada en el keychain) */
+  secret: boolean
+}
+
+export interface ExtractionResult {
+  id: string
+  variable: string
+  ok: boolean
+  /** Valor extraído, como texto (solo si ok) */
+  value?: string
+  secret: boolean
+  /** Por qué falló (vacío si salió bien) */
   message: string
 }
 
