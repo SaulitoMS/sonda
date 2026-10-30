@@ -9,6 +9,7 @@ import type {
   FolderItem,
   HttpMethod,
   ImportResult,
+  KeyValueData,
   RequestItem,
   SaveRequestInput,
   SavedRequest,
@@ -36,6 +37,8 @@ interface CollectionMeta {
   source?: string
   /** Auth que heredan las peticiones. También se guarda en el sonda.collection.json de cada carpeta */
   auth?: AuthConfig
+  /** Headers que heredan las peticiones. También se guardan en el sonda.collection.json de cada carpeta */
+  headers?: KeyValueData[]
   /** Cómo era cada endpoint al importarlo, por ruta relativa a la colección */
   endpoints?: Record<string, EndpointStamp>
   createdAt: string
@@ -105,6 +108,15 @@ async function writeScopeAuth(dir: string, auth: AuthConfig | null): Promise<voi
   await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
 }
 
+/** Guarda (o quita) los headers heredables en el sonda.collection.json de una colección o carpeta, sin tocar lo demás */
+async function writeScopeHeaders(dir: string, headers: KeyValueData[] | null): Promise<void> {
+  const meta: Partial<CollectionMeta> = (await readMeta(dir)) ?? {}
+  const clean = (headers ?? []).filter((h) => h.key.trim())
+  if (clean.length > 0) meta.headers = clean
+  else delete meta.headers
+  await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+}
+
 async function readRequestItem(file: string): Promise<RequestItem | null> {
   try {
     const data = JSON.parse(await fs.readFile(file, 'utf-8')) as Partial<SavedRequest>
@@ -148,7 +160,8 @@ async function listCollections(): Promise<CollectionItem[]> {
       folders.push({
         name: child.name,
         requests: await listRequests(join(dir, child.name)),
-        ...(folderMeta?.auth ? { auth: folderMeta.auth } : {})
+        ...(folderMeta?.auth ? { auth: folderMeta.auth } : {}),
+        ...(folderMeta?.headers?.length ? { headers: folderMeta.headers } : {})
       })
     }
     folders.sort((a, b) => a.name.localeCompare(b.name))
@@ -159,6 +172,7 @@ async function listCollections(): Promise<CollectionItem[]> {
       baseUrl: meta?.baseUrl,
       source: meta?.source,
       ...(meta?.auth ? { auth: meta.auth } : {}),
+      ...(meta?.headers?.length ? { headers: meta.headers } : {}),
       requests: await listRequests(dir),
       folders
     })
@@ -276,6 +290,14 @@ export function registerCollectionHandlers(): void {
     await fs.mkdir(getRoot(), { recursive: true })
     await shell.openPath(getRoot())
   })
+
+  ipcMain.handle(
+    'collections:setHeaders',
+    async (_e, collectionId: string, folder: string | null, headers: KeyValueData[] | null) => {
+      const dir = folder ? safePath(collectionId, folder) : safePath(collectionId)
+      await writeScopeHeaders(dir, headers)
+    }
+  )
 
   ipcMain.handle('swagger:import', async (_e, url: string): Promise<ImportResult> => {
     try {

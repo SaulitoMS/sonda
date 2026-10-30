@@ -6,6 +6,7 @@ import { METHOD_COLORS } from '../lib/methodColors'
 import { useTabsStore } from '../store/useTabsStore'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { ScopeAuthModal, type AuthScope } from './ScopeAuthModal'
+import { ScopeHeadersModal, type HeadersScope } from './ScopeHeadersModal'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -176,6 +177,34 @@ function LockButton({
   )
 }
 
+function HeadersButton({
+  onClick,
+  title,
+  active
+}: {
+  onClick: () => void
+  title: string
+  /** true si ya tiene headers configurados: el icono se ve siempre */
+  active: boolean
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className={`rounded p-0.5 hover:bg-zinc-700 hover:text-blue-400 ${
+        active ? 'block text-blue-400 group-hover:block' : 'hidden text-zinc-500 group-hover:block'
+      }`}
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <path d="M4 6h16M4 12h16M4 18h10" />
+      </svg>
+    </button>
+  )
+}
+
 function ExportButton({
   onClick,
   title
@@ -308,6 +337,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
   const [newName, setNewName] = useState('')
   const [query, setQuery] = useState('')
   const [authScope, setAuthScope] = useState<AuthScope | null>(null)
+  const [headersScope, setHeadersScope] = useState<HeadersScope | null>(null)
 
 
   useEffect(() => {
@@ -511,6 +541,17 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                   }
                   title="Autenticación de la colección"
                 />
+                <HeadersButton
+                  active={!!c.headers?.length}
+                  onClick={() =>
+                    setHeadersScope({
+                      collectionId: c.id,
+                      collectionName: c.name,
+                      headers: c.headers
+                    })
+                  }
+                  title="Headers de la colección"
+                />
                 {c.source && (
                   <SyncButton
                     onClick={() => onSync(c.id, c.name)}
@@ -560,6 +601,18 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                               })
                             }
                             title="Autenticación de la carpeta"
+                          />
+                          <HeadersButton
+                            active={!!f.headers?.length}
+                            onClick={() =>
+                              setHeadersScope({
+                                collectionId: c.id,
+                                collectionName: c.name,
+                                folder: f.name,
+                                headers: f.headers
+                              })
+                            }
+                            title="Headers de la carpeta"
                           />
                         </div>
 
@@ -613,6 +666,10 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
       </button>
 
       {authScope && <ScopeAuthModal scope={authScope} onClose={() => setAuthScope(null)} />}
+
+      {headersScope && (
+        <ScopeHeadersModal scope={headersScope} onClose={() => setHeadersScope(null)} />
+      )}
     </aside>
   )
 }

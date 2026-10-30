@@ -179,6 +179,8 @@ export interface FolderItem {
   requests: RequestItem[]
   /** Auth de la carpeta. Si no existe (o es "inherit"), sus peticiones heredan la de la colección */
   auth?: AuthConfig
+  /** Headers de la carpeta. Se suman a los de la colección; los de la petición tienen prioridad */
+  headers?: KeyValueData[]
 }
 
 export interface CollectionItem {
@@ -191,6 +193,8 @@ export interface CollectionItem {
   folders: FolderItem[]
   /** Auth de la colección. Si no existe, las peticiones que heredan no usan auth */
   auth?: AuthConfig
+  /** Headers que heredan todas las peticiones de la colección */
+  headers?: KeyValueData[]
 }
 
 export interface SaveRequestInput {
@@ -234,6 +238,12 @@ export interface SondaApi {
     collectionId: string,
     folder: string | null,
     auth: AuthConfig | null
+  ) => Promise<void>
+  /** Guarda los headers heredables de una colección (folder = null) o de una carpeta. null = quitarlos */
+  setScopeHeaders: (
+    collectionId: string,
+    folder: string | null,
+    headers: KeyValueData[] | null
   ) => Promise<void>
   openWorkspace: () => Promise<void>
   importSwagger: (url: string) => Promise<ImportResult>

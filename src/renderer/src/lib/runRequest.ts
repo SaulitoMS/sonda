@@ -21,6 +21,7 @@ import type {
 } from '../../../shared/types'
 import { validateRequestBody, validateResponse } from '../../../shared/validate'
 import { buildVarMap, interpolate } from '../../../shared/variables'
+import { resolveHeadersForPath } from './inheritedHeaders'
 
 export interface RequestDraft {
   method: HttpMethod
@@ -93,6 +94,14 @@ export async function executeRequest(
   const headers = draft.headers
     .filter((h) => h.enabled && h.key.trim())
     .map((h) => ({ key: resolve(h.key), value: resolve(h.value) }))
+
+  // Headers heredados de la colección / carpeta: los de la petición tienen prioridad
+  for (const h of resolveHeadersForPath(options.path)) {
+    const key = resolve(h.key)
+    if (!headers.some((x) => x.key.toLowerCase() === key.toLowerCase())) {
+      headers.push({ key, value: resolve(h.value) })
+    }
+  }
 
   // La auth se resuelve antes de revisar variables faltantes para reportarlas también.
   // Auth efectiva: la de la petición o, si hereda, la de su carpeta / colección
