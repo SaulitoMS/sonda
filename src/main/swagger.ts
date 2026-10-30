@@ -7,6 +7,8 @@ import type {
   ResponseSchemas,
   SavedRequest
 } from '../shared/types'
+import { existsSync } from 'fs'
+import { basename, isAbsolute } from 'path'
 
 export interface ImportedRequest {
   folder: string
@@ -199,7 +201,10 @@ function extractRequestSchema(
 }
 
 function resolveBaseUrl(api: any, specUrl: string): string {
-  const spec = new URL(specUrl)
+  // Si la spec viene de un archivo local no hay origen: se usa localhost como base
+  const isLocal = !/^https?:\/\//i.test(specUrl)
+  const reference = isLocal ? 'http://localhost' : specUrl
+  const spec = new URL(reference)
 
   if (api.openapi) {
     const server = api.servers?.[0]
@@ -208,7 +213,7 @@ function resolveBaseUrl(api: any, specUrl: string): string {
     for (const [key, v] of Object.entries<any>(server.variables ?? {})) {
       url = url.split(`{${key}}`).join(String(v.default))
     }
-    return new URL(url, specUrl).toString().replace(/\/$/, '')
+    return new URL(url, reference).toString().replace(/\/$/, '')
   }
 
   // Swagger 2.0
@@ -289,21 +294,30 @@ function buildRequest(
 }
 
 export async function importFromUrl(rawUrl: string): Promise<ImportedSpec> {
-  let input: URL
-  try {
-    input = new URL(rawUrl.trim())
-  } catch {
-    throw new Error('URL inválida. Incluye http:// o https://')
-  }
-  if (input.protocol !== 'http:' && input.protocol !== 'https:') {
-    throw new Error('Solo se permiten URLs http y https')
+  const trimmed = rawUrl.trim()
+  // Una ruta absoluta (C:\... o /Users/...) se trata como archivo local
+  const local = isAbsolute(trimmed)
+
+  let input: URL | null = null
+  if (local) {
+    if (!existsSync(trimmed)) throw new Error(`No se encontró el archivo: ${trimmed}`)
+  } else {
+    try {
+      input = new URL(trimmed)
+    } catch {
+      throw new Error('URL inválida. Incluye http:// o https://')
+    }
+    if (input.protocol !== 'http:' && input.protocol !== 'https:') {
+      throw new Error('Solo se permiten URLs http y https')
+    }
   }
 
   let api: any = null
   let specUrl = ''
   let firstError = ''
 
-  for (const candidate of buildCandidates(input)) {
+  const candidates = input ? buildCandidates(input) : [trimmed]
+  for (const candidate of candidates) {
     try {
       api = await SwaggerParser.dereference(candidate, { resolve: { http: { timeout: 8000 } } })
       specUrl = candidate
@@ -315,8 +329,10 @@ export async function importFromUrl(rawUrl: string): Promise<ImportedSpec> {
 
   if (!api) {
     throw new Error(
-      'No encontré una especificación OpenAPI/Swagger en esa URL. ' +
-        'Prueba con el link directo al JSON/YAML (ej: .../openapi.json). ' +
+      (local
+        ? 'El archivo no es una especificación OpenAPI/Swagger válida (JSON o YAML). '
+        : 'No encontré una especificación OpenAPI/Swagger en esa URL. ' +
+          'Prueba con el link directo al JSON/YAML (ej: .../openapi.json). ') +
         (firstError ? `Detalle: ${firstError}` : '')
     )
   }
@@ -334,7 +350,7 @@ export async function importFromUrl(rawUrl: string): Promise<ImportedSpec> {
   if (requests.length === 0) throw new Error('La especificación no tiene endpoints')
 
   return {
-    name: api.info?.title || new URL(specUrl).hostname,
+    name: api.info?.title || (local ? basename(specUrl) : new URL(specUrl).hostname),
     baseUrl,
     source: specUrl,
     requests
