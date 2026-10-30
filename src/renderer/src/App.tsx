@@ -15,12 +15,14 @@ import { TabsBar } from './components/TabsBar'
 import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
 import { useTabsStore } from './store/useTabsStore'
+import { useMonitorStore } from './store/useMonitorStore'
 import { CommandPalette } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
 import { FuzzModal } from './components/FuzzModal'
 import { SnapshotModal } from './components/SnapshotModal'
+import { MonitorModal } from './components/MonitorModal'
 import { MockModal } from './components/MockModal'
 import { ThemeToggle } from './components/ThemeToggle'
 
@@ -38,6 +40,7 @@ type ModalType =
   | 'bench'
   | 'fuzz'
   | 'snapshot'
+  | 'monitor'
   | 'mock'
   | null
 
@@ -46,6 +49,8 @@ function App(): React.JSX.Element {
   const currentFile = useRequestStore((s) => s.currentFile)
   const newTab = useTabsStore((s) => s.newTab)
   const loadEnvironments = useEnvironmentStore((s) => s.load)
+  const monitorActive = useMonitorStore((s) => s.active)
+  const monitorFailing = useMonitorStore((s) => (s.runs[0]?.fail ?? 0) > 0)
 
   const [modal, setModal] = useState<ModalType>(null)
   const [runCollectionId, setRunCollectionId] = useState('')
@@ -163,6 +168,18 @@ function App(): React.JSX.Element {
             </button>
             <button
               className={btn}
+              onClick={() => setModal('monitor')}
+              title="Ejecutar una colección cada cierto tiempo y avisar si falla"
+            >
+              Monitor
+              {monitorActive && (
+                <span className={`ml-1 ${monitorFailing ? 'text-red-400' : 'text-emerald-400'}`}>
+                  ●
+                </span>
+              )}
+            </button>
+            <button
+              className={btn}
               onClick={() => setModal('mock')}
               title="Levantar un servidor local con respuestas de ejemplo de una colección"
             >
@@ -219,6 +236,7 @@ function App(): React.JSX.Element {
       {modal === 'bench' && <BenchmarkModal onClose={() => setModal(null)} />}
       {modal === 'fuzz' && <FuzzModal onClose={() => setModal(null)} />}
       {modal === 'snapshot' && <SnapshotModal onClose={() => setModal(null)} />}
+      {modal === 'monitor' && <MonitorModal onClose={() => setModal(null)} />}
       {modal === 'mock' && <MockModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
