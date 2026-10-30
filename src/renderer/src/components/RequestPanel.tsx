@@ -12,6 +12,8 @@ import { BodyFormEditor } from './BodyFormEditor'
 import { ExtractionsPanel } from './ExtractionsPanel'
 import { KeyValueEditor } from './KeyValueEditor'
 import { RequestSchemaStatus } from './RequestSchemaStatus'
+import { editForKey } from '../../../shared/jsonEditing'
+import { applyEdit } from '../lib/applyEdit'
 
 type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'extract'
 
@@ -94,6 +96,23 @@ export function RequestPanel(): React.JSX.Element {
     } catch {
       /* si no es JSON, no se toca */
     }
+  }
+
+  // Sangría y cierre automático de {, [ y " mientras se escribe JSON
+  const onBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    // AltGr llega como Ctrl+Alt: es parte de escribir "{" o "[" en teclados en español
+    if (e.nativeEvent.isComposing || e.metaKey || (e.ctrlKey && !e.altKey)) return
+
+    const el = e.currentTarget
+    const edit = editForKey(
+      { value: el.value, start: el.selectionStart, end: el.selectionEnd },
+      e.key,
+      e.shiftKey
+    )
+    if (!edit) return
+
+    e.preventDefault()
+    applyEdit(el, edit, setBody)
   }
 
   const paramCount = paramRows.length - 1
@@ -189,6 +208,7 @@ export function RequestPanel(): React.JSX.Element {
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
+                  onKeyDown={onBodyKeyDown}
                   placeholder={'{\n  "nombre": "Sonda"\n}'}
                   spellCheck={false}
                   className="min-h-48 w-full flex-1 resize-none rounded-md border border-zinc-700 bg-zinc-800 p-3 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
