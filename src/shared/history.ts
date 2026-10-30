@@ -20,12 +20,18 @@ export interface HistoryEntry {
 }
 
 /** Recorta el body de la respuesta para no llenar el almacenamiento */
+/** Recorta el body de la respuesta y descarta el binario para no llenar el almacenamiento */
 export function truncateResponse(
   response: SendRequestResult,
   max = MAX_BODY_CHARS
 ): SendRequestResult {
-  if (!response.ok || response.body.length <= max) return response
-  return { ...response, body: response.body.slice(0, max) }
+  if (!response.ok) return response
+
+  let slim = response
+  if (response.binary?.base64) {
+    slim = { ...response, binary: { ...response.binary, base64: '' } }
+  }
+  return slim.body.length <= max ? slim : { ...slim, body: slim.body.slice(0, max) }
 }
 
 /** Agrega al inicio (lo más reciente primero) y respeta el límite */

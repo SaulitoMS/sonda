@@ -90,3 +90,27 @@ export function buildFullExport(
     ) + '\n'
   )
 }
+
+const BINARY_EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+  'image/bmp': 'bmp',
+  'image/x-icon': 'ico',
+  'image/vnd.microsoft.icon': 'ico',
+  'application/pdf': 'pdf',
+  'application/zip': 'zip',
+  'application/gzip': 'gz',
+  'audio/mpeg': 'mp3',
+  'audio/wav': 'wav',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm'
+}
+
+/** Extensión para guardar una respuesta binaria según su Content-Type */
+export function binaryExtensionFor(contentType: string): string {
+  const type = contentType.split(';')[0].trim().toLowerCase()
+  return BINARY_EXTENSIONS[type] ?? 'bin'
+}

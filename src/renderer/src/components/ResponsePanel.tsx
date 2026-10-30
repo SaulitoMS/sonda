@@ -3,12 +3,14 @@ import { summarizeAssertions } from '../../../shared/assertions'
 import type { AssertionResult, ExtractionResult, SchemaValidation } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
 import {
+  binaryExtensionFor,
   buildFullExport,
   extensionFor,
   mimeFor,
   suggestFileName
 } from '../../../shared/exportResponse'
-import { downloadText } from '../lib/download'
+import { downloadBase64, downloadText } from '../lib/download'
+import { BinaryView } from './BinaryView'
 import { getByPath, parsePath } from '../../../shared/assertions'
 import { JsonTree } from './JsonTree'
 
@@ -197,13 +199,22 @@ export function ResponsePanel(): React.JSX.Element {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  const bodyExt = response?.ok
-    ? extensionFor(response.headers['content-type'], response.body)
-    : 'txt'
+  const bodyExt = !response?.ok
+    ? 'txt'
+    : response.binary
+      ? binaryExtensionFor(response.binary.contentType)
+      : extensionFor(response.headers['content-type'], response.body)
 
   const exportBody = (): void => {
     if (!response?.ok) return
-    downloadText(suggestFileName(method, url, bodyExt), prettyBody, mimeFor(bodyExt))
+    const name = suggestFileName(method, url, bodyExt)
+    if (response.binary) {
+      if (response.binary.base64) {
+        downloadBase64(name, response.binary.base64, response.binary.contentType)
+      }
+    } else {
+      downloadText(name, prettyBody, mimeFor(bodyExt))
+    }
     setMenuOpen(false)
   }
 
@@ -326,7 +337,15 @@ export function ResponsePanel(): React.JSX.Element {
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-auto p-3">
-        {current === 'body' && (
+        {current === 'body' && response.binary && (
+          <BinaryView
+            binary={response.binary}
+            sizeLabel={formatSize(response.sizeBytes)}
+            onDownload={exportBody}
+          />
+        )}
+
+        {current === 'body' && !response.binary && (
           <>
             {parsed.ok && (
               <div className="mb-2 flex items-center gap-2 pr-16 text-xs">
