@@ -86,8 +86,8 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             </select>
             {draft.sslMode === 'ignore' && (
               <p className="mt-1 text-[11px] text-amber-400">
-                Ignorar la verificación expone tus peticiones a suplantación. Úsalo solo en
-                entornos de prueba.
+                Ignorar la verificación expone tus peticiones a suplantación. Úsalo solo en entornos
+                de prueba.
               </p>
             )}
           </div>

@@ -190,9 +190,7 @@ export function registerHttpHandlers(): void {
         if (err instanceof Error && err.name === 'AbortError') {
           return {
             ok: false,
-            error: state.cancelled
-              ? 'Petición cancelada'
-              : 'La petición excedió el tiempo límite',
+            error: state.cancelled ? 'Petición cancelada' : 'La petición excedió el tiempo límite',
             timeMs
           }
         }

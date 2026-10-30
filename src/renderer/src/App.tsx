@@ -179,7 +179,10 @@ function App(): React.JSX.Element {
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
-        <SettingsModal onClose={() => setModal(null)} onSaved={() => showFlash('Ajustes guardados ✓')} />
+        <SettingsModal
+          onClose={() => setModal(null)}
+          onSaved={() => showFlash('Ajustes guardados ✓')}
+        />
       )}
       {modal === 'curl' && <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />}
       {modal === 'history' && (
