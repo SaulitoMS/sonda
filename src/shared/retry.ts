@@ -20,11 +20,7 @@ export function shouldRetry(method: HttpMethod, result: SendRequestResult): bool
 }
 
 /** Espera antes del intento `attempt` (1, 2, 3…): Retry-After si existe; si no, backoff exponencial */
-export function retryDelayMs(
-  attempt: number,
-  baseMs: number,
-  result: SendRequestResult
-): number {
+export function retryDelayMs(attempt: number, baseMs: number, result: SendRequestResult): number {
   if (result.ok) {
     const seconds = Number(result.headers['retry-after'])
     if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, MAX_DELAY_MS)

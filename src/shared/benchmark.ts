@@ -33,9 +33,7 @@ export function summarizeBenchmark(runs: BenchmarkRun[], elapsedMs: number): Ben
   }
 
   const timing = timingStats(
-    runs
-      .filter((r) => r.status !== null)
-      .map((r, i) => ({ name: `#${i + 1}`, timeMs: r.timeMs }))
+    runs.filter((r) => r.status !== null).map((r, i) => ({ name: `#${i + 1}`, timeMs: r.timeMs }))
   )
 
   return {

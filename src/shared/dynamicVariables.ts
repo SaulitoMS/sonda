@@ -127,7 +127,7 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
     description: 'Correo aleatorio con dominio example.com',
     generate: ({ random }) => `sonda.${randomString(8, random)}@example.com`
   },
-    {
+  {
     name: '$randomFirstName',
     description: 'Nombre de pila aleatorio',
     generate: ({ random }) => pick(FIRST_NAMES, random)
@@ -186,7 +186,10 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
   {
     name: '$randomColor',
     description: 'Color hexadecimal aleatorio, ej: #a1b2c3',
-    generate: ({ random }) => `#${Math.floor(random() * 0x1000000).toString(16).padStart(6, '0')}`
+    generate: ({ random }) =>
+      `#${Math.floor(random() * 0x1000000)
+        .toString(16)
+        .padStart(6, '0')}`
   },
   {
     name: '$randomDecimal',
@@ -197,17 +200,13 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
     name: '$randomPastDate',
     description: 'Fecha aleatoria de los últimos 365 días (YYYY-MM-DD)',
     generate: ({ now, random }) =>
-      new Date(now.getTime() - (1 + Math.floor(random() * 365)) * DAY_MS)
-        .toISOString()
-        .slice(0, 10)
+      new Date(now.getTime() - (1 + Math.floor(random() * 365)) * DAY_MS).toISOString().slice(0, 10)
   },
   {
     name: '$randomFutureDate',
     description: 'Fecha aleatoria de los próximos 365 días (YYYY-MM-DD)',
     generate: ({ now, random }) =>
-      new Date(now.getTime() + (1 + Math.floor(random() * 365)) * DAY_MS)
-        .toISOString()
-        .slice(0, 10)
+      new Date(now.getTime() + (1 + Math.floor(random() * 365)) * DAY_MS).toISOString().slice(0, 10)
   }
 ]
 

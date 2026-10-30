@@ -137,8 +137,8 @@ export function BenchmarkModal({ onClose }: Props): React.JSX.Element {
       </div>
 
       <p className="mt-2 text-[11px] text-amber-400">
-        Cada envío es una petición real. Si es POST, PUT o DELETE se ejecutará N veces: no la
-        uses contra producción.
+        Cada envío es una petición real. Si es POST, PUT o DELETE se ejecutará N veces: no la uses
+        contra producción.
       </p>
 
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}

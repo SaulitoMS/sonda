@@ -14,6 +14,7 @@ import { KeyValueEditor } from './KeyValueEditor'
 import { RequestSchemaStatus } from './RequestSchemaStatus'
 import { editForKey } from '../../../shared/jsonEditing'
 import { applyEdit } from '../lib/applyEdit'
+import { VariableTextarea } from './VariableTextarea'
 
 type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'extract'
 
@@ -208,12 +209,11 @@ export function RequestPanel(): React.JSX.Element {
                     Formatear
                   </button>
                 </div>
-                <textarea
+                <VariableTextarea
                   value={body}
-                  onChange={(e) => setBody(e.target.value)}
+                  onChange={setBody}
                   onKeyDown={onBodyKeyDown}
                   placeholder={'{\n  "nombre": "Sonda"\n}'}
-                  spellCheck={false}
                   className="min-h-48 w-full flex-1 resize-none rounded-md border border-zinc-700 bg-zinc-800 p-3 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
                 />
                 {bodyCheck && <RequestSchemaStatus validation={bodyCheck} />}

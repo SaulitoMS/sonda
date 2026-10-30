@@ -1,5 +1,16 @@
 import { useRef, useState } from 'react'
-import { getDynamicVariable, isDynamicVariable } from '../../../shared/dynamicVariables'
+import {
+  DYNAMIC_VARIABLES,
+  getDynamicVariable,
+  isDynamicVariable
+} from '../../../shared/dynamicVariables'
+import {
+  applySuggestion,
+  openVariableAt,
+  suggestVariables,
+  type OpenVariable,
+  type VarSuggestion
+} from '../../../shared/varSuggest'
 import { buildVarMap } from '../../../shared/variables'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 
@@ -18,15 +29,63 @@ interface Hover {
   left: number
 }
 
+interface SuggestState {
+  open: OpenVariable
+  items: VarSuggestion[]
+  index: number
+  /** Posición en pantalla de la lista (fixed), para que ningún contenedor con scroll la corte */
+  left: number
+  top: number
+}
+
 export function VariableInput({ value, onChange, onEnter, placeholder }: Props): React.JSX.Element {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const spanRefs = useRef<Map<string, HTMLSpanElement>>(new Map())
   const [hover, setHover] = useState<Hover | null>(null)
+  const [suggest, setSuggest] = useState<SuggestState | null>(null)
 
   const data = useEnvironmentStore((s) => s.data)
   const activeEnv = data.environments.find((e) => e.id === data.activeId)
   const vars = buildVarMap(activeEnv)
+
+  const envInfo = (activeEnv?.variables ?? [])
+    .filter((v) => v.enabled && v.key.trim())
+    .map((v) => ({ name: v.key.trim(), value: v.value, secret: v.secret }))
+
+  // Abre o cierra la lista según lo que haya antes del cursor
+  // Abre o cierra la lista según lo que haya antes del cursor
+  const refreshSuggest = (text: string, cursor: number | null): void => {
+    const open = cursor === null ? null : openVariableAt(text, cursor)
+    const rect = wrapperRef.current?.getBoundingClientRect()
+    if (!open || !rect) {
+      setSuggest(null)
+      return
+    }
+    const items = suggestVariables(open.query, envInfo, DYNAMIC_VARIABLES)
+    setSuggest(
+      items.length > 0
+        ? {
+            open,
+            items,
+            index: 0,
+            left: Math.max(8, Math.min(rect.left, window.innerWidth - 376)),
+            top: rect.bottom + 4
+          }
+        : null
+    )
+  }
+
+  const accept = (item: VarSuggestion): void => {
+    if (!suggest) return
+    const cursor = inputRef.current?.selectionStart ?? value.length
+    const next = applySuggestion(value, cursor, suggest.open, item.name)
+    onChange(next.text)
+    setSuggest(null)
+    // El valor se actualiza al re-renderizar: el cursor se coloca justo después
+    requestAnimationFrame(() => inputRef.current?.setSelectionRange(next.cursor, next.cursor))
+  }
 
   const syncScroll = (e: React.UIEvent<HTMLInputElement>): void => {
     if (backdropRef.current) backdropRef.current.scrollLeft = e.currentTarget.scrollLeft
@@ -53,6 +112,33 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
       }
     }
     setHover(null)
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (suggest) {
+      const n = suggest.items.length
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSuggest({ ...suggest, index: (suggest.index + 1) % n })
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSuggest({ ...suggest, index: (suggest.index - 1 + n) % n })
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        accept(suggest.items[suggest.index])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setSuggest(null)
+        return
+      }
+    }
+    if (e.key === 'Enter') onEnter?.()
   }
 
   const parts = value.split(VAR_SPLIT)
@@ -99,21 +185,59 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
       </div>
 
       <input
+        ref={inputRef}
         value={value}
         onChange={(e) => {
           setHover(null)
           onChange(e.target.value)
+          refreshSuggest(e.target.value, e.target.selectionStart)
         }}
         onScroll={syncScroll}
         onMouseMove={onMouseMove}
         onMouseLeave={() => setHover(null)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onEnter?.()
+        onKeyDown={onKeyDown}
+        onKeyUp={(e) => {
+          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+            refreshSuggest(e.currentTarget.value, e.currentTarget.selectionStart)
+          }
         }}
+        onClick={(e) => refreshSuggest(e.currentTarget.value, e.currentTarget.selectionStart)}
+        onBlur={() => setSuggest(null)}
         placeholder={placeholder}
         spellCheck={false}
         className="relative w-full bg-transparent px-3 py-2 font-mono text-sm text-transparent caret-zinc-200 outline-none selection:bg-blue-500/30 placeholder:text-zinc-500"
       />
+
+      {suggest && (
+        <div
+          // Evita que el input pierda el foco (y cierre la lista) al hacer clic en una opción
+          onMouseDown={(e) => e.preventDefault()}
+          style={{ left: suggest.left, top: suggest.top }}
+          className="fixed z-50 w-[360px] overflow-hidden rounded-md border border-zinc-700 bg-zinc-950 py-1 text-xs shadow-xl"
+        >
+          {suggest.items.map((item, i) => (
+            <div
+              key={`${item.kind}:${item.name}`}
+              onMouseEnter={() => setSuggest((s) => (s ? { ...s, index: i } : s))}
+              onClick={() => accept(item)}
+              className={`flex cursor-pointer items-center gap-2 px-2.5 py-1.5 ${
+                i === suggest.index ? 'bg-zinc-800' : ''
+              }`}
+            >
+              <span
+                className={`shrink-0 font-mono font-semibold ${
+                  item.kind === 'dynamic' ? 'text-emerald-400' : 'text-blue-400'
+                }`}
+              >
+                {item.name}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-right text-zinc-500">
+                {item.detail}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {hover && (
         <div

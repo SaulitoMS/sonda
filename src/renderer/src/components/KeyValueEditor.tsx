@@ -1,4 +1,5 @@
 import { newRow, type KeyValue } from '../store/useRequestStore'
+import { VariableInput } from './VariableInput'
 
 interface Props {
   rows: KeyValue[]
@@ -29,9 +30,6 @@ export function KeyValueEditor({
     onChange(next.length ? next : [newRow()])
   }
 
-  const inputClass =
-    'flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500'
-
   return (
     <div className="flex flex-col gap-2">
       {rows.map((row) => (
@@ -44,19 +42,15 @@ export function KeyValueEditor({
               className="accent-blue-500"
             />
           )}
-          <input
+          <VariableInput
             value={row.key}
-            onChange={(e) => update(row.id, { key: e.target.value })}
+            onChange={(key) => update(row.id, { key })}
             placeholder={keyPlaceholder}
-            spellCheck={false}
-            className={inputClass}
           />
-          <input
+          <VariableInput
             value={row.value}
-            onChange={(e) => update(row.id, { value: e.target.value })}
+            onChange={(value) => update(row.id, { value })}
             placeholder={valuePlaceholder}
-            spellCheck={false}
-            className={inputClass}
           />
           <button
             onClick={() => remove(row.id)}

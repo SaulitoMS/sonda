@@ -111,7 +111,7 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             <p className={hint}>Vacío = sin proxy. Las peticiones a localhost no lo usan.</p>
           </div>
 
-                    <div>
+          <div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={label}>Reintentos automáticos</label>
@@ -139,8 +139,9 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
               </div>
             </div>
             <p className={hint}>
-              0 = sin reintentos. Se reintenta ante errores de red, timeout y status 429/502/503/504,
-              solo en GET, HEAD, OPTIONS, PUT y DELETE. La espera se duplica en cada intento.
+              0 = sin reintentos. Se reintenta ante errores de red, timeout y status
+              429/502/503/504, solo en GET, HEAD, OPTIONS, PUT y DELETE. La espera se duplica en
+              cada intento.
             </p>
           </div>
 
