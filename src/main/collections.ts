@@ -176,6 +176,7 @@ async function readCollectionFiles(dir: string): Promise<ExistingFile[]> {
   return out
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 async function loadSyncContext(id: string) {
   const dir = safePath(id)
   const meta = await readMeta(dir)

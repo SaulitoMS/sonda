@@ -51,7 +51,6 @@ interface Props {
 
 export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element {
   const collection = useCollectionsStore((s) => s.collections.find((c) => c.id === collectionId))
-  const loadSaved = useRequestStore((s) => s.loadSaved)
 
   const [includeWrites, setIncludeWrites] = useState(false)
   const [running, setRunning] = useState(false)

@@ -55,7 +55,7 @@ function toSnapshot(p: PersistedRequest): RequestSnapshot {
 
 /** Vuelve a abrir las pestañas de la última sesión. Llamar una vez, antes de renderizar */
 export function restoreSession(): void {
-  let raw: string | null = null
+  let raw: string | null
   try {
     raw = localStorage.getItem(KEY)
   } catch {
