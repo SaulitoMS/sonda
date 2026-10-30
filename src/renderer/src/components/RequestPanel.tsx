@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { BODY_MODES } from '../../../shared/bodyForm'
 import { applyQuery, parseQuery } from '../../../shared/params'
 import type { SchemaValidation } from '../../../shared/types'
 import { validateRequestBody } from '../../../shared/validate'
@@ -7,6 +8,7 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore, type KeyValue } from '../store/useRequestStore'
 import { AssertionsPanel } from './AssertionsPanel'
 import { AuthPanel } from './AuthPanel'
+import { BodyFormEditor } from './BodyFormEditor'
 import { ExtractionsPanel } from './ExtractionsPanel'
 import { KeyValueEditor } from './KeyValueEditor'
 import { RequestSchemaStatus } from './RequestSchemaStatus'
@@ -19,6 +21,7 @@ export function RequestPanel(): React.JSX.Element {
     url,
     headers,
     body,
+    bodyForm,
     auth,
     assertions,
     extractions,
@@ -26,7 +29,8 @@ export function RequestPanel(): React.JSX.Element {
     method,
     setUrl,
     setHeaders,
-    setBody
+    setBody,
+    setBodyForm
   } = useRequestStore()
   const envData = useEnvironmentStore((s) => s.data)
 
@@ -54,9 +58,10 @@ export function RequestPanel(): React.JSX.Element {
     setUrl(applyQuery(url, rows))
   }
 
-  // Valida el body tal como se enviaría: con las {{variables}} del entorno activo ya resueltas
+  // Valida el body tal como se enviaría: con las {{variables}} del entorno activo ya resueltas.
+  // El schema de la spec es de JSON, así que solo aplica al body de texto.
   const bodyCheck = useMemo<SchemaValidation | null>(() => {
-    if (!requestSchema) return null
+    if (!requestSchema || bodyForm.mode !== 'raw') return null
     const env = envData.environments.find((e) => e.id === envData.activeId)
     const { text, missing } = interpolate(body, buildVarMap(env))
     if (missing.length > 0) {
@@ -69,17 +74,12 @@ export function RequestPanel(): React.JSX.Element {
       }
     }
     return validateRequestBody({ schema: requestSchema, method, body: text })
-  }, [requestSchema, body, method, envData])
+  }, [requestSchema, body, bodyForm.mode, method, envData])
 
-  const paramCount = paramRows.length - 1
-  const activeHeaders = headers.filter((h) => h.enabled && h.key.trim()).length
-  const bodyDisabled = method === 'GET' || method === 'HEAD'
-
+  // Error de sintaxis del JSON escrito. Con {{variables}} aún no es JSON válido, no se molesta
   const jsonError = useMemo<string | null>(() => {
     const text = body.trim()
-    if (!text || !/^[[{]/.test(text)) return null
-    // Con {{variables}} no es JSON válido todavía; no molestamos
-    if (/\{\{.*?\}\}/.test(text)) return null
+    if (!text || !/^[[{]/.test(text) || /\{\{.*?\}\}/.test(text)) return null
     try {
       JSON.parse(text)
       return null
@@ -95,6 +95,10 @@ export function RequestPanel(): React.JSX.Element {
       /* si no es JSON, no se toca */
     }
   }
+
+  const paramCount = paramRows.length - 1
+  const activeHeaders = headers.filter((h) => h.enabled && h.key.trim()).length
+  const bodyDisabled = method === 'GET' || method === 'HEAD'
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -151,26 +155,53 @@ export function RequestPanel(): React.JSX.Element {
                 {method} no envía body. Cambia el método para usarlo.
               </p>
             )}
-            <div className="flex items-center justify-between">
-              <span className={`text-xs ${jsonError ? 'text-red-400' : 'text-zinc-500'}`}>
-                {jsonError ? `JSON inválido: ${jsonError}` : 'JSON'}
-              </span>
-              <button
-                onClick={formatBody}
-                disabled={!body.trim()}
-                className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
-              >
-                Formatear
-              </button>
+
+            <div className="flex items-center gap-2">
+              {BODY_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setBodyForm({ ...bodyForm, mode: m.id })}
+                  className={`rounded px-2 py-1 text-xs ${
+                    bodyForm.mode === m.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
             </div>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder={'{\n  "nombre": "Sonda"\n}'}
-              spellCheck={false}
-              className="min-h-48 w-full flex-1 resize-none rounded-md border border-zinc-700 bg-zinc-800 p-3 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
-            />
-            {bodyCheck && <RequestSchemaStatus validation={bodyCheck} />}
+
+            {bodyForm.mode === 'raw' ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs ${jsonError ? 'text-red-400' : 'text-zinc-500'}`}>
+                    {jsonError ? `JSON inválido: ${jsonError}` : 'JSON'}
+                  </span>
+                  <button
+                    onClick={formatBody}
+                    disabled={!body.trim()}
+                    className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                  >
+                    Formatear
+                  </button>
+                </div>
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder={'{\n  "nombre": "Sonda"\n}'}
+                  spellCheck={false}
+                  className="min-h-48 w-full flex-1 resize-none rounded-md border border-zinc-700 bg-zinc-800 p-3 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
+                />
+                {bodyCheck && <RequestSchemaStatus validation={bodyCheck} />}
+              </>
+            ) : (
+              <BodyFormEditor
+                mode={bodyForm.mode}
+                fields={bodyForm.fields}
+                onChange={(fields) => setBodyForm({ ...bodyForm, fields })}
+              />
+            )}
           </div>
         )}
       </div>

@@ -1,20 +1,19 @@
-import type { Assertion, AuthConfig, Extraction, HttpMethod } from './types'
+import { toBodyFormData } from './bodyForm'
+import type { Assertion, AuthConfig, BodyFormData, Extraction, HttpMethod } from './types'
 
 export interface SignatureInput {
   method: HttpMethod
   url: string
   headers: { key: string; value: string; enabled: boolean }[]
   body: string
+  bodyForm?: BodyFormData
   auth: AuthConfig
   assertions: Assertion[]
   extractions: Extraction[]
 }
 
-/**
- * Texto que representa lo que se guardaría en el archivo de la petición.
- * Si dos firmas son iguales, no hay cambios sin guardar.
- */
 export function requestSignature(r: SignatureInput): string {
+  const bodyForm = r.bodyForm ? toBodyFormData(r.bodyForm) : undefined
   return JSON.stringify({
     method: r.method,
     url: r.url.trim(),
@@ -24,7 +23,9 @@ export function requestSignature(r: SignatureInput): string {
     body: r.body,
     auth: r.auth.type === 'none' ? null : r.auth,
     assertions: r.assertions,
-    extractions: r.extractions
+    extractions: r.extractions,
+    // Solo entra a la firma si existe, así las pestañas guardadas antes no aparecen como modificadas
+    ...(bodyForm ? { bodyForm } : {})
   })
 }
 

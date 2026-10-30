@@ -10,6 +10,8 @@ export interface SendRequestInput {
   insecure?: boolean
   /** Si es false, no sigue redirecciones y devuelve el 3xx tal cual */
   followRedirects?: boolean
+  formData?: FormPart[]
+  bodyForm?: BodyFormData
 }
 
 export type SendRequestResult =
@@ -43,6 +45,8 @@ export interface SavedRequest {
   url: string
   headers: KeyValueData[]
   body: string
+  /** Body de formulario (urlencoded / form-data). Si no existe, el body es el texto de `body` */
+  bodyForm?: BodyFormData
   description?: string
   /** Schemas de respuesta de la spec, por status. Solo existe en peticiones importadas de OpenAPI */
   responseSchemas?: ResponseSchemas
@@ -192,6 +196,7 @@ export interface SondaApi {
   saveEnvironments: (data: EnvironmentsData) => Promise<void>
   previewSync: (collectionId: string) => Promise<SyncPreviewResult>
   applySync: (collectionId: string, options: SyncOptions) => Promise<SyncResult>
+  pickFile: () => Promise<string | null>
 }
 
 // ---------- Entornos ----------
@@ -304,3 +309,38 @@ export type SyncResult =
       baseUrlChange?: { from: string; to: string }
     }
   | { ok: false; error: string }
+
+// ---------- Body de formulario ----------
+
+export type BodyMode = 'raw' | 'urlencoded' | 'form-data'
+
+export interface FormFieldData {
+  key: string
+  /** Texto del campo, o ruta absoluta del archivo si type es 'file' */
+  value: string
+  type: 'text' | 'file'
+  enabled: boolean
+}
+
+export interface FormField extends FormFieldData {
+  id: string
+}
+
+/** Lo que se guarda en disco (sin ids) */
+export interface BodyFormData {
+  mode: BodyMode
+  fields: FormFieldData[]
+}
+
+/** Lo que vive en el store (con ids para la tabla) */
+export interface BodyForm {
+  mode: BodyMode
+  fields: FormField[]
+}
+
+/** Campo ya resuelto, listo para que el proceso principal arme el multipart */
+export interface FormPart {
+  key: string
+  kind: 'text' | 'file'
+  value: string
+}

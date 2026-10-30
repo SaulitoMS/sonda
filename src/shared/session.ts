@@ -1,6 +1,8 @@
 import type {
   Assertion,
   AuthConfig,
+  BodyFormData,
+  BodyMode,
   Extraction,
   HttpMethod,
   JsonSchema,
@@ -11,6 +13,7 @@ export const SESSION_VERSION = 1 as const
 export const MAX_TABS = 30
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
+const BODY_MODE_IDS = ['raw', 'urlencoded', 'form-data']
 
 /** Lo que se guarda de cada pestaña: la petición, sin respuestas ni resultados */
 export interface PersistedRequest {
@@ -18,6 +21,8 @@ export interface PersistedRequest {
   url: string
   headers: { id: string; key: string; value: string; enabled: boolean }[]
   body: string
+  /** Body de formulario (urlencoded / form-data). Si no existe, el body es el texto de `body` */
+  bodyForm?: BodyFormData
   auth: AuthConfig | null
   assertions: Assertion[]
   extractions: Extraction[]
@@ -42,6 +47,25 @@ export interface PersistedSession {
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
 
+function parseBodyForm(x: unknown): BodyFormData | undefined {
+  if (!isObject(x) || typeof x.mode !== 'string' || !BODY_MODE_IDS.includes(x.mode)) {
+    return undefined
+  }
+  if (!Array.isArray(x.fields)) return undefined
+
+  const fields = x.fields
+    .filter(isObject)
+    .filter((f) => typeof f.key === 'string' && typeof f.value === 'string')
+    .map((f) => ({
+      key: f.key as string,
+      value: f.value as string,
+      type: f.type === 'file' ? ('file' as const) : ('text' as const),
+      enabled: f.enabled !== false
+    }))
+
+  return { mode: x.mode as BodyMode, fields }
+}
+
 function parseRequest(x: unknown): PersistedRequest | null {
   if (!isObject(x)) return null
   if (
@@ -65,11 +89,14 @@ function parseRequest(x: unknown): PersistedRequest | null {
       enabled: h.enabled !== false
     }))
 
+  const bodyForm = parseBodyForm(x.bodyForm)
+
   return {
     method: x.method as HttpMethod,
     url: x.url,
     headers,
     body: x.body,
+    ...(bodyForm ? { bodyForm } : {}),
     auth: isObject(x.auth) ? (x.auth as unknown as AuthConfig) : null,
     assertions: Array.isArray(x.assertions) ? (x.assertions as Assertion[]) : [],
     extractions: Array.isArray(x.extractions) ? (x.extractions as Extraction[]) : [],

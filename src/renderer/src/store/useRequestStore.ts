@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import { emptyAuth } from '../../../shared/auth'
+import { fromBodyFormData, toBodyFormData } from '../../../shared/bodyForm'
 import { requestSignature } from '../../../shared/dirty'
 import type {
   Assertion,
   AssertionResult,
   AuthConfig,
+  BodyForm,
   Extraction,
   ExtractionResult,
   HttpMethod,
@@ -39,6 +41,8 @@ export interface RequestState {
   url: string
   headers: KeyValue[]
   body: string
+  /** Body de formulario (urlencoded / form-data). Con mode "raw" se usa `body` */
+  bodyForm: BodyForm
   auth: AuthConfig
   /** Reglas propias de la petición (status, tiempo, headers, body) */
   assertions: Assertion[]
@@ -71,6 +75,7 @@ export interface RequestState {
   setUrl: (u: string) => void
   setHeaders: (h: KeyValue[]) => void
   setBody: (b: string) => void
+  setBodyForm: (f: BodyForm) => void
   setAuth: (a: AuthConfig) => void
   setAssertions: (a: Assertion[]) => void
   setExtractions: (e: Extraction[]) => void
@@ -90,6 +95,7 @@ export type RequestSnapshot = Pick<
   | 'url'
   | 'headers'
   | 'body'
+  | 'bodyForm'
   | 'auth'
   | 'assertions'
   | 'extractions'
@@ -115,6 +121,7 @@ export function blankSnapshot(): RequestSnapshot {
     url: '',
     headers: [newRow()],
     body: '',
+    bodyForm: fromBodyFormData(),
     auth: emptyAuth(),
     assertions: [] as Assertion[],
     extractions: [] as Extraction[],
@@ -139,6 +146,7 @@ export function snapshotFromSaved(saved: SavedRequest, path: string): LoadedStat
     url: saved.url,
     headers: [...(saved.headers ?? []).map((h) => ({ id: crypto.randomUUID(), ...h })), newRow()],
     body: saved.body ?? '',
+    bodyForm: fromBodyFormData(saved.bodyForm),
     auth: { ...emptyAuth(), ...saved.auth },
     assertions: saved.assertions ?? [],
     extractions: saved.extractions ?? []
@@ -166,6 +174,7 @@ export function captureSnapshot(): RequestSnapshot {
     url: s.url,
     headers: s.headers,
     body: s.body,
+    bodyForm: s.bodyForm,
     auth: s.auth,
     assertions: s.assertions,
     extractions: s.extractions,
@@ -197,6 +206,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setUrl: (url) => set({ url }),
   setHeaders: (headers) => set({ headers }),
   setBody: (body) => set({ body }),
+  setBodyForm: (bodyForm) => set({ bodyForm }),
   setAuth: (auth) => set({ auth }),
   setAssertions: (assertions) => set({ assertions }),
   setExtractions: (extractions) => set({ extractions }),
@@ -207,6 +217,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       url,
       headers,
       body,
+      bodyForm,
       auth,
       assertions,
       extractions,
@@ -227,7 +238,18 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       extractions: extractionResults,
       warnings
     } = await executeRequest(
-      { method, url, headers, body, auth, assertions, extractions, requestSchema, responseSchemas },
+      {
+        method,
+        url,
+        headers,
+        body,
+        bodyForm,
+        auth,
+        assertions,
+        extractions,
+        requestSchema,
+        responseSchemas
+      },
       useEnvironmentStore.getState().getActive()
     )
     // Los valores extraídos pasan al entorno para que la siguiente petición ya los use
@@ -258,12 +280,14 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       url,
       headers,
       body,
+      bodyForm,
       auth,
       assertions,
       extractions,
       requestSchema,
       responseSchemas
     } = get()
+    const savedForm = toBodyFormData(bodyForm)
     return {
       name,
       method,
@@ -272,6 +296,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         .filter((h) => h.key.trim())
         .map(({ key, value, enabled }) => ({ key, value, enabled })),
       body,
+      ...(savedForm ? { bodyForm: savedForm } : {}),
       ...(auth.type !== 'none' ? { auth } : {}),
       ...(assertions.length > 0 ? { assertions } : {}),
       ...(extractions.length > 0 ? { extractions } : {}),

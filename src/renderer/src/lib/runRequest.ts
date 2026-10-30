@@ -1,11 +1,13 @@
 import { evaluateAssertions } from '../../../shared/assertions'
 import { buildAuth } from '../../../shared/auth'
+import { formDataParts, urlencodedBody } from '../../../shared/bodyForm'
 import { evaluateExtractions } from '../../../shared/extract'
 import { appendQuery } from '../../../shared/params'
 import type {
   Assertion,
   AssertionResult,
   AuthConfig,
+  BodyFormData,
   Environment,
   Extraction,
   ExtractionResult,
@@ -23,6 +25,8 @@ export interface RequestDraft {
   url: string
   headers: { key: string; value: string; enabled: boolean }[]
   body: string
+  /** Body de formulario. Si no viene o su modo es "raw", se envía `body` */
+  bodyForm?: BodyFormData | null
   auth?: AuthConfig | null
   responseSchemas?: ResponseSchemas | null
   /** Schema del body que espera la spec; si existe, se valida lo que se va a enviar */
@@ -71,8 +75,18 @@ export async function executeRequest(
     return result.text
   }
 
+  const mode = draft.bodyForm?.mode ?? 'raw'
+  const formFields = draft.bodyForm?.fields ?? []
+
   let finalUrl = resolve(draft.url.trim())
-  const finalBody = draft.body.trim() ? resolve(draft.body) : undefined
+  const finalBody =
+    mode === 'urlencoded'
+      ? urlencodedBody(formFields, resolve) || undefined
+      : mode === 'raw' && draft.body.trim()
+        ? resolve(draft.body)
+        : undefined
+  // En form-data no hay body de texto: el proceso principal arma el multipart
+  const formParts = mode === 'form-data' ? formDataParts(formFields, resolve) : undefined
   const headers = draft.headers
     .filter((h) => h.enabled && h.key.trim())
     .map((h) => ({ key: resolve(h.key), value: resolve(h.value) }))
@@ -102,15 +116,20 @@ export async function executeRequest(
   finalUrl = appendQuery(finalUrl, authParts.query)
 
   const hasContentType = headers.some((h) => h.key.toLowerCase() === 'content-type')
-  if (finalBody && !hasContentType && looksLikeJson(finalBody)) {
-    headers.push({ key: 'Content-Type', value: 'application/json' })
+  if (finalBody && !hasContentType) {
+    if (mode === 'urlencoded') {
+      headers.push({ key: 'Content-Type', value: 'application/x-www-form-urlencoded' })
+    } else if (mode === 'raw' && looksLikeJson(finalBody)) {
+      headers.push({ key: 'Content-Type', value: 'application/json' })
+    }
   }
 
   // Solo avisa: la petición se envía igual, para poder probar cómo reacciona la API a un body malo
   const requestValidation = validateRequestBody({
     schema: draft.requestSchema,
     method: draft.method,
-    body: finalBody ?? ''
+    // El schema de la spec es de JSON: solo tiene sentido con el body de texto
+    body: mode === 'raw' ? (finalBody ?? '') : ''
   })
   const warnings = [...authParts.warnings]
   if (requestValidation?.verdict === 'invalid') {
@@ -125,8 +144,7 @@ export async function executeRequest(
     url: finalUrl,
     headers,
     body: finalBody,
-    // Solo para localhost: no relajamos SSL en hosts públicos
-    insecure: /^https:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(finalUrl)
+    formData: formParts
   })
 
   const validation =

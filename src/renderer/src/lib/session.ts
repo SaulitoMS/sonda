@@ -1,4 +1,5 @@
 import { emptyAuth } from '../../../shared/auth'
+import { fromBodyFormData, toBodyFormData } from '../../../shared/bodyForm'
 import {
   parseSession,
   SESSION_VERSION,
@@ -17,11 +18,13 @@ import { useTabsStore, type Tab } from '../store/useTabsStore'
 const KEY = 'sonda.session.v1'
 
 function toPersisted(s: RequestSnapshot): PersistedRequest {
+  const bodyForm = toBodyFormData(s.bodyForm)
   return {
     method: s.method,
     url: s.url,
     headers: s.headers,
     body: s.body,
+    ...(bodyForm ? { bodyForm } : {}),
     auth: s.auth,
     assertions: s.assertions,
     extractions: s.extractions,
@@ -42,6 +45,7 @@ function toSnapshot(p: PersistedRequest): RequestSnapshot {
       ? p.headers.map((h) => ({ ...h, id: h.id || crypto.randomUUID() }))
       : [newRow()],
     body: p.body,
+    bodyForm: fromBodyFormData(p.bodyForm),
     auth: { ...emptyAuth(), ...p.auth },
     assertions: p.assertions,
     extractions: p.extractions,

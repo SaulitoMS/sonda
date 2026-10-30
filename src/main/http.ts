@@ -1,9 +1,33 @@
-import { ipcMain } from 'electron'
-import type { SendRequestInput, SendRequestResult } from '../shared/types'
-import { Agent } from 'undici'
+import { dialog, ipcMain } from 'electron'
+import { openAsBlob } from 'fs'
+import { stat } from 'fs/promises'
+import { basename } from 'path'
+import type { FormPart, SendRequestInput, SendRequestResult } from '../shared/types'
 
-// Un solo agente reutilizable para peticiones con SSL relajado
-const insecureAgent = new Agent({ connect: { rejectUnauthorized: false } })
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+
+/** Arma el multipart leyendo los archivos desde disco, sin cargarlos enteros en memoria */
+async function buildFormData(parts: FormPart[]): Promise<FormData> {
+  const form = new FormData()
+  for (const part of parts) {
+    if (part.kind === 'text') {
+      form.append(part.key, part.value)
+      continue
+    }
+    if (!part.value.trim()) {
+      throw new Error(`El campo "${part.key}" no tiene archivo seleccionado`)
+    }
+    const info = await stat(part.value).catch(() => null)
+    if (!info?.isFile()) {
+      throw new Error(`No se encontró el archivo del campo "${part.key}": ${part.value}`)
+    }
+    if (info.size > MAX_UPLOAD_BYTES) {
+      throw new Error(`El archivo del campo "${part.key}" supera los 100 MB`)
+    }
+    form.append(part.key, await openAsBlob(part.value), basename(part.value))
+  }
+  return form
+}
 
 export function registerHttpHandlers(): void {
   ipcMain.handle(
@@ -31,14 +55,21 @@ export function registerHttpHandlers(): void {
         }
 
         const canHaveBody = !['GET', 'HEAD'].includes(input.method)
+        let body: string | FormData | undefined
+        if (canHaveBody && input.formData) {
+          body = await buildFormData(input.formData)
+          // fetch pone su propio Content-Type con el boundary; uno escrito a mano lo rompería
+          headers.delete('content-type')
+        } else if (canHaveBody && input.body) {
+          body = input.body
+        }
+
         const res = await fetch(url, {
           method: input.method,
           headers,
-          body: canHaveBody && input.body ? input.body : undefined,
+          body,
           signal: controller.signal,
-          redirect: input.followRedirects === false ? 'manual' : 'follow',
-          // `dispatcher` es de undici y no está en los tipos de fetch
-          ...(input.insecure ? ({ dispatcher: insecureAgent } as object) : {})
+          redirect: 'follow'
         })
 
         const buffer = await res.arrayBuffer()
@@ -75,4 +106,9 @@ export function registerHttpHandlers(): void {
       }
     }
   )
+
+  ipcMain.handle('files:pick', async (): Promise<string | null> => {
+    const result = await dialog.showOpenDialog({ properties: ['openFile'] })
+    return result.canceled ? null : (result.filePaths[0] ?? null)
+  })
 }
