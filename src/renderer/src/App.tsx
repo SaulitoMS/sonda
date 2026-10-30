@@ -18,6 +18,7 @@ import { useTabsStore } from './store/useTabsStore'
 import { CommandPalette } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
 import { SettingsModal } from './components/SettingsModal'
+import { BenchmarkModal } from './components/BenchmarkModal'
 
 type ModalType =
   | 'import'
@@ -30,6 +31,7 @@ type ModalType =
   | 'palette'
   | 'cookies'
   | 'settings'
+  | 'bench'
   | null
 
 function App(): React.JSX.Element {
@@ -131,6 +133,13 @@ function App(): React.JSX.Element {
             >
               Cookies
             </button>
+            <button
+              className={btn}
+              onClick={() => setModal('bench')}
+              title="Enviar la petición varias veces y medir tiempos"
+            >
+              Rendimiento
+            </button>
             <button className={btn} onClick={() => setModal('settings')} title="Ajustes globales">
               Ajustes
             </button>
@@ -177,6 +186,7 @@ function App(): React.JSX.Element {
         />
       )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
+      {modal === 'bench' && <BenchmarkModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
