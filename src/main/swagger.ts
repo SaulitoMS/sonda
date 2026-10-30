@@ -10,6 +10,8 @@ import type {
 
 export interface ImportedRequest {
   folder: string
+  /** Identifica el endpoint en la spec, ej: "GET /pet/{petId}" */
+  key: string
   /** Texto base para el nombre del archivo, ej: "get /pet/{petId}" */
   fileHint: string
   request: SavedRequest
@@ -271,6 +273,7 @@ function buildRequest(
   const upper = method.toUpperCase()
   return {
     folder: op.tags?.[0] ?? '',
+    key: `${upper} ${path}`,
     fileHint: `${method} ${path}`,
     request: {
       name: op.summary || op.operationId || `${upper} ${path}`,

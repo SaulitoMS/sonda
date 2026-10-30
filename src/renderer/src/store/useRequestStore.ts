@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { emptyAuth } from '../../../shared/auth'
+import { requestSignature } from '../../../shared/dirty'
 import type {
   Assertion,
   AssertionResult,
@@ -63,6 +64,8 @@ export interface RequestState {
   /** Archivo de la colección que se está editando (null = petición sin guardar) */
   currentFile: string | null
   name: string
+  /** Firma de lo último guardado o abierto: si difiere de la actual, hay cambios sin guardar */
+  baseline: string
 
   setMethod: (m: HttpMethod) => void
   setUrl: (u: string) => void
@@ -100,27 +103,58 @@ export type RequestSnapshot = Pick<
   | 'warnings'
   | 'currentFile'
   | 'name'
+  | 'baseline'
 >
 
+/** Lo que cambia al abrir una petición guardada (no toca `loading`) */
+export type LoadedState = Omit<RequestSnapshot, 'loading'>
+
 export function blankSnapshot(): RequestSnapshot {
-  return {
-    method: 'GET',
+  const fields = {
+    method: 'GET' as HttpMethod,
     url: '',
     headers: [newRow()],
     body: '',
     auth: emptyAuth(),
-    assertions: [],
-    extractions: [],
+    assertions: [] as Assertion[],
+    extractions: [] as Extraction[],
     loading: false,
     response: null,
     requestSchema: null,
     responseSchemas: null,
     validation: null,
+    assertionResults: [] as AssertionResult[],
+    extractionResults: [] as ExtractionResult[],
+    warnings: [] as string[],
+    currentFile: null,
+    name: ''
+  }
+  return { ...fields, baseline: requestSignature(fields) }
+}
+
+/** El estado que resulta de abrir una petición guardada, con su línea base ya calculada */
+export function snapshotFromSaved(saved: SavedRequest, path: string): LoadedState {
+  const fields = {
+    method: saved.method,
+    url: saved.url,
+    headers: [...(saved.headers ?? []).map((h) => ({ id: crypto.randomUUID(), ...h })), newRow()],
+    body: saved.body ?? '',
+    auth: { ...emptyAuth(), ...saved.auth },
+    assertions: saved.assertions ?? [],
+    extractions: saved.extractions ?? []
+  }
+  return {
+    ...fields,
+    baseline: requestSignature(fields),
+    response: null,
+    requestSchema: saved.requestSchema ?? null,
+    responseSchemas: saved.responseSchemas ?? null,
+    validation: null,
     assertionResults: [],
     extractionResults: [],
     warnings: [],
-    currentFile: null,
-    name: ''
+    currentFile: path,
+    name: saved.name
   }
 }
 
@@ -144,13 +178,20 @@ export function captureSnapshot(): RequestSnapshot {
     extractionResults: s.extractionResults,
     warnings: s.warnings,
     currentFile: s.currentFile,
-    name: s.name
+    name: s.name,
+    baseline: s.baseline
   }
 }
 
-export const useRequestStore = create<RequestState>((set, get) => ({
+// La pestaña inicial arranca con una URL de ejemplo; eso no cuenta como "cambio"
+const initialFields = {
   ...blankSnapshot(),
-  url: 'https://jsonplaceholder.typicode.com/todos/1',
+  url: 'https://jsonplaceholder.typicode.com/todos/1'
+}
+const initial: RequestSnapshot = { ...initialFields, baseline: requestSignature(initialFields) }
+
+export const useRequestStore = create<RequestState>((set, get) => ({
+  ...initial,
 
   setMethod: (method) => set({ method }),
   setUrl: (url) => set({ url }),
@@ -209,25 +250,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     }
   },
 
-  loadSaved: (saved, path) =>
-    set({
-      method: saved.method,
-      url: saved.url,
-      headers: [...(saved.headers ?? []).map((h) => ({ id: crypto.randomUUID(), ...h })), newRow()],
-      body: saved.body ?? '',
-      auth: { ...emptyAuth(), ...saved.auth },
-      assertions: saved.assertions ?? [],
-      extractions: saved.extractions ?? [],
-      currentFile: path,
-      name: saved.name,
-      response: null,
-      requestSchema: saved.requestSchema ?? null,
-      responseSchemas: saved.responseSchemas ?? null,
-      validation: null,
-      assertionResults: [],
-      extractionResults: [],
-      warnings: []
-    }),
+  loadSaved: (saved, path) => set(snapshotFromSaved(saved, path)),
 
   toSaved: (name) => {
     const {
@@ -258,7 +281,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     }
   },
 
-  markSaved: (path, name) => set({ currentFile: path, name }),
+  // Al guardar, lo actual pasa a ser la nueva línea base
+  markSaved: (path, name) => set({ currentFile: path, name, baseline: requestSignature(get()) }),
   detach: () => set({ currentFile: null }),
 
   reset: () => set(blankSnapshot())

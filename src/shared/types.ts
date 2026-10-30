@@ -155,6 +155,8 @@ export interface CollectionItem {
   id: string
   name: string
   baseUrl?: string
+  /** URL de la spec de donde se importó (solo colecciones importadas) */
+  source?: string
   requests: RequestItem[]
   folders: FolderItem[]
 }
@@ -184,6 +186,8 @@ export interface SondaApi {
   importSwagger: (url: string) => Promise<ImportResult>
   loadEnvironments: () => Promise<EnvironmentsData>
   saveEnvironments: (data: EnvironmentsData) => Promise<void>
+  previewSync: (collectionId: string) => Promise<SyncPreviewResult>
+  applySync: (collectionId: string, options: SyncOptions) => Promise<SyncResult>
 }
 
 // ---------- Entornos ----------
@@ -235,3 +239,64 @@ export interface SchemaValidation {
   /** true si hubo más problemas de los que se muestran */
   truncated: boolean
 }
+
+// ---------- Re-sincronizar una spec ----------
+
+/** Qué parte de una petición cambió en la spec */
+export type SyncChangeKind = 'url' | 'body' | 'requestSchema' | 'responseSchemas'
+
+export interface SyncEndpointInfo {
+  key: string
+  method: HttpMethod
+  name: string
+  folder: string
+}
+
+export interface SyncChangeInfo {
+  /** Ruta relativa al workspace, la misma que usan las pestañas */
+  path: string
+  key: string
+  method: HttpMethod
+  name: string
+  kinds: SyncChangeKind[]
+  /** Lo que el usuario también editó: su versión se conserva */
+  keptUserEdits: SyncChangeKind[]
+}
+
+export interface SyncRemovedInfo {
+  path: string
+  key: string
+  method: HttpMethod
+  name: string
+}
+
+export interface SyncOptions {
+  add: boolean
+  update: boolean
+  remove: boolean
+}
+
+export type SyncPreviewResult =
+  | {
+      ok: true
+      source: string
+      specName: string
+      added: SyncEndpointInfo[]
+      changed: SyncChangeInfo[]
+      removed: SyncRemovedInfo[]
+      unchanged: number
+      baseUrlChange?: { from: string; to: string }
+    }
+  | { ok: false; error: string }
+
+export type SyncResult =
+  | {
+      ok: true
+      added: number
+      updated: number
+      removed: number
+      updatedPaths: string[]
+      removedPaths: string[]
+      baseUrlChange?: { from: string; to: string }
+    }
+  | { ok: false; error: string }

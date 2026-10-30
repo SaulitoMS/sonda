@@ -10,12 +10,13 @@ import { ResponsePanel } from './components/ResponsePanel'
 import { RunnerModal } from './components/RunnerModal'
 import { SaveModal } from './components/SaveModal'
 import { Sidebar } from './components/Sidebar'
+import { SyncModal } from './components/SyncModal'
 import { TabsBar } from './components/TabsBar'
 import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
 import { useTabsStore } from './store/useTabsStore'
 
-type ModalType = 'import' | 'save' | 'envs' | 'curl' | 'runner' | 'history' | null
+type ModalType = 'import' | 'save' | 'envs' | 'curl' | 'runner' | 'history' | 'sync' | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
@@ -25,6 +26,7 @@ function App(): React.JSX.Element {
 
   const [modal, setModal] = useState<ModalType>(null)
   const [runCollectionId, setRunCollectionId] = useState('')
+  const [syncCollection, setSyncCollection] = useState({ id: '', name: '' })
   const [flash, setFlash] = useState('')
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -52,6 +54,8 @@ function App(): React.JSX.Element {
       return
     }
     await window.api.saveRequest({ relPath: s.currentFile, request: s.toSaved(s.name) })
+    // Lo guardado pasa a ser la nueva línea base: la pestaña deja de marcarse con ●
+    useRequestStore.getState().markSaved(s.currentFile, s.name)
     showFlash('Guardado ✓')
   }, [showFlash])
 
@@ -81,6 +85,10 @@ function App(): React.JSX.Element {
         onRun={(id) => {
           setRunCollectionId(id)
           setModal('runner')
+        }}
+        onSync={(id, name) => {
+          setSyncCollection({ id, name })
+          setModal('sync')
         }}
       />
 
@@ -131,6 +139,13 @@ function App(): React.JSX.Element {
       {modal === 'import' && <ImportModal onClose={() => setModal(null)} />}
       {modal === 'runner' && (
         <RunnerModal collectionId={runCollectionId} onClose={() => setModal(null)} />
+      )}
+      {modal === 'sync' && (
+        <SyncModal
+          collectionId={syncCollection.id}
+          collectionName={syncCollection.name}
+          onClose={() => setModal(null)}
+        />
       )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'curl' && <CurlModal onClose={() => setModal(null)} onImported={onCurlImported} />}

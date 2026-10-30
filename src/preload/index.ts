@@ -13,7 +13,9 @@ const api: SondaApi = {
   openWorkspace: () => ipcRenderer.invoke('collections:openWorkspace'),
   importSwagger: (url) => ipcRenderer.invoke('swagger:import', url),
   loadEnvironments: () => ipcRenderer.invoke('environments:load'),
-  saveEnvironments: (data) => ipcRenderer.invoke('environments:save', data)
+  saveEnvironments: (data) => ipcRenderer.invoke('environments:save', data),
+  previewSync: (id) => ipcRenderer.invoke('swagger:previewSync', id),
+  applySync: (id, options) => ipcRenderer.invoke('swagger:applySync', id, options)
 }
 
 if (process.contextIsolated) {

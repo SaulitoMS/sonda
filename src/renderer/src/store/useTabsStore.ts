@@ -1,14 +1,16 @@
 import { create } from 'zustand'
+import { isDirtyState } from '../../../shared/dirty'
 import { nextActiveAfterClose } from '../../../shared/tabs'
 import type { SavedRequest } from '../../../shared/types'
 import {
   blankSnapshot,
   captureSnapshot,
+  snapshotFromSaved,
   useRequestStore,
   type RequestSnapshot
 } from './useRequestStore'
 
-interface Tab {
+export interface Tab {
   id: string
   /** Estado guardado de la pestaña. En la activa puede estar desactualizado: manda useRequestStore */
   snapshot: RequestSnapshot | null
@@ -27,6 +29,8 @@ interface TabsState {
   patchSnapshot: (id: string, patch: Partial<RequestSnapshot>) => void
   /** Marca como "sin guardar" las pestañas cuyo archivo ya no existe */
   detachMatching: (matches: (file: string) => boolean) => void
+  /** Vuelve a leer del disco las pestañas de esos archivos, salvo las que tienen cambios sin guardar */
+  refreshFiles: (paths: string[]) => Promise<void>
 }
 
 const makeTab = (): Tab => ({ id: crypto.randomUUID(), snapshot: null })
@@ -128,6 +132,43 @@ export const useTabsStore = create<TabsState>((set, get) => {
             ? { ...t, snapshot: { ...t.snapshot, currentFile: null } }
             : t
         )
+      }))
+    },
+
+    refreshFiles: async (paths) => {
+      const wanted = new Set(paths)
+
+      // Primero se lee todo del disco (async); después se aplica de una vez
+      const fresh = new Map<string, SavedRequest>()
+      const open = new Set([
+        useRequestStore.getState().currentFile,
+        ...get().tabs.map((t) => t.snapshot?.currentFile ?? null)
+      ])
+      for (const file of open) {
+        if (!file || !wanted.has(file)) continue
+        try {
+          fresh.set(file, await window.api.readRequest(file))
+        } catch {
+          // el archivo ya no existe: no hay nada que recargar
+        }
+      }
+
+      const live = useRequestStore.getState()
+      const liveFresh = live.currentFile ? fresh.get(live.currentFile) : undefined
+      if (live.currentFile && liveFresh && !isDirtyState(live)) {
+        live.loadSaved(liveFresh, live.currentFile)
+      }
+
+      set((state) => ({
+        tabs: state.tabs.map((t) => {
+          if (t.id === state.activeId || !t.snapshot?.currentFile) return t
+          const saved = fresh.get(t.snapshot.currentFile)
+          if (!saved || isDirtyState(t.snapshot)) return t
+          return {
+            ...t,
+            snapshot: { ...t.snapshot, ...snapshotFromSaved(saved, t.snapshot.currentFile) }
+          }
+        })
       }))
     }
   }

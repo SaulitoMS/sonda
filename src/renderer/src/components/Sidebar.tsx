@@ -101,6 +101,26 @@ function PlayButton({ onClick, title }: { onClick: () => void; title: string }):
   )
 }
 
+function SyncButton({ onClick, title }: { onClick: () => void; title: string }): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className="hidden rounded p-0.5 text-zinc-500 hover:bg-zinc-700 hover:text-blue-400 group-hover:block"
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+        <path d="M21 3v5h-5" />
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+        <path d="M8 16H3v5" />
+      </svg>
+    </button>
+  )
+}
+
 /* ---------- Fila de petición ---------- */
 
 interface RowProps {
@@ -136,9 +156,10 @@ function RequestRow({ item, active, onOpen, onDelete }: RowProps): React.JSX.Ele
 interface SidebarProps {
   onImport: () => void
   onRun: (collectionId: string) => void
+  onSync: (collectionId: string, name: string) => void
 }
 
-export function Sidebar({ onImport, onRun }: SidebarProps): React.JSX.Element {
+export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.Element {
   const { collections, refresh } = useCollectionsStore()
   const currentFile = useRequestStore((s) => s.currentFile)
 
@@ -250,6 +271,12 @@ export function Sidebar({ onImport, onRun }: SidebarProps): React.JSX.Element {
                 <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 group-hover:hidden">
                   {total}
                 </span>
+                {c.source && (
+                  <SyncButton
+                    onClick={() => onSync(c.id, c.name)}
+                    title="Sincronizar con la spec"
+                  />
+                )}
                 {total > 0 && (
                   <PlayButton onClick={() => onRun(c.id)} title="Ejecutar todas las peticiones" />
                 )}
