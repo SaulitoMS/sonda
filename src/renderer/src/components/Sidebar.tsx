@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { HttpMethod, RequestItem } from '../../../shared/types'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
@@ -179,9 +179,34 @@ interface RowProps {
   onOpen: () => void
   onDelete: () => void
   onDuplicate: () => void
+  onRename: (name: string) => void
 }
 
-function RequestRow({ item, active, onOpen, onDelete, onDuplicate }: RowProps): React.JSX.Element {
+function RequestRow({
+  item,
+  active,
+  onOpen,
+  onDelete,
+  onDuplicate,
+  onRename
+}: RowProps): React.JSX.Element {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(item.name)
+  const cancelled = useRef(false)
+
+  const startEditing = (): void => {
+    cancelled.current = false
+    setDraft(item.name)
+    setEditing(true)
+  }
+
+  // Enter y Escape solo quitan el foco; el guardado ocurre aquí, una única vez
+  const finishEditing = (): void => {
+    setEditing(false)
+    const name = draft.trim()
+    if (!cancelled.current && name && name !== item.name) onRename(name)
+  }
+
   return (
     <div
       onClick={onOpen}
@@ -194,9 +219,35 @@ function RequestRow({ item, active, onOpen, onDelete, onDuplicate }: RowProps): 
       <span className={`w-8 shrink-0 text-[10px] font-bold ${METHOD_COLORS[item.method]}`}>
         {SHORT[item.method]}
       </span>
-      <span className="flex-1 truncate" title={item.name}>
-        {item.name}
-      </span>
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          onBlur={finishEditing}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+            if (e.key === 'Escape') {
+              cancelled.current = true
+              e.currentTarget.blur()
+            }
+          }}
+          spellCheck={false}
+          className="min-w-0 flex-1 rounded border border-blue-500 bg-zinc-800 px-1 py-0.5 text-xs text-zinc-100 outline-none"
+        />
+      ) : (
+        <span
+          className="flex-1 truncate"
+          title={`${item.name} (doble clic para renombrar)`}
+          onDoubleClick={(e) => {
+            e.stopPropagation()
+            startEditing()
+          }}
+        >
+          {item.name}
+        </span>
+      )}
       <DuplicateButton onClick={onDuplicate} title="Duplicar" />
       <TrashButton onClick={onDelete} title="Eliminar" />
     </div>
@@ -257,6 +308,14 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     await refresh()
     const copy = await window.api.readRequest(newPath)
     useTabsStore.getState().openSaved(copy, newPath)
+  }
+
+  const renameRequest = async (item: RequestItem, name: string): Promise<void> => {
+    const saved = await window.api.readRequest(item.path)
+    await window.api.saveRequest({ relPath: item.path, request: { ...saved, name } })
+    await refresh()
+    // Las pestañas abiertas con ese archivo recargan el nombre nuevo
+    await useTabsStore.getState().refreshFiles([item.path])
   }
 
   const removeCollection = async (id: string, name: string): Promise<void> => {
@@ -461,6 +520,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                                 onOpen={() => open(r)}
                                 onDelete={() => removeRequest(r)}
                                 onDuplicate={() => duplicateRequest(r)}
+                                onRename={(name) => renameRequest(r, name)}
                               />
                             ))}
                             {f.requests.length === 0 && (
@@ -480,6 +540,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                       onOpen={() => open(r)}
                       onDelete={() => removeRequest(r)}
                       onDuplicate={() => duplicateRequest(r)}
+                      onRename={(name) => renameRequest(r, name)}
                     />
                   ))}
 
