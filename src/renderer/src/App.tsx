@@ -19,6 +19,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
+import { FuzzModal } from './components/FuzzModal'
 import { MockModal } from './components/MockModal'
 import { ThemeToggle } from './components/ThemeToggle'
 
@@ -34,6 +35,7 @@ type ModalType =
   | 'cookies'
   | 'settings'
   | 'bench'
+  | 'fuzz'
   | 'mock'
   | null
 
@@ -145,6 +147,13 @@ function App(): React.JSX.Element {
             </button>
             <button
               className={btn}
+              onClick={() => setModal('fuzz')}
+              title="Probar la API con bodies inválidos generados desde el schema"
+            >
+              Fuzz
+            </button>
+            <button
+              className={btn}
               onClick={() => setModal('mock')}
               title="Levantar un servidor local con respuestas de ejemplo de una colección"
             >
@@ -199,6 +208,7 @@ function App(): React.JSX.Element {
       )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'bench' && <BenchmarkModal onClose={() => setModal(null)} />}
+      {modal === 'fuzz' && <FuzzModal onClose={() => setModal(null)} />}
       {modal === 'mock' && <MockModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
