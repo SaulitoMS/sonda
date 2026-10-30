@@ -5,6 +5,7 @@ import { useRequestStore } from '../store/useRequestStore'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useTabsStore } from '../store/useTabsStore'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
+import { ScopeAuthModal, type AuthScope } from './ScopeAuthModal'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -146,6 +147,35 @@ function SyncButton({ onClick, title }: { onClick: () => void; title: string }):
   )
 }
 
+function LockButton({
+  onClick,
+  title,
+  active
+}: {
+  onClick: () => void
+  title: string
+  /** true si ya tiene auth configurada: el candado se ve siempre */
+  active: boolean
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className={`rounded p-0.5 hover:bg-zinc-700 hover:text-blue-400 ${
+        active ? 'block text-blue-400 group-hover:block' : 'hidden text-zinc-500 group-hover:block'
+      }`}
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <rect x="4" y="11" width="16" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </svg>
+    </button>
+  )
+}
+
 function ExportButton({
   onClick,
   title
@@ -277,6 +307,8 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [query, setQuery] = useState('')
+  const [authScope, setAuthScope] = useState<AuthScope | null>(null)
+
 
   useEffect(() => {
     refresh()
@@ -472,6 +504,13 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                 <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 group-hover:hidden">
                   {total}
                 </span>
+                <LockButton
+                  active={!!c.auth && c.auth.type !== 'none'}
+                  onClick={() =>
+                    setAuthScope({ collectionId: c.id, collectionName: c.name, auth: c.auth })
+                  }
+                  title="Autenticación de la colección"
+                />
                 {c.source && (
                   <SyncButton
                     onClick={() => onSync(c.id, c.name)}
@@ -502,12 +541,26 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                       <div key={key}>
                         <div
                           onClick={() => toggle(key)}
-                          className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70"
+                          className="group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70"
                         >
                           <ChevronIcon open={folderOpen} />
                           <FolderIcon open={folderOpen} />
                           <span className="flex-1 truncate">{f.name}</span>
-                          <span className="text-[10px] text-zinc-600">{f.requests.length}</span>
+                          <span className="text-[10px] text-zinc-600 group-hover:hidden">
+                            {f.requests.length}
+                          </span>
+                          <LockButton
+                            active={!!f.auth && f.auth.type !== 'inherit'}
+                            onClick={() =>
+                              setAuthScope({
+                                collectionId: c.id,
+                                collectionName: c.name,
+                                folder: f.name,
+                                auth: f.auth
+                              })
+                            }
+                            title="Autenticación de la carpeta"
+                          />
                         </div>
 
                         {folderOpen && (
@@ -558,6 +611,8 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
       >
         Abrir carpeta en Finder
       </button>
+
+      {authScope && <ScopeAuthModal scope={authScope} onClose={() => setAuthScope(null)} />}
     </aside>
   )
 }

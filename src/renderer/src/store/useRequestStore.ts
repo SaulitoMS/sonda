@@ -22,6 +22,7 @@ import { useEnvironmentStore } from './useEnvironmentStore'
 import { useHistoryStore } from './useHistoryStore'
 import { useTabsStore } from './useTabsStore'
 import { finishInFlight, startInFlight } from '../lib/inFlight'
+import { resolveAuthForPath } from '../lib/inheritedAuth'
 
 export interface KeyValue {
   id: string
@@ -224,7 +225,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       extractions,
       loading,
       requestSchema,
-      responseSchemas
+      responseSchemas,
+      currentFile
     } = get()
     if (loading || !url.trim()) return
 
@@ -253,7 +255,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         responseSchemas
       },
       useEnvironmentStore.getState().getActive(),
-      { requestId }
+      { requestId, path: currentFile }
     )
     const wasCancelled = finishInFlight(tabId)
 
@@ -273,7 +275,12 @@ export const useRequestStore = create<RequestState>((set, get) => ({
 
     // Lo que no llegó a enviarse (variables sin definir, URL inválida) o se canceló no entra al historial
     if (!wasCancelled && (response.ok || response.timeMs > 0)) {
-      useHistoryStore.getState().add({ method, url, headers, body, bodyForm, auth, response })
+      // Al historial va la auth que se aplicó, no el "inherit" (la colección puede cambiar después)
+      const sent = resolveAuthForPath(auth, currentFile).auth ?? {
+        ...emptyAuth(),
+        type: 'none' as const
+      }
+      useHistoryStore.getState().add({ method, url, headers, body, bodyForm, auth: sent, response })
     }
   },
 
@@ -302,7 +309,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         .map(({ key, value, enabled }) => ({ key, value, enabled })),
       body,
       ...(savedForm ? { bodyForm: savedForm } : {}),
-      ...(auth.type !== 'none' ? { auth } : {}),
+      ...(auth.type !== 'inherit' ? { auth } : {}),
       ...(assertions.length > 0 ? { assertions } : {}),
       ...(extractions.length > 0 ? { extractions } : {}),
       // Se conservan para no perderlos al volver a guardar una petición importada

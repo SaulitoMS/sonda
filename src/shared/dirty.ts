@@ -21,7 +21,7 @@ export function requestSignature(r: SignatureInput): string {
       .filter((h) => h.key.trim())
       .map((h) => ({ key: h.key, value: h.value, enabled: h.enabled })),
     body: r.body,
-    auth: r.auth.type === 'none' ? null : r.auth,
+    auth: r.auth.type === 'inherit' ? null : r.auth,
     assertions: r.assertions,
     extractions: r.extractions,
     // Solo entra a la firma si existe, así las pestañas guardadas antes no aparecen como modificadas

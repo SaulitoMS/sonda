@@ -10,6 +10,9 @@ import { Modal } from './Modal'
 import { parseCurl, type ParsedCurl } from '../../../shared/curl'
 import { CODE_LANGS, generateCode, type CodeLang } from '../../../shared/codegen'
 import { formDataParts, urlencodedBody } from '../../../shared/bodyForm'
+import { buildAuth, emptyAuth } from '../../../shared/auth'
+import { resolveAuthFor } from '../lib/inheritedAuth'
+import { useCollectionsStore } from '../store/useCollectionsStore'
 
 type Tab = 'import' | 'export'
 
@@ -154,7 +157,14 @@ function ImportTab({
 /* ---------- Exportar ---------- */
 
 function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
-  const auth = useRequestStore((s) => s.auth)
+  const ownAuth = useRequestStore((s) => s.auth)
+  const currentFile = useRequestStore((s) => s.currentFile)
+  const collections = useCollectionsStore((s) => s.collections)
+  // Se exporta la auth que de verdad se enviaría (la heredada, si la petición hereda)
+  const auth = useMemo(
+    () => resolveAuthFor(collections, ownAuth, currentFile).auth ?? emptyAuth(),
+    [collections, ownAuth, currentFile]
+  )
   const method = useRequestStore((s) => s.method)
   const url = useRequestStore((s) => s.url)
   const headers = useRequestStore((s) => s.headers)

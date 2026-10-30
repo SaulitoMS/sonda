@@ -1,4 +1,6 @@
 import type { AuthConfig, AuthType } from '../../../shared/types'
+import { resolveAuthFor } from '../lib/inheritedAuth'
+import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { VariableInput } from './VariableInput'
 
@@ -28,11 +30,22 @@ function Field({
 const selectClass =
   'rounded-md border border-zinc-700 bg-zinc-800 px-2 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500'
 
-export function AuthPanel(): React.JSX.Element {
-  const auth = useRequestStore((s) => s.auth)
-  const setAuth = useRequestStore((s) => s.setAuth)
+interface AuthFormProps {
+  value: AuthConfig
+  onChange: (auth: AuthConfig) => void
+  /** Si viene, se ofrece la opción "inherit" con este texto (petición y carpeta; no la colección) */
+  inheritLabel?: string
+  children?: React.ReactNode
+}
 
-  const patch = (p: Partial<AuthConfig>): void => setAuth({ ...auth, ...p })
+/** Selector de tipo y campos de la auth. Lo usan la pestaña Auth y el modal de colección / carpeta */
+export function AuthForm({
+  value: auth,
+  onChange,
+  inheritLabel,
+  children
+}: AuthFormProps): React.JSX.Element {
+  const patch = (p: Partial<AuthConfig>): void => onChange({ ...auth, ...p })
 
   return (
     <div className="flex max-w-2xl flex-col gap-3">
@@ -42,6 +55,7 @@ export function AuthPanel(): React.JSX.Element {
           onChange={(e) => patch({ type: e.target.value as AuthType })}
           className={selectClass}
         >
+          {inheritLabel && <option value="inherit">{inheritLabel}</option>}
           {TYPES.map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
@@ -49,6 +63,8 @@ export function AuthPanel(): React.JSX.Element {
           ))}
         </select>
       </Field>
+
+      {children}
 
       {auth.type === 'bearer' && (
         <Field label="Token">
@@ -145,7 +161,7 @@ export function AuthPanel(): React.JSX.Element {
         </>
       )}
 
-      {auth.type !== 'none' && (
+      {auth.type !== 'none' && auth.type !== 'inherit' && (
         <p className="text-[11px] leading-relaxed text-zinc-500">
           Usa variables como <span className="font-mono text-zinc-400">{'{{token}}'}</span> y
           márcalas como <b>secretas</b> en el entorno: así el valor real no se guarda en el archivo
@@ -153,5 +169,30 @@ export function AuthPanel(): React.JSX.Element {
         </p>
       )}
     </div>
+  )
+}
+
+/** Pestaña Auth de la petición abierta: puede heredar la auth de su carpeta o colección */
+export function AuthPanel(): React.JSX.Element {
+  const auth = useRequestStore((s) => s.auth)
+  const setAuth = useRequestStore((s) => s.setAuth)
+  const currentFile = useRequestStore((s) => s.currentFile)
+  const collections = useCollectionsStore((s) => s.collections)
+
+  const inherited = resolveAuthFor(collections, auth, currentFile)
+  const typeLabel = TYPES.find((t) => t.value === inherited.auth?.type)?.label ?? ''
+
+  return (
+    <AuthForm value={auth} onChange={setAuth} inheritLabel="Heredar de la carpeta / colección">
+      {auth.type === 'inherit' && (
+        <p className="rounded-md border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-[11px] leading-relaxed text-zinc-400">
+          {!currentFile
+            ? 'Guarda la petición en una colección para heredar su autenticación.'
+            : inherited.source === 'none'
+              ? 'La carpeta y la colección no tienen autenticación: se envía sin auth.'
+              : `Usando ${typeLabel} de la ${inherited.source === 'folder' ? 'carpeta' : 'colección'} «${inherited.sourceName}».`}
+        </p>
+      )}
+    </AuthForm>
   )
 }

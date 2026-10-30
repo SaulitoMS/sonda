@@ -12,6 +12,8 @@ const api: SondaApi = {
   readRequest: (path) => ipcRenderer.invoke('collections:readRequest', path),
   saveRequest: (input) => ipcRenderer.invoke('collections:saveRequest', input),
   deleteRequest: (path) => ipcRenderer.invoke('collections:deleteRequest', path),
+  setScopeAuth: (collectionId, folder, auth) =>
+    ipcRenderer.invoke('collections:setAuth', collectionId, folder, auth),
   openWorkspace: () => ipcRenderer.invoke('collections:openWorkspace'),
   importSwagger: (url) => ipcRenderer.invoke('swagger:import', url),
   importPostman: () => ipcRenderer.invoke('postman:import'),

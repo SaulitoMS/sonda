@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { isDirtyState, requestSignature, type SignatureInput } from './dirty'
 
 const auth = {
-  type: 'none' as const,
+  type: 'inherit' as const,
   token: '',
   username: '',
   password: '',
@@ -37,7 +37,7 @@ describe('requestSignature', () => {
     expect(a).toBe(b)
   })
 
-  it('ignora los datos de auth cuando el tipo es none', () => {
+  it('ignora los datos de auth cuando el tipo es inherit', () => {
     expect(requestSignature(base())).toBe(
       requestSignature(base({ auth: { ...auth, token: 'abc' } }))
     )

@@ -3,6 +3,7 @@ import { promises as fs } from 'fs'
 import { basename, dirname, join, relative, resolve, sep } from 'path'
 import { addEnvironmentWithVariables, addImportedEnvironment } from './environments'
 import type {
+  AuthConfig,
   CollectionItem,
   ExportResult,
   FolderItem,
@@ -33,6 +34,8 @@ interface CollectionMeta {
   name: string
   baseUrl?: string
   source?: string
+  /** Auth que heredan las peticiones. También se guarda en el sonda.collection.json de cada carpeta */
+  auth?: AuthConfig
   /** Cómo era cada endpoint al importarlo, por ruta relativa a la colección */
   endpoints?: Record<string, EndpointStamp>
   createdAt: string
@@ -94,6 +97,14 @@ async function readMeta(dir: string): Promise<CollectionMeta | null> {
   }
 }
 
+/** Guarda (o quita) la auth en el sonda.collection.json de una colección o carpeta, sin tocar lo demás */
+async function writeScopeAuth(dir: string, auth: AuthConfig | null): Promise<void> {
+  const meta: Partial<CollectionMeta> = (await readMeta(dir)) ?? {}
+  if (auth && auth.type !== 'inherit') meta.auth = auth
+  else delete meta.auth
+  await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+}
+
 async function readRequestItem(file: string): Promise<RequestItem | null> {
   try {
     const data = JSON.parse(await fs.readFile(file, 'utf-8')) as Partial<SavedRequest>
@@ -133,7 +144,12 @@ async function listCollections(): Promise<CollectionItem[]> {
     const folders: FolderItem[] = []
     for (const child of await fs.readdir(dir, { withFileTypes: true })) {
       if (!child.isDirectory() || child.name.startsWith('.')) continue
-      folders.push({ name: child.name, requests: await listRequests(join(dir, child.name)) })
+      const folderMeta = await readMeta(join(dir, child.name))
+      folders.push({
+        name: child.name,
+        requests: await listRequests(join(dir, child.name)),
+        ...(folderMeta?.auth ? { auth: folderMeta.auth } : {})
+      })
     }
     folders.sort((a, b) => a.name.localeCompare(b.name))
 
@@ -142,6 +158,7 @@ async function listCollections(): Promise<CollectionItem[]> {
       name: meta?.name ?? entry.name,
       baseUrl: meta?.baseUrl,
       source: meta?.source,
+      ...(meta?.auth ? { auth: meta.auth } : {}),
       requests: await listRequests(dir),
       folders
     })
@@ -246,6 +263,14 @@ export function registerCollectionHandlers(): void {
   ipcMain.handle('collections:deleteRequest', async (_e, relPath: string): Promise<void> => {
     await fs.rm(safeRequestPath(relPath), { force: true })
   })
+
+  ipcMain.handle(
+    'collections:setAuth',
+    async (_e, collectionId: string, folder: string | null, auth: AuthConfig | null) => {
+      const dir = folder ? safePath(collectionId, folder) : safePath(collectionId)
+      await writeScopeAuth(dir, auth)
+    }
+  )
 
   ipcMain.handle('collections:openWorkspace', async (): Promise<void> => {
     await fs.mkdir(getRoot(), { recursive: true })

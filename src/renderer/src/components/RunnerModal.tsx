@@ -118,7 +118,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
       const requestId = crypto.randomUUID()
       activeRequest.current = requestId
       const { response, validation, requestValidation, assertionResults, extractions } =
-        await executeRequest(saved, env, { requestId })
+        await executeRequest(saved, env, { requestId, path: entry.item.path })
       activeRequest.current = null
       const persistWarnings = await persistExtractions(extractions)
       const problems = [

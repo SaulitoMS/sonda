@@ -4,6 +4,7 @@ import { clearOAuthCache, getOAuthToken } from './oauth'
 import { formDataParts, urlencodedBody } from '../../../shared/bodyForm'
 import { evaluateExtractions } from '../../../shared/extract'
 import { appendQuery } from '../../../shared/params'
+import { resolveAuthForPath } from './inheritedAuth'
 import type {
   Assertion,
   AssertionResult,
@@ -66,7 +67,7 @@ const looksLikeJson = (text: string): boolean => {
 export async function executeRequest(
   draft: RequestDraft,
   env: Environment | null,
-  options: { requestId?: string } = {}
+  options: { requestId?: string; path?: string | null } = {}
 ): Promise<ExecuteResult> {
   const vars = buildVarMap(env)
   const missing = new Set<string>()
@@ -93,15 +94,17 @@ export async function executeRequest(
     .filter((h) => h.enabled && h.key.trim())
     .map((h) => ({ key: resolve(h.key), value: resolve(h.value) }))
 
-  // La auth se resuelve antes de revisar variables faltantes para reportarlas también
-  const authParts = buildAuth(draft.auth, resolve)
+  // La auth se resuelve antes de revisar variables faltantes para reportarlas también.
+  // Auth efectiva: la de la petición o, si hereda, la de su carpeta / colección
+  const auth = resolveAuthForPath(draft.auth, options.path).auth
+  const authParts = buildAuth(auth, resolve)
   const oauth =
-    draft.auth?.type === 'oauth2'
+    auth?.type === 'oauth2'
       ? {
-          tokenUrl: resolve((draft.auth.oauthTokenUrl ?? '').trim()),
-          clientId: resolve((draft.auth.oauthClientId ?? '').trim()),
-          clientSecret: resolve(draft.auth.oauthClientSecret ?? ''),
-          scope: resolve(draft.auth.oauthScope ?? '')
+          tokenUrl: resolve((auth.oauthTokenUrl ?? '').trim()),
+          clientId: resolve((auth.oauthClientId ?? '').trim()),
+          clientSecret: resolve(auth.oauthClientSecret ?? ''),
+          scope: resolve(auth.oauthScope ?? '')
         }
       : null
 

@@ -1,5 +1,14 @@
 import type { AuthConfig } from './types'
 
+export type AuthSource = 'request' | 'folder' | 'collection' | 'none'
+
+export interface ResolvedAuth {
+  /** Auth que se aplica de verdad (null = ninguna) */
+  auth: AuthConfig | null
+  /** De dónde salió */
+  source: AuthSource
+}
+
 export interface AuthParts {
   headers: { key: string; value: string }[]
   query: { key: string; value: string }[]
@@ -8,7 +17,7 @@ export interface AuthParts {
 }
 
 export const emptyAuth = (): AuthConfig => ({
-  type: 'none',
+  type: 'inherit',
   token: '',
   username: '',
   password: '',
@@ -77,4 +86,25 @@ export function buildAuth(
     }
   }
   return parts
+}
+
+/**
+ * Decide qué auth se aplica: la primera que no sea "inherit", yendo de la petición
+ * a su carpeta y luego a su colección. "none" corta la herencia y no envía auth.
+ */
+export function resolveAuth(
+  request: AuthConfig | null | undefined,
+  folder: AuthConfig | null | undefined,
+  collection: AuthConfig | null | undefined
+): ResolvedAuth {
+  const levels: [AuthSource, AuthConfig | null | undefined][] = [
+    ['request', request],
+    ['folder', folder],
+    ['collection', collection]
+  ]
+  for (const [source, auth] of levels) {
+    if (!auth || auth.type === 'inherit') continue
+    return { auth: auth.type === 'none' ? null : auth, source }
+  }
+  return { auth: null, source: 'none' }
 }

@@ -78,7 +78,7 @@ export interface SavedRequest {
 
 // ---------- Autenticación ----------
 
-export type AuthType = 'none' | 'bearer' | 'basic' | 'apikey' | 'oauth2'
+export type AuthType = 'inherit' | 'none' | 'bearer' | 'basic' | 'apikey' | 'oauth2'
 
 /** Todos los campos viven juntos para no perder lo escrito al cambiar de tipo */
 export interface AuthConfig {
@@ -177,6 +177,8 @@ export interface RequestItem {
 export interface FolderItem {
   name: string
   requests: RequestItem[]
+  /** Auth de la carpeta. Si no existe (o es "inherit"), sus peticiones heredan la de la colección */
+  auth?: AuthConfig
 }
 
 export interface CollectionItem {
@@ -187,6 +189,8 @@ export interface CollectionItem {
   source?: string
   requests: RequestItem[]
   folders: FolderItem[]
+  /** Auth de la colección. Si no existe, las peticiones que heredan no usan auth */
+  auth?: AuthConfig
 }
 
 export interface SaveRequestInput {
@@ -225,6 +229,12 @@ export interface SondaApi {
   readRequest: (path: string) => Promise<SavedRequest>
   saveRequest: (input: SaveRequestInput) => Promise<string>
   deleteRequest: (path: string) => Promise<void>
+  /** Guarda la auth de una colección (folder = null) o de una de sus carpetas. null = quitarla */
+  setScopeAuth: (
+    collectionId: string,
+    folder: string | null,
+    auth: AuthConfig | null
+  ) => Promise<void>
   openWorkspace: () => Promise<void>
   importSwagger: (url: string) => Promise<ImportResult>
   /** Abre el selector de archivos e importa una colección de Postman. null = el usuario canceló */

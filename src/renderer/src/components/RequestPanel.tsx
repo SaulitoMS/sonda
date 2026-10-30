@@ -126,7 +126,10 @@ export function RequestPanel(): React.JSX.Element {
           Params {paramCount > 0 && <span className="text-blue-400">({paramCount})</span>}
         </button>
         <button className={tabClass('auth')} onClick={() => setTab('auth')}>
-          Auth {auth.type !== 'none' && <span className="text-blue-400">●</span>}
+          Auth{' '}
+          {auth.type !== 'inherit' && auth.type !== 'none' && (
+            <span className="text-blue-400">●</span>
+          )}
         </button>
         <button className={tabClass('headers')} onClick={() => setTab('headers')}>
           Headers {activeHeaders > 0 && <span className="text-blue-400">({activeHeaders})</span>}

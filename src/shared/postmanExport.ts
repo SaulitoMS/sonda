@@ -13,7 +13,7 @@ const SCHEMA = 'https://schema.getpostman.com/json/collection/v2.1.0/collection.
 const entry = (key: string, value: string): Json => ({ key, value, type: 'string' })
 
 function exportAuth(auth: AuthConfig | undefined): Json | undefined {
-  if (!auth || auth.type === 'none') return undefined
+  if (!auth || auth.type === 'none' || auth.type === 'inherit') return undefined
   switch (auth.type) {
     case 'bearer':
       return { type: 'bearer', bearer: [entry('token', auth.token)] }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildAuth, emptyAuth, toBase64 } from './auth'
+import { buildAuth, emptyAuth, resolveAuth, toBase64 } from './auth'
 import type { AuthConfig } from './types'
 
 const id = (t: string): string => t
@@ -80,5 +80,37 @@ describe('buildAuth', () => {
 
   it('una auth completa no genera avisos', () => {
     expect(buildAuth(make({ type: 'bearer', token: 'abc' }), id).warnings).toEqual([])
+  })
+})
+
+
+describe('resolveAuth', () => {
+  const bearer = (token: string): AuthConfig => make({ type: 'bearer', token })
+  const inherit = make({ type: 'inherit' })
+
+  it('sin auth en ningún nivel no aplica nada', () => {
+    expect(resolveAuth(undefined, undefined, undefined)).toEqual({ auth: null, source: 'none' })
+  })
+
+  it('hereda de la carpeta antes que de la colección', () => {
+    const r = resolveAuth(inherit, bearer('carpeta'), bearer('coleccion'))
+    expect(r.source).toBe('folder')
+    expect(r.auth?.token).toBe('carpeta')
+  })
+
+  it('si la carpeta hereda, sube a la colección', () => {
+    expect(resolveAuth(inherit, inherit, bearer('coleccion')).source).toBe('collection')
+  })
+
+  it('la auth propia de la petición gana', () => {
+    expect(resolveAuth(bearer('mia'), bearer('carpeta'), undefined).source).toBe('request')
+  })
+
+  it('"none" corta la herencia', () => {
+    const none = make({ type: 'none' })
+    expect(resolveAuth(none, bearer('carpeta'), bearer('coleccion'))).toEqual({
+      auth: null,
+      source: 'request'
+    })
   })
 })
