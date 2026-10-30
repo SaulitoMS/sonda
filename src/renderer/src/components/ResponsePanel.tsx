@@ -4,6 +4,8 @@ import type { AssertionResult, ExtractionResult, SchemaValidation } from '../../
 import { useRequestStore } from '../store/useRequestStore'
 import { buildFullExport, extensionFor, mimeFor, suggestFileName } from '../../../shared/exportResponse'
 import { downloadText } from '../lib/download'
+import { getByPath, parsePath } from '../../../shared/assertions'
+import { JsonTree } from './JsonTree'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests'
 
@@ -154,6 +156,9 @@ export function ResponsePanel(): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const [view, setView] = useState<'tree' | 'raw'>('tree')
+  const [filter, setFilter] = useState('')
+
   const prettyBody = useMemo(() => {
     if (!response || !response.ok) return ''
     try {
@@ -162,6 +167,23 @@ export function ResponsePanel(): React.JSX.Element {
       return response.body
     }
   }, [response])
+
+  const parsed = useMemo<{ ok: true; value: unknown } | { ok: false }>(() => {
+  if (!response || !response.ok) return { ok: false }
+  try {
+    return { ok: true, value: JSON.parse(response.body) }
+  } catch {
+    return { ok: false }
+  }
+}, [response])
+
+// Con filtro, muestra solo lo que hay en esa ruta (ej: data.items[0].name)
+const filtered = useMemo<{ found: boolean; value?: unknown; invalid?: boolean }>(() => {
+  if (!parsed.ok || !filter.trim()) return { found: true, value: parsed.ok ? parsed.value : undefined }
+  const tokens = parsePath(filter)
+  if (!tokens) return { found: false, invalid: true }
+  return getByPath(parsed.value, tokens)
+}, [parsed, filter])
 
   const copy = async (): Promise<void> => {
     await navigator.clipboard.writeText(prettyBody)
@@ -296,19 +318,48 @@ export function ResponsePanel(): React.JSX.Element {
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-auto p-3">
-        {current === 'body' && (
-          <>
-            <button
-              onClick={copy}
-              className="absolute right-4 top-3 rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
-            >
-              {copied ? '¡Copiado!' : 'Copiar'}
-            </button>
-            <pre className="selectable whitespace-pre-wrap break-all font-mono text-xs text-zinc-200">
-              {prettyBody || '(respuesta vacía)'}
-            </pre>
-          </>
-        )}
+{current === 'body' && (
+  <>
+    {parsed.ok && (
+      <div className="mb-2 flex items-center gap-2 pr-16 text-xs">
+        <button
+          onClick={() => setView(view === 'tree' ? 'raw' : 'tree')}
+          className="rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700"
+        >
+          {view === 'tree' ? 'Ver texto' : 'Ver árbol'}
+        </button>
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filtrar por ruta: data.items[0].name"
+          spellCheck={false}
+          className="flex-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 font-mono outline-none placeholder:text-zinc-500 focus:border-blue-500"
+        />
+      </div>
+    )}
+
+    <button
+      onClick={copy}
+      className="absolute right-4 top-3 rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+    >
+      {copied ? '¡Copiado!' : 'Copiar'}
+    </button>
+
+    {parsed.ok && view === 'tree' ? (
+      filtered.found ? (
+        <JsonTree value={filtered.value} />
+      ) : (
+        <p className="text-xs text-amber-400">
+          {filtered.invalid ? 'Ruta mal escrita' : `No existe "${filter}" en la respuesta`}
+        </p>
+      )
+    ) : (
+      <pre className="selectable whitespace-pre-wrap break-all font-mono text-xs text-zinc-200">
+        {prettyBody || '(respuesta vacía)'}
+      </pre>
+    )}
+  </>
+)}
 
         {current === 'headers' && (
           <table className="selectable w-full text-left font-mono text-xs">
