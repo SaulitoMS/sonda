@@ -6,10 +6,12 @@ import { registerHttpHandlers } from './http'
 import { registerCollectionHandlers } from './collections'
 import { registerEnvironmentHandlers } from './environments'
 import { registerCookieHandlers } from './cookieJar'
+import { registerSettingsHandlers } from './settings'
 
 registerHttpHandlers()
 registerCollectionHandlers()
 registerCookieHandlers()
+registerSettingsHandlers()
 
 function createWindow(): void {
   // Create the browser window.
