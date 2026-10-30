@@ -272,6 +272,10 @@ export interface SondaApi {
   clearCookies: () => Promise<void>
   loadSettings: () => Promise<AppSettings>
   saveSettings: (settings: AppSettings) => Promise<AppSettings>
+  /** Levanta un servidor local que responde con datos de ejemplo según los schemas de la colección */
+  startMock: (collectionId: string, port: number) => Promise<MockStartResult>
+  stopMock: () => Promise<void>
+  getMockStatus: () => Promise<MockStatus>
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'
@@ -435,3 +439,21 @@ export interface FormPart {
   kind: 'text' | 'file'
   value: string
 }
+
+// ---------- Servidor mock ----------
+
+export interface MockRouteInfo {
+  method: HttpMethod
+  /** Ruta con parámetros, ej: /pet/{petId} */
+  path: string
+  /** Status con el que responde (el primer 2xx documentado) */
+  status: number
+}
+
+export type MockStatus =
+  | { running: false }
+  | { running: true; collectionId: string; port: number; routes: MockRouteInfo[] }
+
+export type MockStartResult =
+  | { ok: true; port: number; routes: MockRouteInfo[] }
+  | { ok: false; error: string }

@@ -35,7 +35,10 @@ const api: SondaApi = {
   deleteCookie: (id) => ipcRenderer.invoke('cookies:delete', id),
   clearCookies: () => ipcRenderer.invoke('cookies:clear'),
   loadSettings: () => ipcRenderer.invoke('settings:load'),
-  saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings)
+  saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
+  startMock: (collectionId, port) => ipcRenderer.invoke('mock:start', collectionId, port),
+  stopMock: () => ipcRenderer.invoke('mock:stop'),
+  getMockStatus: () => ipcRenderer.invoke('mock:status')
 }
 
 if (process.contextIsolated) {

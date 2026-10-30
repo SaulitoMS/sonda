@@ -19,6 +19,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
+import { MockModal } from './components/MockModal'
 
 type ModalType =
   | 'import'
@@ -32,6 +33,7 @@ type ModalType =
   | 'cookies'
   | 'settings'
   | 'bench'
+  | 'mock'
   | null
 
 function App(): React.JSX.Element {
@@ -140,6 +142,13 @@ function App(): React.JSX.Element {
             >
               Rendimiento
             </button>
+            <button
+              className={btn}
+              onClick={() => setModal('mock')}
+              title="Levantar un servidor local con respuestas de ejemplo de una colección"
+            >
+              Mock
+            </button>
             <button className={btn} onClick={() => setModal('settings')} title="Ajustes globales">
               Ajustes
             </button>
@@ -187,6 +196,7 @@ function App(): React.JSX.Element {
       )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'bench' && <BenchmarkModal onClose={() => setModal(null)} />}
+      {modal === 'mock' && <MockModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal

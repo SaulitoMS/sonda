@@ -7,11 +7,13 @@ import { registerCollectionHandlers } from './collections'
 import { registerEnvironmentHandlers } from './environments'
 import { registerCookieHandlers } from './cookieJar'
 import { registerSettingsHandlers } from './settings'
+import { registerMockHandlers } from './mockServer'
 
 registerHttpHandlers()
 registerCollectionHandlers()
 registerCookieHandlers()
 registerSettingsHandlers()
+registerMockHandlers()
 
 function createWindow(): void {
   // Create the browser window.
