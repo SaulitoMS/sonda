@@ -129,7 +129,9 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
                 </span>
               </div>
               <div className="text-zinc-200">{hoveredDynamic.description}</div>
-              <div className="mt-1.5 text-[10px] text-zinc-500">Se genera de nuevo en cada envío</div>
+              <div className="mt-1.5 text-[10px] text-zinc-500">
+                Se genera de nuevo en cada envío
+              </div>
             </>
           ) : hoveredVar ? (
             <>

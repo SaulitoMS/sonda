@@ -3,7 +3,6 @@ import { summarizeAssertions } from '../../../shared/assertions'
 import type { AssertionResult, ExtractionResult, SchemaValidation } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
 
-
 type Tab = 'body' | 'headers' | 'schema' | 'tests'
 
 const formatSize = (bytes: number): string => {

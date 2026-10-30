@@ -64,7 +64,7 @@ Importa tu Swagger/OpenAPI, genera las colecciones y comprueba que la API respon
 - Soporta **Swagger 2.0 y OpenAPI 3.x**, por URL.
 - Si la URL no es la spec (por ejemplo, la página de Swagger UI), Sonda prueba rutas comunes como `/v3/api-docs`, `/openapi.json` o `/swagger.json`.
 - Genera una petición por endpoint, con ejemplos para parámetros de path, query, headers y body JSON.
-- Agrupa las peticiones en carpetas según los *tags* de la spec.
+- Agrupa las peticiones en carpetas según los _tags_ de la spec.
 - Crea y activa un entorno con la `baseUrl` del servidor, y las peticiones la usan como `{{baseUrl}}`.
 
 ### 🔤 Entornos y variables
@@ -86,25 +86,25 @@ Importa tu Swagger/OpenAPI, genera las colecciones y comprueba que la API respon
 
 Es el diferenciador de Sonda. Las peticiones importadas de OpenAPI guardan los schemas de respuesta de cada status. Al enviarlas, una pestaña **Schema** te dice si la respuesta real cumple lo que la spec promete.
 
-| Qué revisa | Resultado |
-| --- | --- |
-| Tipos, campos requeridos, `enum`, `nullable` | ❌ Error con la ruta exacta, por ejemplo `$.tags[1].label` |
-| Formatos (`date-time`, `email`, `uuid`, `uri`), rangos, longitudes, patrones | ❌ Error |
-| Arrays (`minItems`, `maxItems`, `uniqueItems`) y `additionalProperties` | ❌ Error |
-| Combinaciones `allOf`, `anyOf`, `oneOf` | ❌ Error con la variante más cercana |
-| Campos que la API devuelve pero la spec no documenta | ⚠️ Advertencia (no invalida) |
-| Status que la spec no declara (ej. un `500` inesperado) | ⚠️ Aviso de status no documentado |
-| Body vacío o JSON inválido cuando se esperaba un body | ❌ Error |
+| Qué revisa                                                                   | Resultado                                                  |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Tipos, campos requeridos, `enum`, `nullable`                                 | ❌ Error con la ruta exacta, por ejemplo `$.tags[1].label` |
+| Formatos (`date-time`, `email`, `uuid`, `uri`), rangos, longitudes, patrones | ❌ Error                                                   |
+| Arrays (`minItems`, `maxItems`, `uniqueItems`) y `additionalProperties`      | ❌ Error                                                   |
+| Combinaciones `allOf`, `anyOf`, `oneOf`                                      | ❌ Error con la variante más cercana                       |
+| Campos que la API devuelve pero la spec no documenta                         | ⚠️ Advertencia (no invalida)                               |
+| Status que la spec no declara (ej. un `500` inesperado)                      | ⚠️ Aviso de status no documentado                          |
+| Body vacío o JSON inválido cuando se esperaba un body                        | ❌ Error                                                   |
 
 El schema se busca por status exacto (`200`), por rango (`4XX`) o por `default`. Para colecciones importadas antes de esta función, vuelve a importar la spec.
 
 ### ⌨️ Atajos
 
-| Atajo | Acción |
-| --- | --- |
-| `Cmd/Ctrl + Enter` | Enviar la petición |
+| Atajo                      | Acción             |
+| -------------------------- | ------------------ |
+| `Cmd/Ctrl + Enter`         | Enviar la petición |
 | `Enter` en la barra de URL | Enviar la petición |
-| `Cmd/Ctrl + S` | Guardar |
+| `Cmd/Ctrl + S`             | Guardar            |
 
 ---
 
@@ -254,32 +254,32 @@ src/
 
 ### Tecnologías
 
-| Área | Herramientas |
-| --- | --- |
-| Aplicación | [Electron](https://www.electronjs.org/) + [electron-vite](https://electron-vite.org/) |
-| Interfaz | [React](https://react.dev/) + [Tailwind CSS](https://tailwindcss.com/) |
-| Estado | [Zustand](https://zustand-demo.pmnd.rs/) |
-| Lenguaje | [TypeScript](https://www.typescriptlang.org/) |
-| Specs OpenAPI | [swagger-parser](https://github.com/APIDevTools/swagger-parser) |
-| Tests | [Vitest](https://vitest.dev/) |
-| Calidad | ESLint + Prettier |
+| Área          | Herramientas                                                                          |
+| ------------- | ------------------------------------------------------------------------------------- |
+| Aplicación    | [Electron](https://www.electronjs.org/) + [electron-vite](https://electron-vite.org/) |
+| Interfaz      | [React](https://react.dev/) + [Tailwind CSS](https://tailwindcss.com/)                |
+| Estado        | [Zustand](https://zustand-demo.pmnd.rs/)                                              |
+| Lenguaje      | [TypeScript](https://www.typescriptlang.org/)                                         |
+| Specs OpenAPI | [swagger-parser](https://github.com/APIDevTools/swagger-parser)                       |
+| Tests         | [Vitest](https://vitest.dev/)                                                         |
+| Calidad       | ESLint + Prettier                                                                     |
 
 ---
 
 ## 🧰 Scripts disponibles
 
-| Comando | Qué hace |
-| --- | --- |
-| `npm run dev` | Abre la app en modo desarrollo con recarga en caliente |
-| `npm start` | Previsualiza la app compilada |
-| `npm test` | Corre los tests una vez |
-| `npm run test:watch` | Corre los tests y se queda escuchando cambios |
-| `npm run lint` | Revisa el código con ESLint |
-| `npm run format` | Da formato a todo el proyecto con Prettier |
-| `npm run typecheck` | Verifica los tipos de TypeScript |
-| `npm run build` | Comprueba tipos y compila la app |
-| `npm run build:mac` / `build:win` / `build:linux` | Genera el instalador de cada sistema |
-| `npm run build:unpack` | Genera la app sin empaquetar (útil para depurar) |
+| Comando                                           | Qué hace                                               |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| `npm run dev`                                     | Abre la app en modo desarrollo con recarga en caliente |
+| `npm start`                                       | Previsualiza la app compilada                          |
+| `npm test`                                        | Corre los tests una vez                                |
+| `npm run test:watch`                              | Corre los tests y se queda escuchando cambios          |
+| `npm run lint`                                    | Revisa el código con ESLint                            |
+| `npm run format`                                  | Da formato a todo el proyecto con Prettier             |
+| `npm run typecheck`                               | Verifica los tipos de TypeScript                       |
+| `npm run build`                                   | Comprueba tipos y compila la app                       |
+| `npm run build:mac` / `build:win` / `build:linux` | Genera el instalador de cada sistema                   |
+| `npm run build:unpack`                            | Genera la app sin empaquetar (útil para depurar)       |
 
 ---
 

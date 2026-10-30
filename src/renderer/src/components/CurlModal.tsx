@@ -233,8 +233,6 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
         </select>
       </div>
 
-
-
       <label className="mb-3 flex items-center gap-2 text-xs text-zinc-300">
         <input
           type="checkbox"
