@@ -106,3 +106,25 @@ describe('parseStored', () => {
     expect(parseStored(JSON.stringify([ok, { id: 1 }, null]))).toEqual([ok])
   })
 })
+
+describe('parseStored con bodyForm', () => {
+  it('conserva el bodyForm y descarta uno dañado', () => {
+    const entry = {
+      id: '1',
+      at: 1,
+      method: 'POST',
+      url: 'https://x.com',
+      headers: [],
+      body: '',
+      response: { ok: false, error: 'x', timeMs: 1 },
+      bodyForm: {
+        mode: 'form-data',
+        fields: [{ key: 'a', value: '1', type: 'text', enabled: true }]
+      }
+    }
+    const bad = { ...entry, id: '2', bodyForm: { mode: 'raro', fields: 5 } }
+    const [a, b] = parseStored(JSON.stringify([entry, bad]))
+    expect(a.bodyForm?.mode).toBe('form-data')
+    expect(b.bodyForm).toBeUndefined()
+  })
+})

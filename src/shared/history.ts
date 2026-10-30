@@ -1,4 +1,5 @@
-import type { AuthConfig, HttpMethod, KeyValueData, SendRequestResult } from './types'
+import { parseBodyFormData } from './bodyForm'
+import type { AuthConfig, BodyFormData, HttpMethod, KeyValueData, SendRequestResult } from './types'
 
 export const HISTORY_LIMIT = 50
 export const MAX_BODY_CHARS = 30_000
@@ -12,6 +13,8 @@ export interface HistoryEntry {
   url: string
   headers: KeyValueData[]
   body: string
+  /** Body de formulario (urlencoded / form-data). Si no existe, el body es el texto de `body` */
+  bodyForm?: BodyFormData
   auth?: AuthConfig
   response: SendRequestResult
 }
@@ -70,13 +73,20 @@ function isEntry(value: unknown): value is HistoryEntry {
   )
 }
 
+/** Descarta un bodyForm dañado sin perder el resto de la entrada */
+function sanitizeBodyForm(entry: HistoryEntry): HistoryEntry {
+  const { bodyForm: raw, ...rest } = entry
+  const bodyForm = parseBodyFormData(raw)
+  return bodyForm ? { ...rest, bodyForm } : rest
+}
+
 /** Lee lo guardado ignorando datos corruptos o de versiones viejas */
 export function parseStored(raw: string | null): HistoryEntry[] {
   if (!raw) return []
   try {
     const data: unknown = JSON.parse(raw)
     if (!Array.isArray(data)) return []
-    return data.filter(isEntry).slice(0, HISTORY_LIMIT)
+    return data.filter(isEntry).slice(0, HISTORY_LIMIT).map(sanitizeBodyForm)
   } catch {
     return []
   }

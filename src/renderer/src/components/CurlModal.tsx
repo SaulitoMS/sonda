@@ -9,6 +9,7 @@ import { METHOD_COLORS } from '../lib/methodColors'
 import { Modal } from './Modal'
 import { parseCurl, type ParsedCurl } from '../../../shared/curl'
 import { CODE_LANGS, generateCode, type CodeLang } from '../../../shared/codegen'
+import { formDataParts, urlencodedBody } from '../../../shared/bodyForm'
 
 type Tab = 'import' | 'export'
 
@@ -159,6 +160,7 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
   const headers = useRequestStore((s) => s.headers)
   const body = useRequestStore((s) => s.body)
   const envData = useEnvironmentStore((s) => s.data)
+  const bodyForm = useRequestStore((s) => s.bodyForm)
 
   const [resolve, setResolve] = useState(true)
   const [lang, setLang] = useState<CodeLang>('curl')
@@ -177,17 +179,27 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       : {}
     const r = (text: string): string => interpolate(text, vars, { dynamic: resolve }).text
 
+    const mode = bodyForm.mode
     const finalHeaders = headers
       .filter((h) => h.enabled && h.key.trim())
+      // En form-data el Content-Type lleva el boundary y lo pone quien ejecute el código
+      .filter((h) => mode !== 'form-data' || h.key.trim().toLowerCase() !== 'content-type')
       .map((h) => ({ key: r(h.key), value: r(h.value) }))
-    const finalBody = body.trim() ? r(body) : ''
 
-    if (
-      finalBody &&
-      !finalHeaders.some((h) => h.key.toLowerCase() === 'content-type') &&
-      looksLikeJson(finalBody)
-    ) {
-      finalHeaders.push({ key: 'Content-Type', value: 'application/json' })
+    const finalBody =
+      mode === 'urlencoded'
+        ? urlencodedBody(bodyForm.fields, r)
+        : mode === 'raw' && body.trim()
+          ? r(body)
+          : ''
+    const formData = mode === 'form-data' ? formDataParts(bodyForm.fields, r) : undefined
+
+    if (finalBody && !finalHeaders.some((h) => h.key.toLowerCase() === 'content-type')) {
+      if (mode === 'urlencoded') {
+        finalHeaders.push({ key: 'Content-Type', value: 'application/x-www-form-urlencoded' })
+      } else if (looksLikeJson(finalBody)) {
+        finalHeaders.push({ key: 'Content-Type', value: 'application/json' })
+      }
     }
 
     // Basic se exporta con --user (así los {{secretos}} no se codifican en base64 sin resolver)
@@ -204,9 +216,10 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       url: appendQuery(r(url.trim()), authParts.query),
       headers: finalHeaders,
       body: finalBody,
+      formData,
       user: basicUser === ':' ? undefined : basicUser
     })
-  }, [method, url, headers, body, auth, resolve, activeEnv, lang])
+  }, [method, url, headers, body, bodyForm, auth, resolve, activeEnv, lang])
 
   const hasPlaceholders = /\{\{\s*\$?[\w.-]+\s*\}\}/.test(output)
 

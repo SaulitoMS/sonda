@@ -268,7 +268,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
 
     // Lo que no llegó a enviarse (variables sin definir, URL inválida) no entra al historial
     if (response.ok || response.timeMs > 0) {
-      useHistoryStore.getState().add({ method, url, headers, body, auth, response })
+      useHistoryStore.getState().add({ method, url, headers, body, bodyForm, auth, response })
     }
   },
 

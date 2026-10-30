@@ -1,4 +1,5 @@
 import { emptyAuth } from '../../../shared/auth'
+import { fromBodyFormData } from '../../../shared/bodyForm'
 import type { ParsedCurl } from '../../../shared/curl'
 import { newRow, useRequestStore } from '../store/useRequestStore'
 
@@ -12,6 +13,7 @@ export function applyCurl(parsed: ParsedCurl): void {
       newRow()
     ],
     body: parsed.body,
+    bodyForm: fromBodyFormData(parsed.bodyForm),
     auth: emptyAuth(),
     currentFile: null,
     name: '',

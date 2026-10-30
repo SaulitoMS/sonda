@@ -56,3 +56,25 @@ export function formDataParts(
     value: resolve(f.value)
   }))
 }
+
+const BODY_MODE_IDS: string[] = ['raw', 'urlencoded', 'form-data']
+
+/** Lee un bodyForm guardado en disco o localStorage ignorando datos corruptos */
+export function parseBodyFormData(x: unknown): BodyFormData | undefined {
+  if (!x || typeof x !== 'object') return undefined
+  const o = x as Record<string, unknown>
+  if (typeof o.mode !== 'string' || !BODY_MODE_IDS.includes(o.mode)) return undefined
+  if (!Array.isArray(o.fields)) return undefined
+
+  const fields = o.fields
+    .filter((f): f is Record<string, unknown> => !!f && typeof f === 'object')
+    .filter((f) => typeof f.key === 'string' && typeof f.value === 'string')
+    .map((f) => ({
+      key: f.key as string,
+      value: f.value as string,
+      type: f.type === 'file' ? ('file' as const) : ('text' as const),
+      enabled: f.enabled !== false
+    }))
+
+  return { mode: o.mode as BodyMode, fields }
+}

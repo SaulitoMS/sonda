@@ -123,10 +123,35 @@ describe('parseCurl', () => {
     expect(parseCurl(`curl '{{baseUrl}}/pet/1'`).url).toBe('{{baseUrl}}/pet/1')
   })
 
-  it('avisa que -F (multipart) no está soportado', () => {
-    const r = parseCurl(`curl -F 'a=b' https://x.com`)
+  it('-F separa campos de texto y archivos en un form-data', () => {
+    const r = parseCurl(`curl -F 'name=Ana' -F 'avatar=@/tmp/a.png;type=image/png' https://x.com`)
     expect(r.method).toBe('POST')
-    expect(r.warnings).toHaveLength(1)
+    expect(r.body).toBe('')
+    expect(r.bodyForm).toEqual({
+      mode: 'form-data',
+      fields: [
+        { key: 'name', value: 'Ana', type: 'text', enabled: true },
+        { key: 'avatar', value: '/tmp/a.png', type: 'file', enabled: true }
+      ]
+    })
+    expect(r.warnings).toEqual([])
+  })
+
+  it('-F quita las comillas que pone Postman alrededor de la ruta', () => {
+    const r = parseCurl(`curl --form 'doc=@"/tmp/mi archivo.pdf"' https://x.com`)
+    expect(r.bodyForm?.fields[0]).toMatchObject({ type: 'file', value: '/tmp/mi archivo.pdf' })
+  })
+
+  it('--form-string no interpreta @ ni <', () => {
+    const r = parseCurl(`curl --form-string 'mail=@ana' https://x.com`)
+    expect(r.bodyForm?.fields[0]).toMatchObject({ type: 'text', value: '@ana' })
+  })
+
+  it('-F avisa de los campos que no puede importar', () => {
+    const r = parseCurl(`curl -F 'a=<in.txt' -F 'sinvalor' https://x.com`)
+    expect(r.method).toBe('POST')
+    expect(r.bodyForm).toBeUndefined()
+    expect(r.warnings).toHaveLength(2)
   })
 
   describe('errores', () => {
@@ -207,5 +232,39 @@ describe('toCurl con --user', () => {
       user: 'ana:1234'
     })
     expect(out).toContain("--user 'ana:1234'")
+  })
+})
+
+describe('toCurl con form-data', () => {
+  const formData = [
+    { key: 'name', kind: 'text' as const, value: 'Ana' },
+    { key: 'avatar', kind: 'file' as const, value: '/tmp/a.png' },
+    { key: 'mail', kind: 'text' as const, value: '@ana' }
+  ]
+
+  it('genera --form para texto y archivos, y --form-string si el texto empieza con @', () => {
+    const out = toCurl({ method: 'POST', url: 'https://x.com', headers: [], body: '', formData })
+    expect(out).toContain(`--form 'name=Ana'`)
+    expect(out).toContain(`--form 'avatar=@/tmp/a.png'`)
+    expect(out).toContain(`--form-string 'mail=@ana'`)
+  })
+
+  it('ida y vuelta conserva los campos', () => {
+    const out = toCurl({ method: 'POST', url: 'https://x.com', headers: [], body: '', formData })
+    const fields = parseCurl(out).bodyForm?.fields.map(({ key, value, type }) => ({
+      key,
+      value,
+      type
+    }))
+    expect(fields).toEqual([
+      { key: 'name', value: 'Ana', type: 'text' },
+      { key: 'avatar', value: '/tmp/a.png', type: 'file' },
+      { key: 'mail', value: '@ana', type: 'text' }
+    ])
+  })
+
+  it('no envía form-data en GET', () => {
+    const out = toCurl({ method: 'GET', url: 'https://x.com', headers: [], body: '', formData })
+    expect(out).not.toContain('--form')
   })
 })

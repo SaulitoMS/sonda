@@ -1,15 +1,19 @@
-import type { HttpMethod } from './types'
+import type { BodyFormData, FormFieldData, FormPart, HttpMethod } from './types'
 
 export interface CurlRequest {
   method: HttpMethod
   url: string
   headers: { key: string; value: string }[]
   body: string
+  /** Campos de un multipart/form-data (se exportan con --form en vez de `body`) */
+  formData?: FormPart[]
   /** Credenciales Basic como "usuario:contraseña" (se exporta con --user) */
   user?: string
 }
 
 export interface ParsedCurl extends CurlRequest {
+  /** Formulario importado de -F, listo para cargarse en la pestaña Body */
+  bodyForm?: BodyFormData
   /** Cosas del comando que Sonda no soporta o ignoró */
   warnings: string[]
 }
@@ -191,6 +195,34 @@ function encodeUrlencodedField(value: string): string {
   return `${value.slice(0, idx)}=${encodeURIComponent(value.slice(idx + 1))}`
 }
 
+/** Interpreta un -F: nombre=valor, nombre=@archivo (con ;type= opcional) o --form-string */
+function parseFormField(
+  value: string,
+  literal: boolean
+): { field?: FormFieldData; warning?: string } {
+  const idx = value.indexOf('=')
+  if (idx <= 0) return { warning: `Se omitió el campo -F "${value}": debe ser nombre=valor` }
+
+  const key = value.slice(0, idx)
+  const raw = value.slice(idx + 1)
+
+  if (!literal && raw.startsWith('<')) {
+    return {
+      warning: `Se omitió el campo "${key}": leer su valor desde un archivo (<) no está soportado`
+    }
+  }
+  if (!literal && raw.startsWith('@')) {
+    // Quita ;type=... y ;filename=..., y las comillas que agrega Postman alrededor de la ruta
+    const path = raw
+      .slice(1)
+      .replace(/;(type|filename|headers)=.*$/, '')
+      .replace(/^"(.*)"$/, '$1')
+    return { field: { key, value: path, type: 'file', enabled: true } }
+  }
+  const text = literal ? raw : raw.replace(/;type=[^;]*$/, '')
+  return { field: { key, value: text, type: 'text', enabled: true } }
+}
+
 /* ---------- cURL → petición ---------- */
 
 export function parseCurl(input: string): ParsedCurl {
@@ -208,6 +240,8 @@ export function parseCurl(input: string): ParsedCurl {
   let useGet = false
   let head = false
   let hasForm = false
+
+  const formFields: FormFieldData[] = []
 
   const addHeader = (key: string, value: string): void => {
     if (SKIPPED_HEADERS.has(key.toLowerCase())) {
@@ -268,11 +302,13 @@ export function parseCurl(input: string): ParsedCurl {
         url = value
         break
       case 'form':
-      case 'form-string':
+      case 'form-string': {
         hasForm = true
+        const parsed = parseFormField(value, name === 'form-string')
+        if (parsed.field) formFields.push(parsed.field)
+        if (parsed.warning) warnings.push(parsed.warning)
         break
-      default:
-        break // opciones sin efecto en Sonda (-o, --max-time, --proxy…)
+      }
     }
   }
 
@@ -329,8 +365,9 @@ export function parseCurl(input: string): ParsedCurl {
     body = ''
   }
 
-  if (hasForm) {
-    warnings.push('Los formularios multipart (-F) aún no están soportados; se omitió el body')
+  if (formFields.length > 0 && body) {
+    warnings.push('El comando mezcla -F con -d: se ignoró -d')
+    body = ''
   }
 
   if (jsonBody !== null) {
@@ -345,7 +382,16 @@ export function parseCurl(input: string): ParsedCurl {
   if (!method) method = head ? 'HEAD' : body || hasForm ? 'POST' : 'GET'
   if (!METHODS.has(method)) throw new Error(`Método HTTP no soportado: ${method}`)
 
-  return { method: method as HttpMethod, url, headers, body, warnings }
+  return {
+    method: method as HttpMethod,
+    url,
+    headers,
+    body,
+    ...(formFields.length > 0
+      ? { bodyForm: { mode: 'form-data' as const, fields: formFields } }
+      : {}),
+    warnings
+  }
 }
 
 /* ---------- Petición → cURL ---------- */
@@ -360,7 +406,15 @@ export function toCurl(req: CurlRequest): string {
 
   if (req.user) lines.push(`--user ${quote(req.user)}`)
 
-  if (req.body.trim() && req.method !== 'GET' && req.method !== 'HEAD') {
+  const canHaveBody = req.method !== 'GET' && req.method !== 'HEAD'
+  if (canHaveBody && req.formData?.length) {
+    for (const p of req.formData) {
+      // Un texto que empieza con @ o < se enviaría como archivo; --form-string lo evita
+      const flag = p.kind === 'text' && /^[@<]/.test(p.value) ? '--form-string' : '--form'
+      const value = p.kind === 'file' ? `@${p.value}` : p.value
+      lines.push(`${flag} ${quote(`${p.key}=${value}`)}`)
+    }
+  } else if (canHaveBody && req.body.trim()) {
     lines.push(`--data-raw ${quote(req.body)}`)
   }
 

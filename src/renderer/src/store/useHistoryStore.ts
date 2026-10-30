@@ -1,11 +1,12 @@
 import { create } from 'zustand'
+import { toBodyFormData } from '../../../shared/bodyForm'
 import {
   parseStored,
   pushEntry,
   truncateResponse,
   type HistoryEntry
 } from '../../../shared/history'
-import type { AuthConfig, HttpMethod, SendRequestResult } from '../../../shared/types'
+import type { AuthConfig, BodyFormData, HttpMethod, SendRequestResult } from '../../../shared/types'
 
 const KEY = 'sonda.history.v1'
 
@@ -40,6 +41,8 @@ export interface HistoryInput {
   url: string
   headers: { key: string; value: string; enabled: boolean }[]
   body: string
+  /** Body de formulario (urlencoded / form-data). Con mode "raw" se usa `body` */
+  bodyForm?: BodyFormData
   auth: AuthConfig
   response: SendRequestResult
 }
@@ -55,6 +58,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   entries: parseStored(readRaw()),
 
   add: (input) => {
+    const bodyForm = input.bodyForm ? toBodyFormData(input.bodyForm) : undefined
     const entry: HistoryEntry = {
       id: crypto.randomUUID(),
       at: Date.now(),
@@ -64,6 +68,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         .filter((h) => h.key.trim())
         .map(({ key, value, enabled }) => ({ key, value, enabled })),
       body: input.body,
+      ...(bodyForm ? { bodyForm } : {}),
       ...(input.auth.type !== 'none' ? { auth: input.auth } : {}),
       response: truncateResponse(input.response)
     }

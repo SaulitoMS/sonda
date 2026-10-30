@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { formDataParts, fromBodyFormData, toBodyFormData, urlencodedBody } from './bodyForm'
+import {
+  formDataParts,
+  fromBodyFormData,
+  toBodyFormData,
+  urlencodedBody,
+  parseBodyFormData
+} from './bodyForm'
 import type { FormFieldData } from './types'
 
 const f = (key: string, value: string, over: Partial<FormFieldData> = {}): FormFieldData => ({
@@ -53,5 +59,18 @@ describe('toBodyFormData / fromBodyFormData', () => {
     const form = fromBodyFormData({ mode: 'urlencoded', fields: [f('a', '1')] })
     expect(form.fields).toHaveLength(2)
     expect(form.fields[1].key).toBe('')
+  })
+})
+
+describe('parseBodyFormData', () => {
+  it('lee un bodyForm válido', () => {
+    const data = { mode: 'form-data', fields: [f('a', '1')] }
+    expect(parseBodyFormData(data)).toEqual(data)
+  })
+
+  it('descarta modos desconocidos y campos que no son lista', () => {
+    expect(parseBodyFormData({ mode: 'raro', fields: [] })).toBeUndefined()
+    expect(parseBodyFormData({ mode: 'raw', fields: 5 })).toBeUndefined()
+    expect(parseBodyFormData(null)).toBeUndefined()
   })
 })
