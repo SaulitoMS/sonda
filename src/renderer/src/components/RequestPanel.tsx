@@ -75,6 +75,27 @@ export function RequestPanel(): React.JSX.Element {
   const activeHeaders = headers.filter((h) => h.enabled && h.key.trim()).length
   const bodyDisabled = method === 'GET' || method === 'HEAD'
 
+  const jsonError = useMemo<string | null>(() => {
+  const text = body.trim()
+  if (!text || !/^[[{]/.test(text)) return null
+  // Con {{variables}} no es JSON válido todavía; no molestamos
+  if (/\{\{.*?\}\}/.test(text)) return null
+  try {
+    JSON.parse(text)
+    return null
+  } catch (e) {
+    return e instanceof Error ? e.message : 'JSON inválido'
+  }
+}, [body])
+
+const formatBody = (): void => {
+  try {
+    setBody(JSON.stringify(JSON.parse(body), null, 2))
+  } catch {
+    /* si no es JSON, no se toca */
+  }
+}
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex border-b border-zinc-800 px-2">
@@ -130,6 +151,18 @@ export function RequestPanel(): React.JSX.Element {
                 {method} no envía body. Cambia el método para usarlo.
               </p>
             )}
+            <div className="flex items-center justify-between">
+              <span className={`text-xs ${jsonError ? 'text-red-400' : 'text-zinc-500'}`}>
+                {jsonError ? `JSON inválido: ${jsonError}` : 'JSON'}
+              </span>
+              <button
+                onClick={formatBody}
+                disabled={!body.trim()}
+                className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+              >
+                Formatear
+              </button>
+            </div>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
