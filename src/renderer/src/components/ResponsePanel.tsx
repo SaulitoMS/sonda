@@ -13,8 +13,9 @@ import { downloadBase64, downloadText } from '../lib/download'
 import { BinaryView } from './BinaryView'
 import { getByPath, parsePath } from '../../../shared/assertions'
 import { JsonTree } from './JsonTree'
+import { usePreviousDiff, type PreviousDiff } from '../lib/usePreviousDiff'
 
-type Tab = 'body' | 'headers' | 'schema' | 'tests'
+type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes'
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`
@@ -121,6 +122,76 @@ function TestsReport({ results }: { results: AssertionResult[] }): React.JSX.Ele
   )
 }
 
+
+const showValue = (v: unknown): string => {
+  const text = JSON.stringify(v) ?? 'undefined'
+  return text.length > 80 ? `${text.slice(0, 77)}…` : text
+}
+
+function ChangesReport({ diff }: { diff: PreviousDiff }): React.JSX.Element {
+  if (diff.state === 'none') {
+    return (
+      <p className="text-xs text-zinc-500">
+        Aún no hay una respuesta anterior de esta petición para comparar. Envíala otra vez.
+      </p>
+    )
+  }
+  if (diff.state === 'unavailable') {
+    return <p className="text-xs text-amber-400">{diff.reason}</p>
+  }
+
+  const time = new Date(diff.at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+  const statusChanged = diff.statusBefore !== diff.statusAfter
+
+  return (
+    <div className="selectable space-y-3 text-xs">
+      <p
+        className={`font-semibold ${
+          diff.changes.length === 0 && !statusChanged ? 'text-emerald-400' : 'text-amber-400'
+        }`}
+      >
+        {diff.changes.length === 0
+          ? `Sin cambios en el body respecto a la respuesta de las ${time}`
+          : `${plural(diff.changes.length, 'cambio', 'cambios')} respecto a la respuesta de las ${time}`}
+      </p>
+
+      {statusChanged && (
+        <p className="font-mono text-amber-300">
+          Status: {diff.statusBefore} → {diff.statusAfter}
+        </p>
+      )}
+
+      <ul className="space-y-1.5 font-mono">
+        {diff.changes.map((c, i) => (
+          <li key={i} className="flex flex-wrap gap-2">
+            <span
+              className={
+                c.kind === 'added'
+                  ? 'text-emerald-400'
+                  : c.kind === 'removed'
+                    ? 'text-red-400'
+                    : 'text-amber-400'
+              }
+            >
+              {c.kind === 'added' ? '+' : c.kind === 'removed' ? '−' : '~'}
+            </span>
+            <span className="font-semibold text-blue-300">{c.path}</span>
+            {c.kind === 'changed' && (
+              <span className="text-zinc-300">
+                {showValue(c.before)} → {showValue(c.after)}
+              </span>
+            )}
+            {c.kind === 'added' && <span className="text-zinc-300">{showValue(c.after)}</span>}
+            {c.kind === 'removed' && (
+              <span className="text-zinc-500 line-through">{showValue(c.before)}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 const clip = (text: string): string => (text.length > 60 ? `${text.slice(0, 57)}…` : text)
 
 function ExtractionsBanner({ results }: { results: ExtractionResult[] }): React.JSX.Element | null {
@@ -155,6 +226,7 @@ export function ResponsePanel(): React.JSX.Element {
     useRequestStore()
   const method = useRequestStore((s) => s.method)
   const url = useRequestStore((s) => s.url)
+  const diff = usePreviousDiff(response, method, url)
   const [tab, setTab] = useState<Tab>('body')
   // Si la nueva respuesta no tiene validación, la pestaña "Schema" no existe: volver a Body
   const hasTests = assertionResults.length > 0
@@ -296,6 +368,16 @@ export function ResponsePanel(): React.JSX.Element {
               </span>
             </button>
           )}
+          <button className={tabClass('changes')} onClick={() => setTab('changes')}>
+            Cambios
+            {diff.state === 'ready' && (
+              <span
+                className={`ml-1 ${diff.changes.length === 0 ? 'text-emerald-400' : 'text-amber-400'}`}
+              >
+                {diff.changes.length === 0 ? '✓' : diff.changes.length}
+              </span>
+            )}
+          </button>
         </div>
 
         <div className="flex items-center gap-3 pr-2 text-xs">
@@ -404,6 +486,8 @@ export function ResponsePanel(): React.JSX.Element {
         {current === 'schema' && validation && <SchemaReport validation={validation} />}
 
         {current === 'tests' && hasTests && <TestsReport results={assertionResults} />}
+
+        {current === 'changes' && <ChangesReport diff={diff} />}
       </div>
     </div>
   )
