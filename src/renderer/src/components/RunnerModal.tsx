@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { classifyResult, type RunStatus } from '../../../shared/classify'
-import { buildReport, reportFileName, reportToHtml, reportToJson } from '../../../shared/report'
+import {
+  buildReport,
+  reportFileName,
+  reportToHtml,
+  reportToJson,
+  reportToJunit
+} from '../../../shared/report'
 import { useTabsStore } from '../store/useTabsStore'
 import type {
   AssertionResult,
@@ -209,7 +215,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
     onClose()
   }
 
-  const exportReport = (format: 'json' | 'html'): void => {
+  const exportReport = (format: 'json' | 'html' | 'xml'): void => {
     const report = buildReport({
       collection: collection?.name ?? '',
       environment: runEnvName.current,
@@ -228,11 +234,12 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
     })
     if (format === 'json') {
       downloadText(reportFileName(report, 'json'), reportToJson(report), 'application/json')
+    } else if (format === 'xml') {
+      downloadText(reportFileName(report, 'xml'), reportToJunit(report), 'application/xml')
     } else {
       downloadText(reportFileName(report, 'html'), reportToHtml(report), 'text/html')
     }
   }
-
   const count = (s: RunStatus): number => rows.filter((r) => r.status === s).length
   const started = running || finished
 
@@ -366,6 +373,13 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
               className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
             >
               Exportar HTML
+            </button>
+            <button
+              onClick={() => exportReport('xml')}
+              className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              title="Formato JUnit para CI (GitHub Actions, GitLab, Jenkins)"
+            >
+              Exportar JUnit
             </button>
             {rows.some((r) => r.status === 'fail') && (
               <button

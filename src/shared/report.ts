@@ -206,8 +206,65 @@ const slug = (text: string): string =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'coleccion'
 
+/** Escapa texto para XML y quita caracteres de control que vuelven inválido el archivo */
+const xmlEscape = (text: string): string =>
+  text
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+
+/** Reporte en formato JUnit XML: lo entienden GitHub Actions, GitLab CI, Jenkins, etc. */
+export function reportToJunit(report: RunReport): string {
+  const { summary } = report
+  const seconds = (ms: number): string => (ms / 1000).toFixed(3)
+
+  const cases = report.results.map((r) => {
+    const classname = xmlEscape(report.collection + (r.group ? `.${r.group}` : ''))
+    const name = xmlEscape(`${r.method} ${r.name}`)
+    const open = `    <testcase classname="${classname}" name="${name}" time="${seconds(r.timeMs)}"`
+
+    if (r.status === 'fail') {
+      const lines = [
+        ...r.assertions
+          .filter((a) => !a.passed)
+          .map((a) => `✗ ${a.label}${a.message ? ` · ${a.message}` : ''}`),
+        ...(r.schema?.issues ?? [])
+          .filter((i) => i.severity === 'error')
+          .map((i) => `✗ schema ${i.path} ${i.message}`)
+      ]
+      const message = r.detail || lines[0] || 'La petición falló'
+      const type = r.httpStatus !== null ? `HTTP ${r.httpStatus}` : 'Error'
+      return (
+        `${open}>\n` +
+        `      <failure message="${xmlEscape(message)}" type="${type}">${xmlEscape(lines.join('\n'))}</failure>\n` +
+        `    </testcase>`
+      )
+    }
+
+    if (r.status === 'warn' && r.detail) {
+      return `${open}>\n      <system-out>${xmlEscape(`⚠ ${r.detail}`)}</system-out>\n    </testcase>`
+    }
+
+    return `${open} />`
+  })
+
+  const suiteName = xmlEscape(report.collection)
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<testsuites name="${suiteName}" tests="${summary.total}" failures="${summary.fail}" time="${seconds(summary.timeMs)}">\n` +
+    `  <testsuite name="${suiteName}" tests="${summary.total}" failures="${summary.fail}" errors="0" skipped="0" time="${seconds(summary.timeMs)}" timestamp="${xmlEscape(report.generatedAt)}">\n` +
+    `${cases.join('\n')}\n` +
+    `  </testsuite>\n` +
+    `</testsuites>\n`
+  )
+}
+
 /** Nombre de archivo tipo sonda-petstore-20261029-123456.html */
-export function reportFileName(report: RunReport, ext: 'json' | 'html'): string {
+export function reportFileName(report: RunReport, ext: 'json' | 'html' | 'xml'): string {
   const stamp = report.generatedAt.slice(0, 19).replace(/[-:]/g, '').replace('T', '-')
   return `sonda-${slug(report.collection)}-${stamp}.${ext}`
 }
