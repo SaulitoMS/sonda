@@ -7,6 +7,7 @@ import {
   OP_LABELS,
   opsForKind
 } from '../../../shared/assertions'
+import { generateAssertions, mergeAssertions } from '../../../shared/autoAssertions'
 import type { Assertion, AssertionKind, AssertionOp } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
 
@@ -26,6 +27,13 @@ const targetPlaceholder: Partial<Record<AssertionKind, string>> = {
 export function AssertionsPanel(): React.JSX.Element {
   const assertions = useRequestStore((s) => s.assertions)
   const setAssertions = useRequestStore((s) => s.setAssertions)
+  const response = useRequestStore((s) => s.response)
+
+  const canGenerate = response?.ok === true
+  const generate = (): void => {
+    if (!response?.ok) return
+    setAssertions(mergeAssertions(assertions, generateAssertions(response)))
+  }
 
   const update = (id: string, next: Assertion): void =>
     setAssertions(assertions.map((a) => (a.id === id ? next : a)))
@@ -105,12 +113,24 @@ export function AssertionsPanel(): React.JSX.Element {
         </div>
       ))}
 
-      <div>
+      <div className="flex items-center gap-2">
         <button
           onClick={() => setAssertions([...assertions, emptyAssertion('status')])}
           className="rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
         >
           + Agregar aserción
+        </button>
+        <button
+          onClick={generate}
+          disabled={!canGenerate}
+          className="rounded-md bg-blue-600/20 px-3 py-1.5 text-xs text-blue-300 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-40"
+          title={
+            canGenerate
+              ? 'Crea reglas a partir de la última respuesta'
+              : 'Envía la petición primero para poder generar reglas'
+          }
+        >
+          Generar desde la respuesta
         </button>
       </div>
 
