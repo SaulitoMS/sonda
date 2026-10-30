@@ -19,6 +19,7 @@ interface Schema {
   maximum?: number
   exclusiveMinimum?: number | boolean
   exclusiveMaximum?: number | boolean
+  multipleOf?: number
   items?: Schema
   minItems?: number
   maxItems?: number
@@ -29,6 +30,7 @@ interface Schema {
   allOf?: Schema[]
   anyOf?: Schema[]
   oneOf?: Schema[]
+  not?: Schema
 }
 
 export interface ValidateInput {
@@ -222,7 +224,7 @@ function check(
   }
 
   if (typeof value === 'number') {
-    const { minimum, maximum, exclusiveMinimum, exclusiveMaximum } = schema
+    const { minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf } = schema
     // En OpenAPI 3.0 exclusiveMinimum/Maximum son booleanos; en JSON Schema nuevo, números
     if (typeof minimum === 'number') {
       const exclusive = exclusiveMinimum === true
@@ -241,6 +243,13 @@ function check(
     }
     if (typeof exclusiveMaximum === 'number' && value >= exclusiveMaximum) {
       report(ctx, path, `Debe ser menor que ${exclusiveMaximum}`)
+    }
+    if (typeof multipleOf === 'number' && multipleOf > 0) {
+      // Tolerancia para errores de coma flotante (0.3 / 0.1 = 2.9999999999999996)
+      const quotient = value / multipleOf
+      if (Math.abs(quotient - Math.round(quotient)) > 1e-9 * Math.max(1, Math.abs(quotient))) {
+        report(ctx, path, `Debe ser múltiplo de ${multipleOf}`)
+      }
     }
   }
 
@@ -320,6 +329,15 @@ function check(
     } else {
       report(ctx, path, `No coincide con ninguna de las ${subs.length} variantes (oneOf)`)
       merge(ctx, closest(subs))
+    }
+  }
+
+  if (schema.not && typeof schema.not === 'object') {
+    // Si el valor SÍ cumple el schema prohibido, es un error
+    const sub = newCtx()
+    check(schema.not, value, path, sub, depth + 1, true)
+    if (sub.errors === 0) {
+      report(ctx, path, 'No debe coincidir con el schema prohibido (not)')
     }
   }
 }
