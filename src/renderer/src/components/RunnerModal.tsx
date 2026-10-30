@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { classifyResult, type RunStatus } from '../../../shared/classify'
+import { buildReport, reportFileName, reportToHtml, reportToJson } from '../../../shared/report'
 import type {
   AssertionResult,
   HttpMethod,
@@ -8,6 +9,7 @@ import type {
   SchemaValidation,
   SendRequestResult
 } from '../../../shared/types'
+import { downloadText } from '../lib/download'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { persistExtractions } from '../lib/persistExtractions'
 import { executeRequest } from '../lib/runRequest'
@@ -55,6 +57,8 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
   const [finished, setFinished] = useState(false)
   const [rows, setRows] = useState<Row[]>([])
   const runId = useRef(0)
+  // Entorno con el que se hizo la ejecución, para anotarlo en el reporte
+  const runEnvName = useRef<string | null>(null)
 
   // Al cerrar el modal se cancela cualquier ejecución en curso
   useEffect(() => {
@@ -77,6 +81,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
 
   const run = async (): Promise<void> => {
     const myRun = ++runId.current
+    runEnvName.current = useEnvironmentStore.getState().getActive()?.name ?? null
     setRows([])
     setFinished(false)
     setRunning(true)
@@ -144,6 +149,30 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
       warnings: []
     })
     onClose()
+  }
+
+  const exportReport = (format: 'json' | 'html'): void => {
+    const report = buildReport({
+      collection: collection?.name ?? '',
+      environment: runEnvName.current,
+      rows: rows.map((r) => ({
+        group: r.entry.group,
+        name: r.entry.item.name,
+        method: r.entry.item.method,
+        path: r.entry.item.path,
+        status: r.status,
+        detail: r.detail,
+        httpStatus: r.httpStatus,
+        timeMs: r.timeMs,
+        assertionResults: r.assertionResults,
+        validation: r.validation
+      }))
+    })
+    if (format === 'json') {
+      downloadText(reportFileName(report, 'json'), reportToJson(report), 'application/json')
+    } else {
+      downloadText(reportFileName(report, 'html'), reportToHtml(report), 'text/html')
+    }
   }
 
   const count = (s: RunStatus): number => rows.filter((r) => r.status === s).length
@@ -224,6 +253,22 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
       )}
 
       <div className="mt-4 flex justify-end gap-2">
+        {rows.length > 0 && !running && (
+          <div className="mr-auto flex gap-2">
+            <button
+              onClick={() => exportReport('json')}
+              className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+            >
+              Exportar JSON
+            </button>
+            <button
+              onClick={() => exportReport('html')}
+              className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+            >
+              Exportar HTML
+            </button>
+          </div>
+        )}
         <button
           onClick={onClose}
           className="rounded px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
