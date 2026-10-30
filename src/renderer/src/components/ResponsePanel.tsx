@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { summarizeAssertions } from '../../../shared/assertions'
 import type { AssertionResult, ExtractionResult, SchemaValidation } from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
+import { buildFullExport, extensionFor, mimeFor, suggestFileName } from '../../../shared/exportResponse'
+import { downloadText } from '../lib/download'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests'
 
@@ -142,12 +144,15 @@ function WarningsBanner({ warnings }: { warnings: string[] }): React.JSX.Element
 export function ResponsePanel(): React.JSX.Element {
   const { response, loading, validation, assertionResults, extractionResults, warnings } =
     useRequestStore()
+  const method = useRequestStore((s) => s.method)
+  const url = useRequestStore((s) => s.url)
   const [tab, setTab] = useState<Tab>('body')
   // Si la nueva respuesta no tiene validación, la pestaña "Schema" no existe: volver a Body
   const hasTests = assertionResults.length > 0
   const current: Tab =
     (tab === 'schema' && !validation) || (tab === 'tests' && !hasTests) ? 'body' : tab
   const [copied, setCopied] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const prettyBody = useMemo(() => {
     if (!response || !response.ok) return ''
@@ -162,6 +167,21 @@ export function ResponsePanel(): React.JSX.Element {
     await navigator.clipboard.writeText(prettyBody)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  const bodyExt = response?.ok ? extensionFor(response.headers['content-type'], response.body) : 'txt'
+
+  const exportBody = (): void => {
+    if (!response?.ok) return
+    downloadText(suggestFileName(method, url, bodyExt), prettyBody, mimeFor(bodyExt))
+    setMenuOpen(false)
+  }
+
+  const exportFull = (): void => {
+    if (!response?.ok) return
+    const name = suggestFileName(method, url, 'json').replace(/\.json$/, '-completa.json')
+    downloadText(name, buildFullExport({ method, url }, response), 'application/json')
+    setMenuOpen(false)
   }
 
   const tabClass = (t: Tab): string =>
@@ -243,6 +263,35 @@ export function ResponsePanel(): React.JSX.Element {
           </span>
           <span className="text-zinc-400">{response.timeMs} ms</span>
           <span className="text-zinc-400">{formatSize(response.sizeBytes)}</span>
+
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+              title="Guardar la respuesta en un archivo"
+            >
+              Exportar ▾
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-zinc-700 bg-zinc-950 p-1 shadow-xl">
+                  <button
+                    onClick={exportBody}
+                    className="block w-full rounded px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                  >
+                    Body (.{bodyExt})
+                  </button>
+                  <button
+                    onClick={exportFull}
+                    className="block w-full rounded px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                  >
+                    Respuesta completa (.json)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

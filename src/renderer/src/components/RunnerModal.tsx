@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { classifyResult, type RunStatus } from '../../../shared/classify'
 import { buildReport, reportFileName, reportToHtml, reportToJson } from '../../../shared/report'
+import { useTabsStore } from '../store/useTabsStore'
 import type {
   AssertionResult,
   HttpMethod,
@@ -141,7 +142,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
 
   const openRow = (row: Row): void => {
     if (!row.saved) return
-    loadSaved(row.saved, row.entry.item.path)
+    useTabsStore.getState().openSaved(row.saved, row.entry.item.path)
     useRequestStore.setState({
       response: row.response ?? null,
       validation: row.validation ?? null,

@@ -3,6 +3,7 @@ import type { HttpMethod, RequestItem } from '../../../shared/types'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { METHOD_COLORS } from '../lib/methodColors'
+import { useTabsStore } from '../store/useTabsStore'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -140,8 +141,7 @@ interface SidebarProps {
 export function Sidebar({ onImport, onRun }: SidebarProps): React.JSX.Element {
   const { collections, refresh } = useCollectionsStore()
   const currentFile = useRequestStore((s) => s.currentFile)
-  const loadSaved = useRequestStore((s) => s.loadSaved)
-  const detach = useRequestStore((s) => s.detach)
+
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [creating, setCreating] = useState(false)
@@ -154,20 +154,21 @@ export function Sidebar({ onImport, onRun }: SidebarProps): React.JSX.Element {
   const toggle = (key: string): void => setExpanded((e) => ({ ...e, [key]: !e[key] }))
 
   const open = async (item: RequestItem): Promise<void> => {
-    loadSaved(await window.api.readRequest(item.path), item.path)
+    const saved = await window.api.readRequest(item.path)
+    useTabsStore.getState().openSaved(saved, item.path)
   }
 
   const removeRequest = async (item: RequestItem): Promise<void> => {
     if (!confirm(`¿Eliminar "${item.name}"?`)) return
     await window.api.deleteRequest(item.path)
-    if (currentFile === item.path) detach()
+    useTabsStore.getState().detachMatching((file) => file === item.path)
     await refresh()
   }
 
   const removeCollection = async (id: string, name: string): Promise<void> => {
     if (!confirm(`¿Eliminar la colección "${name}" y todas sus peticiones?`)) return
     await window.api.deleteCollection(id)
-    if (currentFile?.startsWith(`${id}/`)) detach()
+    useTabsStore.getState().detachMatching((file) => file.startsWith(`${id}/`))
     await refresh()
   }
 

@@ -10,16 +10,17 @@ import { ResponsePanel } from './components/ResponsePanel'
 import { RunnerModal } from './components/RunnerModal'
 import { SaveModal } from './components/SaveModal'
 import { Sidebar } from './components/Sidebar'
+import { TabsBar } from './components/TabsBar'
 import { useEnvironmentStore } from './store/useEnvironmentStore'
 import { useRequestStore } from './store/useRequestStore'
+import { useTabsStore } from './store/useTabsStore'
 
 type ModalType = 'import' | 'save' | 'envs' | 'curl' | 'runner' | 'history' | null
 
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
-  const name = useRequestStore((s) => s.name)
   const currentFile = useRequestStore((s) => s.currentFile)
-  const reset = useRequestStore((s) => s.reset)
+  const newTab = useTabsStore((s) => s.newTab)
   const loadEnvironments = useEnvironmentStore((s) => s.load)
 
   const [modal, setModal] = useState<ModalType>(null)
@@ -62,10 +63,14 @@ function App(): React.JSX.Element {
         e.preventDefault()
         save()
       }
+      if (e.key === 't') {
+        e.preventDefault()
+        newTab()
+      }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [send, save])
+  }, [send, save, newTab])
 
   const btn = 'rounded px-2.5 py-1 text-xs text-zinc-300 hover:bg-zinc-800'
 
@@ -80,14 +85,9 @@ function App(): React.JSX.Element {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-10 items-center justify-between border-b border-zinc-800 px-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <h1 className="text-sm font-bold tracking-wide text-blue-400">Sonda</h1>
-            <span className="truncate text-xs text-zinc-500">
-              {currentFile ? name : 'Petición sin guardar'}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
+        <header className="flex h-10 items-stretch justify-between border-b border-zinc-800 pl-1 pr-4">
+          <TabsBar />
+          <div className="flex shrink-0 items-center gap-1 pl-2">
             {flash && <span className="mr-2 text-xs text-emerald-400">{flash}</span>}
             <EnvironmentSelector onManage={() => setModal('envs')} />
             <span className="mx-1 h-4 w-px bg-zinc-800" />
@@ -104,9 +104,6 @@ function App(): React.JSX.Element {
               title="Importar o exportar cURL"
             >
               cURL
-            </button>
-            <button className={btn} onClick={reset}>
-              Nueva
             </button>
             {currentFile && (
               <button className={btn} onClick={() => setModal('save')}>

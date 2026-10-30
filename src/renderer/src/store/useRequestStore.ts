@@ -17,6 +17,7 @@ import { persistExtractions } from '../lib/persistExtractions'
 import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from './useEnvironmentStore'
 import { useHistoryStore } from './useHistoryStore'
+import { useTabsStore } from './useTabsStore'
 
 export interface KeyValue {
   id: string
@@ -32,7 +33,7 @@ export const newRow = (): KeyValue => ({
   enabled: true
 })
 
-interface RequestState {
+export interface RequestState {
   method: HttpMethod
   url: string
   headers: KeyValue[]
@@ -79,24 +80,77 @@ interface RequestState {
   reset: () => void
 }
 
+/** Todo lo que define el estado de una pestaña (sin las funciones) */
+export type RequestSnapshot = Pick<
+  RequestState,
+  | 'method'
+  | 'url'
+  | 'headers'
+  | 'body'
+  | 'auth'
+  | 'assertions'
+  | 'extractions'
+  | 'loading'
+  | 'response'
+  | 'requestSchema'
+  | 'responseSchemas'
+  | 'validation'
+  | 'assertionResults'
+  | 'extractionResults'
+  | 'warnings'
+  | 'currentFile'
+  | 'name'
+>
+
+export function blankSnapshot(): RequestSnapshot {
+  return {
+    method: 'GET',
+    url: '',
+    headers: [newRow()],
+    body: '',
+    auth: emptyAuth(),
+    assertions: [],
+    extractions: [],
+    loading: false,
+    response: null,
+    requestSchema: null,
+    responseSchemas: null,
+    validation: null,
+    assertionResults: [],
+    extractionResults: [],
+    warnings: [],
+    currentFile: null,
+    name: ''
+  }
+}
+
+/** Foto del estado actual, para guardarla en la pestaña que se deja */
+export function captureSnapshot(): RequestSnapshot {
+  const s = useRequestStore.getState()
+  return {
+    method: s.method,
+    url: s.url,
+    headers: s.headers,
+    body: s.body,
+    auth: s.auth,
+    assertions: s.assertions,
+    extractions: s.extractions,
+    loading: s.loading,
+    response: s.response,
+    requestSchema: s.requestSchema,
+    responseSchemas: s.responseSchemas,
+    validation: s.validation,
+    assertionResults: s.assertionResults,
+    extractionResults: s.extractionResults,
+    warnings: s.warnings,
+    currentFile: s.currentFile,
+    name: s.name
+  }
+}
+
 export const useRequestStore = create<RequestState>((set, get) => ({
-  method: 'GET',
+  ...blankSnapshot(),
   url: 'https://jsonplaceholder.typicode.com/todos/1',
-  headers: [newRow()],
-  body: '',
-  auth: emptyAuth(),
-  assertions: [],
-  extractions: [],
-  loading: false,
-  response: null,
-  requestSchema: null,
-  responseSchemas: null,
-  validation: null,
-  assertionResults: [],
-  extractionResults: [],
-  warnings: [],
-  currentFile: null,
-  name: '',
 
   setMethod: (method) => set({ method }),
   setUrl: (url) => set({ url }),
@@ -121,6 +175,9 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     } = get()
     if (loading || !url.trim()) return
 
+    // La pestaña desde la que se envía: el usuario puede cambiar de pestaña mientras responde
+    const tabId = useTabsStore.getState().activeId
+
     set({ loading: true })
     const {
       response,
@@ -134,14 +191,17 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     )
     // Los valores extraídos pasan al entorno para que la siguiente petición ya los use
     const persistWarnings = await persistExtractions(extractionResults)
-    set({
+
+    const result = {
       response,
       validation,
       assertionResults,
       extractionResults,
       warnings: [...warnings, ...persistWarnings],
       loading: false
-    })
+    }
+    if (useTabsStore.getState().activeId === tabId) set(result)
+    else useTabsStore.getState().patchSnapshot(tabId, result)
 
     // Lo que no llegó a enviarse (variables sin definir, URL inválida) no entra al historial
     if (response.ok || response.timeMs > 0) {
@@ -201,23 +261,5 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   markSaved: (path, name) => set({ currentFile: path, name }),
   detach: () => set({ currentFile: null }),
 
-  reset: () =>
-    set({
-      method: 'GET',
-      url: '',
-      headers: [newRow()],
-      body: '',
-      auth: emptyAuth(),
-      assertions: [],
-      extractions: [],
-      currentFile: null,
-      name: '',
-      response: null,
-      requestSchema: null,
-      responseSchemas: null,
-      validation: null,
-      assertionResults: [],
-      extractionResults: [],
-      warnings: []
-    })
+  reset: () => set(blankSnapshot())
 }))
