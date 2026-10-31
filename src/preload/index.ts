@@ -1,10 +1,17 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { SondaApi, StreamChunk } from '../shared/types'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { SondaApi } from '../shared/types'
 
 const api: SondaApi = {
   sendRequest: (input) => ipcRenderer.invoke('http:send', input),
   cancelRequest: (requestId) => ipcRenderer.invoke('http:cancel', requestId),
+  onStream: (listener) => {
+    const handler = (_event: IpcRendererEvent, msg: StreamChunk): void => listener(msg)
+    ipcRenderer.on('http:stream', handler)
+    return () => {
+      ipcRenderer.removeListener('http:stream', handler)
+    }
+  },
   pickFile: () => ipcRenderer.invoke('files:pick'),
   listCollections: () => ipcRenderer.invoke('collections:list'),
   createCollection: (name) => ipcRenderer.invoke('collections:create', name),

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { summarizeAssertions } from '../../../shared/assertions'
-import type { AssertionResult, ExtractionResult, SchemaValidation } from '../../../shared/types'
+import type {
+  AssertionResult,
+  ExtractionResult,
+  SchemaValidation,
+  StreamEnd
+} from '../../../shared/types'
 import { useRequestStore } from '../store/useRequestStore'
 import {
   binaryExtensionFor,
@@ -17,6 +22,9 @@ import { Highlight } from './Highlight'
 import { MAX_MATCHES, buildTreeSearch, countMatches } from '../lib/search'
 import { usePreviousDiff, type PreviousDiff } from '../lib/usePreviousDiff'
 import { formatXml, isHtmlResponse, isXmlResponse } from '../../../shared/markup'
+import { isEventStream, parseSse, type SseEvent } from '../../../shared/sse'
+import { useStreamStore, type LiveStream } from '../store/useStreamStore'
+import { useTabsStore } from '../store/useTabsStore'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes'
 
@@ -223,12 +231,84 @@ function WarningsBanner({ warnings }: { warnings: string[] }): React.JSX.Element
   )
 }
 
+const STREAM_NOTE: Record<StreamEnd, string> = {
+  closed: 'El servidor cerró el stream.',
+  cancelled: 'Detuviste el stream: esto es lo recibido hasta ese momento.',
+  timeout: 'Se alcanzó el tiempo límite: esto es lo recibido hasta entonces.',
+  limit: 'Se cortó al llegar al límite de 20 MB.',
+  error: 'La conexión se interrumpió.'
+}
+
+const MAX_EVENTS_SHOWN = 500
+
+const prettyData = (data: string): string => {
+  try {
+    return JSON.stringify(JSON.parse(data), null, 2)
+  } catch {
+    return data
+  }
+}
+
+/** Lo que va llegando de un stream mientras sigue abierto */
+function LiveStreamView({ stream }: { stream: LiveStream }): React.JSX.Element {
+  const end = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [stream.text])
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-2 text-xs text-emerald-400">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+        Recibiendo eventos… {formatSize(stream.bytes)}
+        <span className="text-zinc-500">· pulsa Cancelar para detener y ver lo recibido</span>
+      </div>
+      <pre className="selectable min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all p-3 font-mono text-xs text-zinc-300">
+        {stream.text}
+        <span ref={end} />
+      </pre>
+    </div>
+  )
+}
+
+/** Eventos de un stream ya terminado, uno por tarjeta */
+function SseEvents({ events }: { events: SseEvent[] }): React.JSX.Element {
+  if (events.length === 0) {
+    return <p className="text-xs text-zinc-500">El servidor no envió ningún evento.</p>
+  }
+  return (
+    <div className="selectable space-y-2 text-xs">
+      <p className="text-zinc-500">
+        {plural(events.length, 'evento', 'eventos')}
+        {events.length > MAX_EVENTS_SHOWN && ` (se muestran los primeros ${MAX_EVENTS_SHOWN})`}
+      </p>
+      <ol className="space-y-2">
+        {events.slice(0, MAX_EVENTS_SHOWN).map((e, i) => (
+          <li key={i} className="rounded border border-zinc-800 bg-zinc-900/50 p-2">
+            <div className="mb-1 flex flex-wrap gap-x-3 text-zinc-500">
+              <span>#{i + 1}</span>
+              {e.event && <span className="font-semibold text-blue-300">{e.event}</span>}
+              {e.id && <span>id: {e.id}</span>}
+              {e.retry !== undefined && <span>retry: {e.retry} ms</span>}
+            </div>
+            <pre className="whitespace-pre-wrap break-all font-mono text-zinc-200">
+              {prettyData(e.data) || '(sin datos)'}
+            </pre>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 export function ResponsePanel(): React.JSX.Element {
   const { response, loading, validation, assertionResults, extractionResults, warnings } =
     useRequestStore()
   const method = useRequestStore((s) => s.method)
   const url = useRequestStore((s) => s.url)
   const diff = usePreviousDiff(response, method, url)
+  const activeTabId = useTabsStore((s) => s.activeId)
+  const live = useStreamStore((s) => s.live[activeTabId])
   const [tab, setTab] = useState<Tab>('body')
   // Si la nueva respuesta no tiene validación, la pestaña "Schema" no existe: volver a Body
   const hasTests = assertionResults.length > 0
@@ -239,6 +319,7 @@ export function ResponsePanel(): React.JSX.Element {
 
   const [view, setView] = useState<'tree' | 'raw'>('tree')
   const [htmlView, setHtmlView] = useState<'preview' | 'code'>('code')
+  const [sseView, setSseView] = useState<'events' | 'text'>('events')
   const [filter, setFilter] = useState('')
 
   const prettyBody = useMemo(() => {
@@ -285,8 +366,17 @@ export function ResponsePanel(): React.JSX.Element {
     isHtmlResponse(response.headers['content-type'], response.body)
   const showPreview = isHtml && htmlView === 'preview' && current === 'body'
 
-  // La vista previa es una página aparte: Ctrl+F no puede buscar dentro de ella
-  const canSearch = !!response?.ok && !response.binary && current === 'body' && !showPreview
+  const isSse =
+    !!response?.ok && !response.binary && isEventStream(response.headers['content-type'])
+  const sseEvents = useMemo(
+    () => (isSse && response?.ok ? parseSse(response.body) : []),
+    [isSse, response]
+  )
+  const showEvents = isSse && sseView === 'events' && current === 'body'
+
+  // La vista previa y la lista de eventos no son texto plano: Ctrl+F no puede buscar en ellas
+  const canSearch =
+    !!response?.ok && !response.binary && current === 'body' && !showPreview && !showEvents
   const searchQuery = searchOpen && canSearch ? query : ''
   const treeView = parsed.ok && view === 'tree'
 
@@ -375,6 +465,7 @@ export function ResponsePanel(): React.JSX.Element {
     }`
 
   if (loading) {
+    if (live) return <LiveStreamView stream={live} />
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
         Enviando petición…
@@ -578,6 +669,23 @@ export function ResponsePanel(): React.JSX.Element {
                 />
               </div>
             )}
+
+            {isSse && (
+              <div className="mb-2 flex items-center gap-2 pr-16 text-xs">
+                <button
+                  onClick={() => setSseView(sseView === 'events' ? 'text' : 'events')}
+                  className="rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700"
+                >
+                  {sseView === 'events' ? 'Ver texto' : 'Ver eventos'}
+                </button>
+                {response.stream && (
+                  <span className="text-zinc-500">
+                    {STREAM_NOTE[response.stream.endedBy]}
+                    {response.stream.error && ` (${response.stream.error})`}
+                  </span>
+                )}
+              </div>
+            )}
             {isHtml && (
               <div className="mb-2 flex items-center gap-2 pr-16 text-xs">
                 <button
@@ -608,6 +716,8 @@ export function ResponsePanel(): React.JSX.Element {
                 srcDoc={response.body}
                 className="h-[65vh] min-h-[320px] w-full rounded border border-zinc-700 bg-white"
               />
+            ) : showEvents ? (
+              <SseEvents events={sseEvents} />
             ) : treeView ? (
               filtered.found ? (
                 <JsonTree

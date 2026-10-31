@@ -14,6 +14,26 @@ export interface SendRequestInput {
   bodyForm?: BodyFormData
   /** Identificador para poder cancelar esta petición con cancelRequest */
   requestId?: string
+  /**
+   * Petición hecha desde la pestaña: si la respuesta es un stream (SSE) no vence por tiempo
+   * y sus eventos se envían en vivo. Sin esto, un stream se corta al llegar al tiempo límite.
+   */
+  live?: boolean
+}
+
+/** Cómo terminó de leerse un stream de eventos */
+export type StreamEnd = 'closed' | 'cancelled' | 'timeout' | 'limit' | 'error'
+
+export interface StreamInfo {
+  endedBy: StreamEnd
+  /** Detalle cuando endedBy es "error" */
+  error?: string
+}
+
+/** Trozo de un stream que el proceso principal manda mientras sigue abierto */
+export interface StreamChunk {
+  requestId: string
+  chunk: string
 }
 
 /** Respuesta que no es texto (imagen, PDF, zip…) */
@@ -40,6 +60,8 @@ export type SendRequestResult =
       /** Tiempo hasta recibir los headers (primer byte), incluye DNS, conexión y TLS */
       ttfbMs?: number
       sizeBytes: number
+      /** Solo existe si la respuesta es un text/event-stream */
+      stream?: StreamInfo
     }
   | {
       ok: false
@@ -229,6 +251,8 @@ export interface CookieInfo {
 export interface SondaApi {
   sendRequest: (input: SendRequestInput) => Promise<SendRequestResult>
   cancelRequest: (requestId: string) => Promise<void>
+  /** Escucha los trozos de un stream en curso. Devuelve la función para dejar de escuchar */
+  onStream: (listener: (msg: StreamChunk) => void) => () => void
   listCollections: () => Promise<CollectionItem[]>
   createCollection: (name: string) => Promise<CollectionItem>
   deleteCollection: (id: string) => Promise<void>

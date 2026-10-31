@@ -20,6 +20,7 @@ import { persistExtractions } from '../lib/persistExtractions'
 import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from './useEnvironmentStore'
 import { useHistoryStore } from './useHistoryStore'
+import { useStreamStore } from './useStreamStore' // ← NUEVO
 import { useTabsStore } from './useTabsStore'
 import { finishInFlight, startInFlight } from '../lib/inFlight'
 import { resolveAuthForPath } from '../lib/inheritedAuth'
@@ -255,9 +256,11 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         responseSchemas
       },
       useEnvironmentStore.getState().getActive(),
-      { requestId, path: currentFile }
+      { requestId, path: currentFile, live: true } // ← CAMBIO: live: true
     )
     const wasCancelled = finishInFlight(tabId)
+    // Ya llegó la respuesta completa: la vista en vivo sobra
+    useStreamStore.getState().clear(tabId) // ← NUEVO
 
     // Los valores extraídos pasan al entorno para que la siguiente petición ya los use
     const persistWarnings = await persistExtractions(extractionResults)

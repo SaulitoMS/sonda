@@ -31,3 +31,9 @@ export function cancelInFlight(tabId: string): void {
 export function isCancelled(requestId: string): boolean {
   return cancelledRequests.has(requestId)
 }
+
+/** Pestaña dueña de una petición en curso (para dirigirle los eventos en vivo) */
+export function tabForRequest(requestId: string): string | undefined {
+  for (const [tabId, id] of requestIds) if (id === requestId) return tabId
+  return undefined
+}

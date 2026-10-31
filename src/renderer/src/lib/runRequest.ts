@@ -70,7 +70,7 @@ const looksLikeJson = (text: string): boolean => {
 export async function executeRequest(
   draft: RequestDraft,
   env: Environment | null,
-  options: { requestId?: string; path?: string | null } = {}
+  options: { requestId?: string; path?: string | null; live?: boolean } = {}
 ): Promise<ExecuteResult> {
   const vars = buildVarMap(env)
   const missing = new Set<string>()
@@ -189,7 +189,8 @@ export async function executeRequest(
     headers,
     body: finalBody,
     formData: formParts,
-    requestId: options.requestId
+    requestId: options.requestId,
+    live: options.live
   }
 
   let response = await window.api.sendRequest(sendInput)

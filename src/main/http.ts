@@ -7,6 +7,7 @@ import { Agent, ProxyAgent, type Dispatcher } from 'undici'
 import { cookieHeaderFor, storeCookies } from './cookieJar'
 import { proxyError } from '../shared/settings'
 import { loadSettings } from './settings'
+import { collectEventStream, isEventStream } from '../shared/sse'
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
@@ -38,6 +39,8 @@ const inFlight = new Map<string, () => void>()
 const MAX_BINARY_BYTES = 20 * 1024 * 1024
 /** Tope absoluto de lo que se lee de una respuesta; más allá se corta para no agotar la memoria */
 const MAX_RESPONSE_BYTES = 100 * 1024 * 1024
+/** Tope de lo que se acumula de un stream de eventos (SSE) */
+const MAX_STREAM_BYTES = 20 * 1024 * 1024
 
 class ResponseTooLargeError extends Error {}
 
@@ -115,7 +118,7 @@ async function buildFormData(parts: FormPart[]): Promise<FormData> {
 export function registerHttpHandlers(): void {
   ipcMain.handle(
     'http:send',
-    async (_event, input: SendRequestInput): Promise<SendRequestResult> => {
+    async (event, input: SendRequestInput): Promise<SendRequestResult> => {
       const start = performance.now()
 
       let url: URL
@@ -192,16 +195,47 @@ export function registerHttpHandlers(): void {
         // Guarda las cookies de la respuesta (res.url es la URL final si hubo redirecciones)
         storeCookies(new URL(res.url || url.href), res.headers.getSetCookie())
 
-        const buffer = await readBodyCapped(res, MAX_RESPONSE_BYTES)
-        const timeMs = Math.round(performance.now() - start)
-
         const resHeaders: Record<string, string> = {}
         res.headers.forEach((value, key) => {
           resHeaders[key] = value
         })
+        const contentType = res.headers.get('content-type') ?? ''
+
+        // Server-Sent Events: no terminan solos, así que se leen por trozos en vez de esperar el final
+        if (isEventStream(contentType)) {
+          // Desde la pestaña el stream dura hasta que el servidor lo cierre o el usuario cancele
+          if (input.live) clearTimeout(timeout)
+
+          const streamed = await collectEventStream(res, {
+            max: MAX_STREAM_BYTES,
+            wasCancelled: () => state.cancelled,
+            onText: (chunk) => {
+              if (input.live && input.requestId && !event.sender.isDestroyed()) {
+                event.sender.send('http:stream', { requestId: input.requestId, chunk })
+              }
+            }
+          })
+
+          return {
+            ok: true,
+            status: res.status,
+            statusText: res.statusText,
+            headers: resHeaders,
+            body: streamed.text,
+            timeMs: Math.round(performance.now() - start),
+            ttfbMs,
+            sizeBytes: Buffer.byteLength(streamed.text),
+            stream: {
+              endedBy: streamed.endedBy,
+              ...(streamed.error ? { error: streamed.error } : {})
+            }
+          }
+        }
+
+        const buffer = await readBodyCapped(res, MAX_RESPONSE_BYTES)
+        const timeMs = Math.round(performance.now() - start)
 
         const bytes = buffer
-        const contentType = res.headers.get('content-type') ?? ''
         const binary = isBinaryResponse(contentType, bytes)
         const tooBig = buffer.byteLength > MAX_BINARY_BYTES
 
