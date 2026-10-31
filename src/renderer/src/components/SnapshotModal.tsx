@@ -42,7 +42,9 @@ export function SnapshotModal({ onClose }: Props): React.JSX.Element {
   const remove = useSnapshotStore((s) => s.remove)
   const setIgnore = useSnapshotStore((s) => s.setIgnore)
 
-  const [ignoreText, setIgnoreText] = useState(() => (snapshot?.ignore ?? DEFAULT_IGNORE).join(', '))
+  const [ignoreText, setIgnoreText] = useState(() =>
+    (snapshot?.ignore ?? DEFAULT_IGNORE).join(', ')
+  )
   const [error, setError] = useState('')
 
   const current = response && response.ok ? response : null
@@ -74,7 +76,10 @@ export function SnapshotModal({ onClose }: Props): React.JSX.Element {
       savedAt: Date.now(),
       ignore: parseIgnore(ignoreText)
     })
-    if (!ok) setError('No hay espacio en el almacenamiento local. Limpia el historial e inténtalo de nuevo.')
+    if (!ok)
+      setError(
+        'No hay espacio en el almacenamiento local. Limpia el historial e inténtalo de nuevo.'
+      )
   }
 
   return (

@@ -203,16 +203,14 @@ export function registerMockHandlers(): void {
     startMock(String(collectionId), Number(port))
   )
   ipcMain.handle('mock:stop', () => stopMock())
-  ipcMain.handle(
-    'mock:status',
-    (): MockStatus =>
-      running
-        ? {
-            running: true,
-            collectionId: running.collectionId,
-            port: running.port,
-            routes: running.routes
-          }
-        : { running: false }
+  ipcMain.handle('mock:status', (): MockStatus =>
+    running
+      ? {
+          running: true,
+          collectionId: running.collectionId,
+          port: running.port,
+          routes: running.routes
+        }
+      : { running: false }
   )
 }

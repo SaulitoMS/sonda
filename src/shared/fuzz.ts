@@ -5,14 +5,7 @@ type Schema = Record<string, unknown>
 type Path = (string | number)[]
 
 export type FuzzCategory =
-  | 'estructura'
-  | 'requerido'
-  | 'tipo'
-  | 'nulo'
-  | 'enum'
-  | 'formato'
-  | 'rango'
-  | 'longitud'
+  'estructura' | 'requerido' | 'tipo' | 'nulo' | 'enum' | 'formato' | 'rango' | 'longitud'
 
 export interface FuzzCase {
   id: string
@@ -143,10 +136,18 @@ function nodeMutations(s: Schema, value: unknown): Mutation[] {
 
   if (type === 'integer' || type === 'number') {
     if (typeof s.maximum === 'number') {
-      out.push({ category: 'rango', title: `Mayor que maximum (${s.maximum})`, value: s.maximum + 1 })
+      out.push({
+        category: 'rango',
+        title: `Mayor que maximum (${s.maximum})`,
+        value: s.maximum + 1
+      })
     }
     if (typeof s.minimum === 'number') {
-      out.push({ category: 'rango', title: `Menor que minimum (${s.minimum})`, value: s.minimum - 1 })
+      out.push({
+        category: 'rango',
+        title: `Menor que minimum (${s.minimum})`,
+        value: s.minimum - 1
+      })
     }
     if (type === 'integer') {
       out.push({ category: 'tipo', title: 'Decimal en un campo entero', value: 1.5 })
@@ -249,7 +250,10 @@ export function buildFuzzCases(input: {
       raw: { category: 'estructura', title: 'JSON malformado', path: '$', body: '{"roto":' },
       verify: false
     },
-    { raw: { category: 'estructura', title: 'Objeto vacío {}', path: '$', body: '{}' }, verify: true }
+    {
+      raw: { category: 'estructura', title: 'Objeto vacío {}', path: '$', body: '{}' },
+      verify: true
+    }
   ]
 
   const raws: RawCase[] = []

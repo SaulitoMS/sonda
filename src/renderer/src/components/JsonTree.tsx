@@ -16,7 +16,12 @@ function Primitive({ value, path }: { value: unknown; path: string }): React.JSX
   const search = useContext(SearchContext)
   const start = search?.tree.starts.get(`${path}|v`)
   const hl = (text: string): React.JSX.Element => (
-    <Highlight text={text} query={search?.query ?? ''} start={start} active={search?.active ?? -1} />
+    <Highlight
+      text={text}
+      query={search?.query ?? ''}
+      start={start}
+      active={search?.active ?? -1}
+    />
   )
 
   if (typeof value === 'string')

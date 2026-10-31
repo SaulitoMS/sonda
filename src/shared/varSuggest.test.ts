@@ -65,9 +65,11 @@ describe('applySuggestion', () => {
 
 describe('suggestionEdit', () => {
   it('cubre desde las llaves de apertura hasta las de cierre existentes (body JSON)', () => {
-    expect(
-      suggestionEdit('{"a": "{{ba}}"}', 11, { start: 7, query: 'ba' }, 'baseUrl')
-    ).toEqual({ from: 7, to: 13, insert: '{{baseUrl}}' })
+    expect(suggestionEdit('{"a": "{{ba}}"}', 11, { start: 7, query: 'ba' }, 'baseUrl')).toEqual({
+      from: 7,
+      to: 13,
+      insert: '{{baseUrl}}'
+    })
   })
 
   it('funciona con las llaves que cierra solo el editor: {{|}}', () => {

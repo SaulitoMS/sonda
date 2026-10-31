@@ -40,9 +40,7 @@ export function sampleFromSchema(schema: unknown, depth = 0): unknown {
   }
 
   // OpenAPI 3.1 permite type: ['string', 'null']
-  const rawType = Array.isArray(schema.type)
-    ? schema.type.find((t) => t !== 'null')
-    : schema.type
+  const rawType = Array.isArray(schema.type) ? schema.type.find((t) => t !== 'null') : schema.type
   const type = rawType ?? (schema.properties ? 'object' : undefined)
 
   switch (type) {

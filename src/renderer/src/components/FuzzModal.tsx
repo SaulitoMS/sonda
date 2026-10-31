@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { buildFuzzCases, classifyFuzzResponse, type FuzzCase, type FuzzVerdict } from '../../../shared/fuzz'
+import {
+  buildFuzzCases,
+  classifyFuzzResponse,
+  type FuzzCase,
+  type FuzzVerdict
+} from '../../../shared/fuzz'
 import { buildVarMap, interpolate } from '../../../shared/variables'
 import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
@@ -21,7 +26,15 @@ const VERDICT_UI: Record<FuzzVerdict, { text: string; cls: string }> = {
   dudosa: { text: '? No concluyente', cls: 'text-amber-400' }
 }
 
-const Stat = ({ name, value, cls }: { name: string; value: number; cls: string }): React.JSX.Element => (
+const Stat = ({
+  name,
+  value,
+  cls
+}: {
+  name: string
+  value: number
+  cls: string
+}): React.JSX.Element => (
   <div className="rounded-md border border-zinc-800 bg-zinc-950 p-2">
     <p className="text-[11px] text-zinc-500">{name}</p>
     <p className={`text-sm font-semibold ${cls}`}>{value}</p>
@@ -150,8 +163,7 @@ export function FuzzModal({ onClose }: Props): React.JSX.Element {
                 </span>
                 <span className="w-10 shrink-0 text-zinc-300">{r.status ?? '—'}</span>
                 <span className="min-w-0 flex-1 truncate text-zinc-300">
-                  {r.fuzz.title}{' '}
-                  <span className="font-mono text-zinc-500">{r.fuzz.path}</span>
+                  {r.fuzz.title} <span className="font-mono text-zinc-500">{r.fuzz.path}</span>
                 </span>
                 <span className="shrink-0 text-zinc-500">{r.timeMs} ms</span>
               </div>

@@ -455,5 +455,4 @@ export type MockStatus =
   | { running: true; collectionId: string; port: number; routes: MockRouteInfo[] }
 
 export type MockStartResult =
-  | { ok: true; port: number; routes: MockRouteInfo[] }
-  | { ok: false; error: string }
+  { ok: true; port: number; routes: MockRouteInfo[] } | { ok: false; error: string }

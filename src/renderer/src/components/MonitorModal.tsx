@@ -59,8 +59,8 @@ export function MonitorModal({ onClose }: Props): React.JSX.Element {
 
       <p className="mt-2 text-[11px] text-zinc-500">
         Solo envía peticiones GET, HEAD y OPTIONS ({safeCount} en esta colección), con el entorno
-        activo. Funciona mientras Sonda esté abierta, incluso con este modal cerrado, y avisa con una
-        notificación cuando algo empieza a fallar o se recupera.
+        activo. Funciona mientras Sonda esté abierta, incluso con este modal cerrado, y avisa con
+        una notificación cuando algo empieza a fallar o se recupera.
       </p>
 
       <div className="mt-3 flex items-center gap-4 text-xs">
@@ -84,7 +84,10 @@ export function MonitorModal({ onClose }: Props): React.JSX.Element {
       {runs.length > 0 && (
         <div className="mt-3 max-h-64 overflow-y-auto rounded-md border border-zinc-800">
           {runs.map((r) => (
-            <div key={r.at} className="border-b border-zinc-800 px-3 py-1.5 text-xs last:border-b-0">
+            <div
+              key={r.at}
+              className="border-b border-zinc-800 px-3 py-1.5 text-xs last:border-b-0"
+            >
               <div className="flex items-center gap-4">
                 <span className="w-20 shrink-0 text-zinc-400">
                   {new Date(r.at).toLocaleTimeString()}
@@ -95,7 +98,11 @@ export function MonitorModal({ onClose }: Props): React.JSX.Element {
                 <span className="ml-auto text-zinc-500">{r.timeMs} ms</span>
               </div>
               {r.failures.map((f) => (
-                <p key={f.name} className="truncate pl-24 text-[11px] text-red-300" title={f.detail}>
+                <p
+                  key={f.name}
+                  className="truncate pl-24 text-[11px] text-red-300"
+                  title={f.detail}
+                >
                   {f.name}: {f.detail}
                 </p>
               ))}

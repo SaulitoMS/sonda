@@ -582,7 +582,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     }
   }
 
-    /* ---------- Reordenar carpetas y peticiones ---------- */
+  /* ---------- Reordenar carpetas y peticiones ---------- */
 
   const fileName = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
   const dirOf = (path: string): string => path.slice(0, path.lastIndexOf('/'))
@@ -614,7 +614,12 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
         if (!newPath) return
         draggedFile = fileName(newPath)
       }
-      const next = placeItem(namesIn(collectionId, folder), draggedFile, fileName(target.path), place)
+      const next = placeItem(
+        namesIn(collectionId, folder),
+        draggedFile,
+        fileName(target.path),
+        place
+      )
       if (next) await window.api.reorderItems(collectionId, folder, next)
       await refresh()
     } catch (err) {
@@ -689,7 +694,10 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
       }
     })
 
-  const folderRowDrop = (collectionId: string, name: string): React.HTMLAttributes<HTMLDivElement> =>
+  const folderRowDrop = (
+    collectionId: string,
+    name: string
+  ): React.HTMLAttributes<HTMLDivElement> =>
     rowDrop({
       key: `fo:${collectionId}/${name}`,
       accepts: (d) => d.kind === 'folder' && d.collectionId === collectionId && d.name !== name,
