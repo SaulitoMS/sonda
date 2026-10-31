@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { Icon, type IconName } from './Icon'
 
 export interface ToolItem {
   id: string
   label: string
   description: string
   onSelect: () => void
+  /** Icono a la izquierda */
+  icon?: IconName
   /** Indicador a la derecha (ej: el punto del monitor) */
   badge?: React.ReactNode
 }
@@ -41,30 +44,25 @@ export function ToolsMenu({ items, indicator }: Props): React.JSX.Element {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 ${
+        title="Herramientas"
+        className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100 ${
           open ? 'bg-zinc-800' : ''
         }`}
       >
-        Herramientas
+        <Icon name="sliders" size={15} />
+        <span className="hidden md:inline">Herramientas</span>
         {indicator}
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        <Icon
+          name="chevronDown"
+          size={11}
+          className={`hidden transition-transform md:block ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-40 mt-1 max-h-[75vh] w-72 overflow-auto rounded-lg border border-zinc-700 bg-zinc-900 p-1 shadow-xl"
+          className="anim-pop absolute right-0 top-full z-40 mt-1 max-h-[75vh] w-72 max-w-[calc(100vw-1rem)] origin-top-right overflow-auto rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 shadow-2xl"
         >
           {items.map((item) => (
             <button
@@ -74,8 +72,13 @@ export function ToolsMenu({ items, indicator }: Props): React.JSX.Element {
                 setOpen(false)
                 item.onSelect()
               }}
-              className="flex w-full items-start gap-2 rounded-md px-3 py-2 text-left hover:bg-zinc-800"
+              className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-zinc-800"
             >
+              {item.icon && (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-blue-400">
+                  <Icon name={item.icon} size={16} />
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block text-xs font-medium text-zinc-100">{item.label}</span>
                 <span className="block text-[11px] leading-snug text-zinc-500">

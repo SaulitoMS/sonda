@@ -8,6 +8,7 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { ScopeAuthModal, type AuthScope } from './ScopeAuthModal'
 import { ScopeHeadersModal, type HeadersScope } from './ScopeHeadersModal'
 import { placeItem, type Place } from '../../../shared/reorder'
+import { Icon } from './Icon'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -763,46 +764,65 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
 
   return (
     <aside className="flex w-full min-w-0 flex-col bg-zinc-950/40">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-2">
         <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
           Colecciones
         </span>
         <div className="flex gap-0.5">
           <button
             onClick={onImport}
-            className="rounded px-1.5 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+            className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
             title="Importar Swagger / OpenAPI"
           >
-            ⇣ Swagger
+            <Icon name="download" size={13} />
+            Swagger
           </button>
           <button
             onClick={importPostman}
-            className="rounded px-1.5 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+            className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
             title="Importar colección de Postman (.json) o captura HAR (.har)"
           >
-            ⇣ Postman
+            <Icon name="download" size={13} />
+            Postman
           </button>
           <button
             onClick={() => setCreating(true)}
-            className="rounded px-1.5 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+            className="rounded-md bg-blue-500/15 p-1 text-blue-400 transition-colors hover:bg-blue-500/25"
             title="Nueva colección"
+            aria-label="Nueva colección"
           >
-            +
+            <Icon name="plus" size={14} />
           </button>
         </div>
       </div>
 
       <div className="border-b border-zinc-800 p-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setQuery('')
-          }}
-          placeholder="Buscar peticiones…"
-          spellCheck={false}
-          className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
-        />
+        <div className="relative">
+          <Icon
+            name="search"
+            size={13}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500"
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setQuery('')
+            }}
+            placeholder="Buscar peticiones…"
+            spellCheck={false}
+            className="w-full rounded-md border border-zinc-700 bg-zinc-800 py-1.5 pl-8 pr-7 text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+              aria-label="Limpiar búsqueda"
+            >
+              <Icon name="x" size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2">
@@ -822,9 +842,29 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
         )}
 
         {collections.length === 0 && !creating && (
-          <p className="p-2 text-xs text-zinc-500">
-            Aún no tienes colecciones. Importa un Swagger o crea una con +.
-          </p>
+          <div className="flex flex-col items-center gap-3 px-3 py-8 text-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-800 text-blue-400">
+              <Icon name="inbox" size={20} />
+            </span>
+            <div>
+              <p className="text-xs font-medium text-zinc-300">Aún no tienes colecciones</p>
+              <p className="mt-1 text-xs text-zinc-500">Importa un Swagger o crea una nueva.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={onImport}
+                className="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+              >
+                Importar Swagger
+              </button>
+              <button
+                onClick={() => setCreating(true)}
+                className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              >
+                Nueva
+              </button>
+            </div>
+          </div>
         )}
 
         {searching && shown.length === 0 && (
@@ -1008,9 +1048,10 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
 
       <button
         onClick={() => window.api.openWorkspace()}
-        className="border-t border-zinc-800 px-3 py-2 text-left text-xs text-zinc-500 hover:text-zinc-300"
+        className="flex items-center gap-2 border-t border-zinc-800 px-3 py-2 text-left text-xs text-zinc-500 transition-colors hover:text-zinc-300"
       >
-        Abrir carpeta en Finder
+        <Icon name="folderOpen" size={13} />
+        Abrir carpeta de trabajo
       </button>
 
       {authScope && <ScopeAuthModal scope={authScope} onClose={() => setAuthScope(null)} />}

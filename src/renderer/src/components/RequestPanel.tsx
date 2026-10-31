@@ -16,6 +16,7 @@ import { RequestSchemaStatus } from './RequestSchemaStatus'
 import { editForKey } from '../../../shared/jsonEditing'
 import { applyEdit } from '../lib/applyEdit'
 import { VariableTextarea } from './VariableTextarea'
+import { Icon } from './Icon'
 
 type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'extract'
 
@@ -40,11 +41,12 @@ export function RequestPanel(): React.JSX.Element {
   const envData = useEnvironmentStore((s) => s.data)
 
   const tabClass = (t: Tab): string =>
-    `px-4 py-2 text-sm font-medium border-b-2 transition ${
+    `relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors ${
       tab === t
-        ? 'border-blue-500 text-zinc-100'
-        : 'border-transparent text-zinc-500 hover:text-zinc-300'
+        ? 'text-zinc-100 after:bg-blue-500'
+        : 'text-zinc-500 after:bg-transparent hover:text-zinc-300'
     }`
+  const pill = 'rounded-full bg-blue-500/15 px-1.5 text-[10px] font-semibold leading-4 text-blue-400'
 
   // La URL es la fuente de verdad: la tabla se deriva de ella y al editarla se reescribe la URL.
   // Los ids se basan en la posición para que los inputs no pierdan el foco al escribir.
@@ -124,34 +126,35 @@ export function RequestPanel(): React.JSX.Element {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex border-b border-zinc-800 px-2">
+      <div className="flex overflow-x-auto border-b border-zinc-800 px-2 [scrollbar-width:none]">
         <button className={tabClass('params')} onClick={() => setTab('params')}>
-          Params {paramCount > 0 && <span className="text-blue-400">({paramCount})</span>}
+          Params {paramCount > 0 && <span className={pill}>{paramCount}</span>}
         </button>
         <button className={tabClass('auth')} onClick={() => setTab('auth')}>
-          Auth{' '}
+          Auth
           {auth.type !== 'inherit' && auth.type !== 'none' && (
-            <span className="text-blue-400">●</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
           )}
         </button>
         <button className={tabClass('headers')} onClick={() => setTab('headers')}>
-          Headers {activeHeaders > 0 && <span className="text-blue-400">({activeHeaders})</span>}
+          Headers {activeHeaders > 0 && <span className={pill}>{activeHeaders}</span>}
         </button>
         <button className={tabClass('body')} onClick={() => setTab('body')}>
-          Body {bodyCheck?.verdict === 'valid' && <span className="text-emerald-400">✓</span>}
+          Body
+          {bodyCheck?.verdict === 'valid' && (
+            <Icon name="check" size={12} className="text-emerald-400" />
+          )}
           {bodyCheck?.verdict === 'invalid' && (
-            <span className="text-red-400">
-              ✗ {bodyCheck.issues.filter((i) => i.severity === 'error').length}
+            <span className="rounded-full bg-red-500/15 px-1.5 text-[10px] font-semibold leading-4 text-red-400">
+              {bodyCheck.issues.filter((i) => i.severity === 'error').length}
             </span>
           )}
         </button>
         <button className={tabClass('tests')} onClick={() => setTab('tests')}>
-          Tests{' '}
-          {assertions.length > 0 && <span className="text-blue-400">({assertions.length})</span>}
+          Tests {assertions.length > 0 && <span className={pill}>{assertions.length}</span>}
         </button>
         <button className={tabClass('extract')} onClick={() => setTab('extract')}>
-          Extraer{' '}
-          {extractions.length > 0 && <span className="text-blue-400">({extractions.length})</span>}
+          Extraer {extractions.length > 0 && <span className={pill}>{extractions.length}</span>}
         </button>
       </div>
 

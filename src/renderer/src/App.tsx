@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CurlModal } from './components/CurlModal'
+import { Icon } from './components/Icon'
 import { EnvironmentSelector } from './components/EnvironmentSelector'
 import { EnvironmentsModal } from './components/EnvironmentsModal'
 import { HistoryModal } from './components/HistoryModal'
@@ -29,6 +30,7 @@ import { Splitter } from './components/Splitter'
 import { ToolsMenu, type ToolItem } from './components/ToolsMenu'
 import { getLayout, setLayout, useLayout } from './lib/layout'
 import { toggleTheme } from './lib/theme'
+import { useMediaQuery } from './lib/useMediaQuery'
 import { DEFAULT_LAYOUT } from '../../shared/layout'
 
 type ModalType =
@@ -59,6 +61,14 @@ function App(): React.JSX.Element {
   const monitorActive = useMonitorStore((s) => s.active)
   const monitorFailing = useMonitorStore((s) => (s.runs[0]?.fail ?? 0) > 0)
   const layout = useLayout()
+
+  // Por debajo de 900px la barra lateral pasa a ser un cajón que se superpone
+  const isNarrow = useMediaQuery('(max-width: 899px)')
+  // El cajón se cierra solo al abrir otra petición (cambia currentFile)
+  const [drawer, setDrawer] = useState<{ file: string | null } | null>(null)
+  const drawerOpen = isNarrow && drawer !== null && drawer.file === currentFile
+  // En pantallas estrechas la respuesta siempre va debajo
+  const direction = isNarrow ? 'column' : layout.direction
 
   const [modal, setModal] = useState<ModalType>(null)
   const [runCollectionId, setRunCollectionId] = useState('')
@@ -97,7 +107,13 @@ function App(): React.JSX.Element {
     showFlash('Guardado ✓')
   }, [showFlash])
 
-  const toggleSidebar = useCallback(() => setLayout({ sidebarOpen: !getLayout().sidebarOpen }), [])
+  const toggleSidebar = useCallback(() => {
+    if (isNarrow) {
+      setDrawer((d) => (d ? null : { file: useRequestStore.getState().currentFile }))
+    } else {
+      setLayout({ sidebarOpen: !getLayout().sidebarOpen })
+    }
+  }, [isNarrow])
   const toggleDirection = useCallback(
     () => setLayout({ direction: getLayout().direction === 'column' ? 'row' : 'column' }),
     []
@@ -136,36 +152,42 @@ function App(): React.JSX.Element {
   const tools: ToolItem[] = [
     {
       id: 'history',
+      icon: 'history',
       label: 'Historial',
       description: 'Peticiones enviadas recientemente',
       onSelect: () => setModal('history')
     },
     {
       id: 'cookies',
+      icon: 'cookie',
       label: 'Cookies',
       description: 'Cookies guardadas de las respuestas',
       onSelect: () => setModal('cookies')
     },
     {
       id: 'bench',
+      icon: 'gauge',
       label: 'Rendimiento',
       description: 'Enviar la petición varias veces y medir tiempos',
       onSelect: () => setModal('bench')
     },
     {
       id: 'fuzz',
+      icon: 'bug',
       label: 'Fuzz',
       description: 'Probar la API con bodies inválidos generados desde el schema',
       onSelect: () => setModal('fuzz')
     },
     {
       id: 'snapshot',
+      icon: 'camera',
       label: 'Snapshot',
       description: 'Guardar una respuesta como línea base y detectar cambios',
       onSelect: () => setModal('snapshot')
     },
     {
       id: 'monitor',
+      icon: 'activity',
       label: 'Monitor',
       description: 'Ejecutar una colección cada cierto tiempo y avisar si falla',
       onSelect: () => setModal('monitor'),
@@ -175,18 +197,21 @@ function App(): React.JSX.Element {
     },
     {
       id: 'mock',
+      icon: 'server',
       label: 'Mock',
       description: 'Servidor local con respuestas de ejemplo de una colección',
       onSelect: () => setModal('mock')
     },
     {
       id: 'curl',
+      icon: 'terminal',
       label: 'cURL',
       description: 'Importar o exportar la petición como comando',
       onSelect: () => setModal('curl')
     },
     {
       id: 'settings',
+      icon: 'sliders',
       label: 'Ajustes',
       description: 'Tiempo límite, SSL, proxy y reintentos',
       onSelect: () => setModal('settings')
@@ -204,7 +229,10 @@ function App(): React.JSX.Element {
     { id: 'import', label: 'Importar Swagger / OpenAPI', run: () => setModal('import') },
     {
       id: 'sidebar',
-      label: layout.sidebarOpen ? 'Ocultar barra lateral' : 'Mostrar barra lateral',
+      label:
+        (isNarrow ? drawerOpen : layout.sidebarOpen)
+          ? 'Ocultar barra lateral'
+          : 'Mostrar barra lateral',
       hint: `${MOD}B`,
       run: toggleSidebar
     },
@@ -236,64 +264,81 @@ function App(): React.JSX.Element {
     const box = mainRef.current?.getBoundingClientRect()
     if (!box) return
     setLayout({
-      split: layout.direction === 'column' ? (y - box.top) / box.height : (x - box.left) / box.width
+      split: direction === 'column' ? (y - box.top) / box.height : (x - box.left) / box.width
     })
   }
 
-  const iconBtn = 'rounded p-1.5 text-zinc-300 hover:bg-zinc-800'
-  const svg = {
-    width: 15,
-    height: 15,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 2,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const
-  }
+  const iconBtn =
+    'rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100'
+  const sidebarShown = isNarrow ? drawerOpen : layout.sidebarOpen
+
+  const sidebar = (
+    <Sidebar
+      onImport={() => setModal('import')}
+      onRun={(id) => {
+        setRunCollectionId(id)
+        setModal('runner')
+      }}
+      onSync={(id, name) => {
+        setSyncCollection({ id, name })
+        setModal('sync')
+      }}
+    />
+  )
 
   return (
     <div className="flex h-full flex-col bg-zinc-900 text-zinc-200">
       {/* Barra superior: navegación, búsqueda global y acciones */}
-      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-zinc-800 px-2">
+      <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-zinc-800 bg-zinc-900 px-2 sm:gap-2">
         <button
           className={iconBtn}
           onClick={toggleSidebar}
-          title={`${layout.sidebarOpen ? 'Ocultar' : 'Mostrar'} barra lateral (${MOD}B)`}
+          title={`${sidebarShown ? 'Ocultar' : 'Mostrar'} barra lateral (${MOD}B)`}
           aria-label="Alternar barra lateral"
         >
-          <svg {...svg}>
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <path d="M9 4v16" />
-          </svg>
+          <Icon name="panelLeft" size={17} />
         </button>
-        <span className="select-none text-sm font-bold tracking-tight text-zinc-100">Sonda</span>
 
+        <div className="flex select-none items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-linear-to-br from-blue-500 to-violet-500 text-white">
+            <Icon name="zap" size={13} />
+          </span>
+          <span className="hidden text-sm font-bold tracking-tight text-zinc-100 sm:inline">
+            Sonda
+          </span>
+        </div>
+
+        {/* Buscador global: barra en pantallas anchas, botón de lupa en estrechas */}
         <button
           onClick={() => setModal('palette')}
-          className="mx-auto flex h-8 w-full max-w-md items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/60 px-3 text-left text-xs text-zinc-500 hover:border-zinc-600 hover:text-zinc-400"
+          className="mx-auto hidden h-8 w-full max-w-md items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-left text-xs text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-400 md:flex"
           title="Buscar peticiones y acciones"
         >
-          <svg {...svg} width={13} height={13}>
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
+          <Icon name="search" size={13} />
           <span className="flex-1 truncate">Buscar peticiones y acciones…</span>
           <kbd className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
             {MOD}K
           </kbd>
         </button>
+        <span className="flex-1 md:hidden" />
+        <button
+          className={`${iconBtn} md:hidden`}
+          onClick={() => setModal('palette')}
+          aria-label="Buscar peticiones y acciones"
+        >
+          <Icon name="search" size={16} />
+        </button>
 
         <div className="flex shrink-0 items-center gap-1">
-          {flash && <span className="mr-1 text-xs text-emerald-400">{flash}</span>}
           <EnvironmentSelector onManage={() => setModal('envs')} />
-          <span className="mx-1 h-4 w-px bg-zinc-800" />
+          <span className="mx-1 hidden h-4 w-px bg-zinc-800 sm:block" />
           <button
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-500 sm:px-3"
             onClick={save}
             title={`Guardar (${MOD}S)`}
           >
-            Guardar
+            <Icon name="save" size={14} />
+            <span className="hidden sm:inline">Guardar</span>
           </button>
           <ToolsMenu
             items={tools}
@@ -307,49 +352,51 @@ function App(): React.JSX.Element {
         </div>
       </header>
 
-      <div ref={bodyRef} className="flex min-h-0 flex-1">
-        {layout.sidebarOpen && (
+      <div ref={bodyRef} className="relative flex min-h-0 flex-1">
+        {/* Pantallas anchas: barra lateral fija con divisor arrastrable */}
+        {!isNarrow && layout.sidebarOpen && (
           <>
             <div style={{ width: layout.sidebarWidth }} className="flex min-h-0 shrink-0">
-              <Sidebar
-                onImport={() => setModal('import')}
-                onRun={(id) => {
-                  setRunCollectionId(id)
-                  setModal('runner')
-                }}
-                onSync={(id, name) => {
-                  setSyncCollection({ id, name })
-                  setModal('sync')
-                }}
-              />
+              {sidebar}
             </div>
             <Splitter orientation="vertical" onDrag={dragSidebar} onReset={resetSidebar} />
           </>
         )}
 
+        {/* Pantallas estrechas: cajón superpuesto */}
+        {drawerOpen && (
+          <div className="absolute inset-0 z-40 flex">
+            <div className="anim-slide-in flex h-full w-[min(20rem,85vw)] shrink-0 border-r border-zinc-800 bg-zinc-900 shadow-2xl">
+              {sidebar}
+            </div>
+            <button
+              className="anim-fade flex-1 bg-black/50"
+              onClick={() => setDrawer(null)}
+              aria-label="Cerrar barra lateral"
+            />
+          </div>
+        )}
+
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex h-9 shrink-0 items-stretch border-b border-zinc-800 bg-zinc-950/30 pr-2">
             <TabsBar />
-            <button
-              className={`${iconBtn} my-auto`}
-              onClick={toggleDirection}
-              title={`Cambiar disposición de los paneles (${MOD}\\)`}
-              aria-label="Cambiar disposición de los paneles"
-            >
-              <svg {...svg}>
-                <rect x="3" y="4" width="18" height="16" rx="2" />
-                {layout.direction === 'column' ? <path d="M3 12h18" /> : <path d="M12 4v16" />}
-              </svg>
-            </button>
+            {!isNarrow && (
+              <button
+                className={`${iconBtn} my-auto`}
+                onClick={toggleDirection}
+                title={`Cambiar disposición de los paneles (${MOD}\\)`}
+                aria-label="Cambiar disposición de los paneles"
+              >
+                <Icon name={direction === 'column' ? 'layoutRows' : 'layoutCols'} size={15} />
+              </button>
+            )}
           </div>
 
           <RequestBar onCurlImported={onCurlImported} />
 
           <main
             ref={mainRef}
-            className={`flex min-h-0 flex-1 ${
-              layout.direction === 'column' ? 'flex-col' : 'flex-row'
-            }`}
+            className={`flex min-h-0 flex-1 ${direction === 'column' ? 'flex-col' : 'flex-row'}`}
           >
             <section
               style={{ flexBasis: `${layout.split * 100}%` }}
@@ -358,7 +405,7 @@ function App(): React.JSX.Element {
               <RequestPanel />
             </section>
             <Splitter
-              orientation={layout.direction === 'column' ? 'horizontal' : 'vertical'}
+              orientation={direction === 'column' ? 'horizontal' : 'vertical'}
               onDrag={dragSplit}
               onReset={() => setLayout({ split: DEFAULT_LAYOUT.split })}
             />
@@ -368,6 +415,17 @@ function App(): React.JSX.Element {
           </main>
         </div>
       </div>
+
+      {/* Aviso breve (guardado, importado…) */}
+      {flash && (
+        <div
+          role="status"
+          className="anim-toast fixed bottom-4 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-3.5 py-2 text-xs text-zinc-100 shadow-xl"
+        >
+          <Icon name="check" size={14} className="text-emerald-400" />
+          {flash.replace(/\s*✓$/, '')}
+        </div>
+      )}
 
       {modal === 'import' && <ImportModal onClose={() => setModal(null)} />}
       {modal === 'palette' && <CommandPalette onClose={() => setModal(null)} commands={commands} />}

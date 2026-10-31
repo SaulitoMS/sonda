@@ -26,6 +26,7 @@ import { formatXml, isHtmlResponse, isXmlResponse } from '../../../shared/markup
 import { isEventStream, parseSse, type SseEvent } from '../../../shared/sse'
 import { useStreamStore, type LiveStream } from '../store/useStreamStore'
 import { useTabsStore } from '../store/useTabsStore'
+import { Icon } from './Icon'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes'
 
@@ -41,6 +42,10 @@ const statusColor = (status: number): string => {
   if (status >= 300) return 'bg-sky-500/20 text-sky-400'
   return 'bg-emerald-500/20 text-emerald-400'
 }
+
+// Verde = rápido, ámbar = aceptable, rojo = lento
+const timeTone = (ms: number): string =>
+  ms < 300 ? 'text-emerald-400' : ms < 1000 ? 'text-amber-400' : 'text-red-400'
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
 
@@ -503,37 +508,62 @@ export function ResponsePanel(): React.JSX.Element {
   }
 
   const tabClass = (t: Tab): string =>
-    `px-4 py-2 text-sm font-medium border-b-2 transition ${
+    `relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors ${
       current === t
-        ? 'border-blue-500 text-zinc-100'
-        : 'border-transparent text-zinc-500 hover:text-zinc-300'
+        ? 'text-zinc-100 after:bg-blue-500'
+        : 'text-zinc-500 after:bg-transparent hover:text-zinc-300'
     }`
 
   if (loading) {
     if (live) return <LiveStreamView stream={live} />
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
-        Enviando petición…
+      <div className="flex flex-1 flex-col gap-5 p-6">
+        <div className="flex items-center gap-3 text-sm text-zinc-400">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400/30 border-t-blue-400" />
+          Enviando petición…
+        </div>
+        <div className="space-y-2.5">
+          <div className="skeleton h-3 w-2/3" />
+          <div className="skeleton h-3 w-1/2" />
+          <div className="skeleton h-3 w-3/4" />
+          <div className="skeleton h-3 w-2/5" />
+        </div>
       </div>
     )
   }
 
   if (!response) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">
-        Envía una petición para ver la respuesta
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-800 text-blue-400">
+          <Icon name="zap" size={22} />
+        </span>
+        <div>
+          <p className="text-sm font-medium text-zinc-300">Aún no hay respuesta</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Escribe una URL y pulsa Enviar, o usa{' '}
+            <kbd className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px]">
+              Ctrl/⌘ + Enter
+            </kbd>
+          </p>
+        </div>
       </div>
     )
   }
 
   if (!response.ok) {
     return (
-      <div className="flex-1">
+      <div className="flex-1 overflow-auto">
         <WarningsBanner warnings={warnings} />
-        <div className="m-4 rounded-md border border-red-500/40 bg-red-500/10 p-4">
-          <p className="text-sm font-semibold text-red-400">Error en la petición</p>
-          <p className="selectable mt-1 font-mono text-xs text-red-300">{response.error}</p>
-          <p className="mt-2 text-xs text-zinc-500">{response.timeMs} ms</p>
+        <div className="m-4 flex gap-3 rounded-lg border border-red-500/40 bg-red-500/10 p-4">
+          <Icon name="alert" size={18} className="mt-0.5 text-red-400" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-red-400">Error en la petición</p>
+            <p className="selectable mt-1 break-words font-mono text-xs text-red-300">
+              {response.error}
+            </p>
+            <p className="mt-2 text-xs text-zinc-500">{response.timeMs} ms</p>
+          </div>
         </div>
       </div>
     )
@@ -548,8 +578,8 @@ export function ResponsePanel(): React.JSX.Element {
         <RedirectChain hops={response.redirects} finalUrl={response.finalUrl} />
       )}
 
-      <div className="flex items-center justify-between border-b border-zinc-800 px-2">
-        <div className="flex">
+      <div className="flex flex-wrap items-center justify-between border-b border-zinc-800 px-2">
+        <div className="flex min-w-0 overflow-x-auto [scrollbar-width:none]">
           <button className={tabClass('body')} onClick={() => setTab('body')}>
             Body
           </button>
@@ -590,21 +620,28 @@ export function ResponsePanel(): React.JSX.Element {
           </button>
         </div>
 
-        <div className="flex items-center gap-3 pr-2 text-xs">
-          <span className={`rounded px-2 py-1 font-bold ${statusColor(response.status)}`}>
-            {response.status} {response.statusText}
+        <div className="flex flex-wrap items-center gap-2 py-1 pr-2 text-xs">
+          <span
+            className={`flex items-center gap-1.5 rounded-md px-2 py-1 font-bold ${statusColor(response.status)}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {response.status}
+            <span className="hidden font-medium opacity-80 sm:inline">{response.statusText}</span>
           </span>
           <span
-            className="text-zinc-400"
+            className={`flex items-center gap-1 font-medium ${timeTone(response.timeMs)}`}
             title={
               response.ttfbMs !== undefined
                 ? `Espera del servidor (hasta el primer byte): ${response.ttfbMs} ms · Descarga: ${response.timeMs - response.ttfbMs} ms`
                 : undefined
             }
           >
+            <Icon name="clock" size={12} />
             {response.timeMs} ms
             {response.ttfbMs !== undefined && (
-              <span className="ml-1 text-zinc-500">(TTFB {response.ttfbMs})</span>
+              <span className="ml-1 hidden font-normal text-zinc-500 sm:inline">
+                (TTFB {response.ttfbMs})
+              </span>
             )}
           </span>
           <span className="text-zinc-400">{formatSize(response.sizeBytes)}</span>
@@ -612,24 +649,26 @@ export function ResponsePanel(): React.JSX.Element {
           <div className="relative">
             <button
               onClick={() => setMenuOpen((o) => !o)}
-              className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+              className="flex items-center gap-1.5 rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-700"
               title="Guardar la respuesta en un archivo"
             >
-              Exportar ▾
+              <Icon name="download" size={13} />
+              <span className="hidden sm:inline">Exportar</span>
+              <Icon name="chevronDown" size={11} />
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-zinc-700 bg-zinc-950 p-1 shadow-xl">
+                <div className="anim-pop absolute right-0 top-full z-50 mt-1 w-56 origin-top-right rounded-lg border border-zinc-700 bg-zinc-900 p-1 shadow-xl">
                   <button
                     onClick={exportBody}
-                    className="block w-full rounded px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                    className="block w-full rounded-md px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
                   >
                     Body (.{bodyExt})
                   </button>
                   <button
                     onClick={exportFull}
-                    className="block w-full rounded px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                    className="block w-full rounded-md px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
                   >
                     Respuesta completa (.json)
                   </button>

@@ -75,4 +75,112 @@ code {
   --color-emerald-400: #047857;
   --color-sky-300: #075985;
   --color-sky-400: #0369a1;
+  --color-violet-300: #5b21b6;
+  --color-violet-400: #6d28d9;
+}
+
+/* ───────────── Pulido visual ───────────── */
+
+/* Foco visible y coherente (los inputs ya dibujan su propio borde azul) */
+:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.55);
+  outline-offset: 1px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+::selection {
+  background: rgb(59 130 246 / 0.35);
+}
+
+/* Barras de desplazamiento finas que se adaptan al tema */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-zinc-500, #71717a) 45%, transparent) transparent;
+}
+
+/* Animaciones de entrada */
+@keyframes sonda-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes sonda-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sonda-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes sonda-toast {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sonda-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.anim-fade {
+  animation: sonda-fade 0.15s ease-out;
+}
+.anim-pop {
+  animation: sonda-pop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.anim-slide-in {
+  animation: sonda-slide-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.anim-toast {
+  animation: sonda-toast 0.2s ease-out;
+}
+
+/* Placeholder animado mientras llega una respuesta */
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--color-zinc-800, #27272a),
+    var(--color-zinc-700, #3f3f46),
+    var(--color-zinc-800, #27272a)
+  );
+  background-size: 200% 100%;
+  animation: sonda-shimmer 1.4s linear infinite;
+}
+
+/* Respeta a quien desactiva las animaciones en su sistema */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
