@@ -778,7 +778,7 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
           <button
             onClick={importPostman}
             className="rounded px-1.5 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
-            title="Importar colección de Postman (.json)"
+            title="Importar colección de Postman (.json) o captura HAR (.har)"
           >
             ⇣ Postman
           </button>

@@ -29,6 +29,7 @@ import { importFromUrl } from './swagger'
 import { parsePostmanCollection } from '../shared/postman'
 import { buildPostmanCollection } from '../shared/postmanExport'
 import { sortByOrder } from '../shared/reorder'
+import { looksLikeHar, parseHar } from '../shared/har'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -483,9 +484,9 @@ export function registerCollectionHandlers(): void {
 
   ipcMain.handle('postman:import', async (): Promise<ImportResult | null> => {
     const picked = await dialog.showOpenDialog({
-      title: 'Importar colección de Postman',
+      title: 'Importar colección de Postman o archivo HAR',
       properties: ['openFile'],
-      filters: [{ name: 'Colección de Postman', extensions: ['json'] }]
+      filters: [{ name: 'Colección de Postman (.json) o HAR (.har)', extensions: ['json', 'har'] }]
     })
     if (picked.canceled || !picked.filePaths[0]) return null
 
@@ -496,7 +497,8 @@ export function registerCollectionHandlers(): void {
       } catch {
         throw new Error('El archivo no es un JSON válido')
       }
-      const parsed = parsePostmanCollection(json)
+      // Un HAR (captura de la pestaña Red del navegador) o una colección de Postman
+      const parsed = looksLikeHar(json) ? parseHar(json) : parsePostmanCollection(json)
 
       await fs.mkdir(getRoot(), { recursive: true })
       const dir = await uniquePath(getRoot(), slug(parsed.name), '')
