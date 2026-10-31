@@ -1,4 +1,6 @@
-import { ipcMain } from 'electron'
+import { app, ipcMain, safeStorage } from 'electron'
+import { promises as fs } from 'fs'
+import { join } from 'path'
 import type { CookieInfo } from '../shared/types'
 
 interface StoredCookie {
@@ -13,6 +15,53 @@ interface StoredCookie {
 }
 
 const jar = new Map<string, StoredCookie>()
+
+const cookiesFile = (): string => join(app.getPath('userData'), 'cookies.bin')
+
+let saveTimer: NodeJS.Timeout | null = null
+
+/** Guarda en disco las cookies con fecha de caducidad (las de sesión no se persisten) */
+export async function persistCookies(): Promise<void> {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+  if (!safeStorage.isEncryptionAvailable()) return
+
+  const now = Date.now()
+  const persistent = [...jar.entries()].filter(
+    ([, c]) => c.expiresAt !== null && c.expiresAt > now
+  )
+  try {
+    if (persistent.length === 0) {
+      await fs.rm(cookiesFile(), { force: true })
+      return
+    }
+    await fs.writeFile(cookiesFile(), safeStorage.encryptString(JSON.stringify(persistent)))
+  } catch {
+    // Mejor esfuerzo: perder las cookies guardadas no debe romper la app
+  }
+}
+
+function schedulePersist(): void {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => void persistCookies(), 500)
+}
+
+/** Carga las cookies guardadas. Llamar una vez al arrancar, antes de crear la ventana */
+export async function loadCookies(): Promise<void> {
+  if (!safeStorage.isEncryptionAvailable()) return
+  try {
+    const raw = await fs.readFile(cookiesFile())
+    const entries = JSON.parse(safeStorage.decryptString(raw)) as [string, StoredCookie][]
+    const now = Date.now()
+    for (const [id, c] of entries) {
+      if (c.expiresAt !== null && c.expiresAt > now) jar.set(id, c)
+    }
+  } catch {
+    // Sin archivo, ilegible o cifrado por otro usuario/equipo: se empieza vacío
+  }
+}
 
 const domainMatches = (host: string, domain: string): boolean =>
   host === domain || host.endsWith(`.${domain}`)
@@ -80,6 +129,7 @@ export function storeCookies(url: URL, setCookies: string[]): void {
       jar.set(id, { name, value, domain, hostOnly, path, secure, expiresAt })
     }
   }
+  schedulePersist()
 }
 
 /** Valor del header Cookie para una URL, o null si no hay cookies que enviar */
@@ -110,6 +160,7 @@ export function cookieHeaderFor(url: URL): string | null {
 
 export function clearCookies(): void {
   jar.clear()
+  schedulePersist()
 }
 
 export function listCookies(): CookieInfo[] {
@@ -138,6 +189,7 @@ export function registerCookieHandlers(): void {
   ipcMain.handle('cookies:list', (): CookieInfo[] => listCookies())
   ipcMain.handle('cookies:delete', (_event, id: string): void => {
     jar.delete(id)
+    schedulePersist()
   })
   ipcMain.handle('cookies:clear', (): void => clearCookies())
 }

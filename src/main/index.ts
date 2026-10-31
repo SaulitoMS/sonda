@@ -5,9 +5,10 @@ import icon from '../../resources/icon.png?asset'
 import { registerHttpHandlers } from './http'
 import { registerCollectionHandlers } from './collections'
 import { registerEnvironmentHandlers } from './environments'
-import { registerCookieHandlers } from './cookieJar'
+import { registerCookieHandlers, loadCookies, persistCookies } from './cookieJar'
 import { registerSettingsHandlers } from './settings'
 import { registerMockHandlers } from './mockServer'
+
 
 registerHttpHandlers()
 registerCollectionHandlers()
@@ -49,14 +50,12 @@ function createWindow(): void {
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
   registerEnvironmentHandlers()
+  await loadCookies()
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -75,8 +74,16 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
-})
 
+  // Asegura que las últimas cookies lleguen a disco antes de cerrar
+  let flushed = false
+  app.on('before-quit', (event) => {
+    if (flushed) return
+    event.preventDefault()
+    flushed = true
+    void persistCookies().finally(() => app.quit())
+  })
+})
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
