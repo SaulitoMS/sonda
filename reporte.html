@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Reporte: API de Asistencia por Reconocimiento Facial</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --pass: #059669;
+        --warn: #d97706;
+        --fail: #dc2626;
+        --line: #8884;
+      }
+      body {
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+        max-width: 960px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      h1 {
+        font-size: 1.3rem;
+        margin-bottom: 0.2rem;
+      }
+      .meta {
+        color: #888;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+      }
+      .summary {
+        display: flex;
+        gap: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+      .pass,
+      .summary .p {
+        color: var(--pass);
+      }
+      .warn,
+      .summary .w {
+        color: var(--warn);
+      }
+      .fail,
+      .summary .f {
+        color: var(--fail);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      td {
+        padding: 0.4rem 0.5rem;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      td.mark {
+        width: 1.5rem;
+        font-weight: 700;
+      }
+      td.method {
+        width: 4.5rem;
+        font-weight: 700;
+        font-family: ui-monospace, monospace;
+      }
+      td.num {
+        text-align: right;
+        white-space: nowrap;
+        width: 5rem;
+      }
+      .detail {
+        color: #888;
+        font-size: 0.8rem;
+      }
+      tr.more td {
+        border-bottom: 1px solid var(--line);
+        padding-top: 0;
+        font-size: 0.85rem;
+      }
+      .sub {
+        margin: 0.4rem 0 0.1rem;
+        font-weight: 600;
+      }
+      ul {
+        margin: 0;
+        padding-left: 1.2rem;
+        list-style: none;
+      }
+      code {
+        font-family: ui-monospace, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Reporte de ejecución: API de Asistencia por Reconocimiento Facial</h1>
+    <div class="meta">
+      2026-10-31T19:36:10.594Z · Entorno: API de Asistencia por Reconocimiento Facial
+    </div>
+    <div class="summary">
+      <span class="p">✓ 2</span><span class="w">⚠ 13</span><span class="f">✗ 0</span>
+      <span>15 peticiones · 1619 ms</span>
+    </div>
+    <table>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          autenticacion / Read Current User
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">382 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          asistencia / Get History
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">80 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          asistencia / Today Status
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">122 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="pass">
+        <td class="mark">✓</td>
+        <td class="method">GET</td>
+        <td>health-check / Root</td>
+        <td class="num">200</td>
+        <td class="num">77 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">Schema: valid (status 200)</p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          reconocimiento-facial / Create Liveness Challenge
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">78 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="pass">
+        <td class="mark">✓</td>
+        <td class="method">GET</td>
+        <td>sucursales / Sucursal Mas Cercana</td>
+        <td class="num">200</td>
+        <td class="num">80 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">Schema: valid (status 200)</p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Arqueo Viaje
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200, 422).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">78 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200, 422).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Detalle Entrega
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200, 422).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">76 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200, 422).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Foto Entrega
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200, 422).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">128 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200, 422).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Mi Viaje Mas Reciente
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">77 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Obtener Camiones Disponibles
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200, 422).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">78 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200, 422).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Obtener Guias Pendientes Folios
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">76 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Obtener Solicitud
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200, 422).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">77 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200, 422).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Obtener Ubicacion Usuario
+          <div class="detail">
+            El status 401 no está documentado en la spec (documentados: 200, 422).
+          </div>
+        </td>
+        <td class="num">401</td>
+        <td class="num">78 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 401 no está documentado en la spec (documentados:
+              200, 422).
+            </p>
+          </details>
+        </td>
+      </tr>
+      <tr class="warn">
+        <td class="mark">⚠</td>
+        <td class="method">GET</td>
+        <td>
+          viajes-ead / Url Evidencias
+          <div class="detail">
+            El status 403 no está documentado en la spec (documentados: 200, 422).
+          </div>
+        </td>
+        <td class="num">403</td>
+        <td class="num">132 ms</td>
+      </tr>
+      <tr class="more">
+        <td colspan="5">
+          <details>
+            <summary>Detalle</summary>
+            <p class="sub">
+              Schema: undocumented · El status 403 no está documentado en la spec (documentados:
+              200, 422).
+            </p>
+          </details>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

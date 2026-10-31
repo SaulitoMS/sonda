@@ -229,10 +229,9 @@ function App(): React.JSX.Element {
     { id: 'import', label: 'Importar Swagger / OpenAPI', run: () => setModal('import') },
     {
       id: 'sidebar',
-      label:
-        (isNarrow ? drawerOpen : layout.sidebarOpen)
-          ? 'Ocultar barra lateral'
-          : 'Mostrar barra lateral',
+      label: (isNarrow ? drawerOpen : layout.sidebarOpen)
+        ? 'Ocultar barra lateral'
+        : 'Mostrar barra lateral',
       hint: `${MOD}B`,
       run: toggleSidebar
     },

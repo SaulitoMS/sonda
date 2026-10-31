@@ -46,7 +46,8 @@ export function RequestPanel(): React.JSX.Element {
         ? 'text-zinc-100 after:bg-blue-500'
         : 'text-zinc-500 after:bg-transparent hover:text-zinc-300'
     }`
-  const pill = 'rounded-full bg-blue-500/15 px-1.5 text-[10px] font-semibold leading-4 text-blue-400'
+  const pill =
+    'rounded-full bg-blue-500/15 px-1.5 text-[10px] font-semibold leading-4 text-blue-400'
 
   // La URL es la fuente de verdad: la tabla se deriva de ella y al editarla se reescribe la URL.
   // Los ids se basan en la posición para que los inputs no pierdan el foco al escribir.

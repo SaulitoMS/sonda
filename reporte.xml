@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="API de Asistencia por Reconocimiento Facial" tests="15" failures="0" time="1.619">
+  <testsuite name="API de Asistencia por Reconocimiento Facial" tests="15" failures="0" errors="0" skipped="0" time="1.619" timestamp="2026-10-31T19:36:10.594Z">
+    <testcase classname="API de Asistencia por Reconocimiento Facial.autenticacion" name="GET Read Current User" time="0.382">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.asistencia" name="GET Get History" time="0.080">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.asistencia" name="GET Today Status" time="0.122">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.health-check" name="GET Root" time="0.077" />
+    <testcase classname="API de Asistencia por Reconocimiento Facial.reconocimiento-facial" name="GET Create Liveness Challenge" time="0.078">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.sucursales" name="GET Sucursal Mas Cercana" time="0.080" />
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Arqueo Viaje" time="0.078">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200, 422).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Detalle Entrega" time="0.076">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200, 422).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Foto Entrega" time="0.128">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200, 422).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Mi Viaje Mas Reciente" time="0.077">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Obtener Camiones Disponibles" time="0.078">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200, 422).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Obtener Guias Pendientes Folios" time="0.076">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Obtener Solicitud" time="0.077">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200, 422).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Obtener Ubicacion Usuario" time="0.078">
+      <system-out>⚠ El status 401 no está documentado en la spec (documentados: 200, 422).</system-out>
+    </testcase>
+    <testcase classname="API de Asistencia por Reconocimiento Facial.viajes-ead" name="GET Url Evidencias" time="0.132">
+      <system-out>⚠ El status 403 no está documentado en la spec (documentados: 200, 422).</system-out>
+    </testcase>
+  </testsuite>
+</testsuites>

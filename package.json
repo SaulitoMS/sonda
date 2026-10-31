@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "description": "Cliente de APIs local-first, sin login. Importa Swagger/OpenAPI y genera tus colecciones.",
   "main": "./out/main/index.js",
+  "bin": {
+    "sonda-cli": "./out/cli/sonda.cjs"
+  },
   "author": "Tu Nombre",
   "homepage": "https://github.com/TU_USUARIO/sonda",
   "repository": {
@@ -36,7 +39,9 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "build:cli": "esbuild src/cli/index.ts --bundle --platform=node --target=node22 --format=cjs --banner:js=\"#!/usr/bin/env node\" --outfile=out/cli/sonda.cjs",
+    "cli": "npm run build:cli --silent && node out/cli/sonda.cjs"
   },
   "dependencies": {
     "@apidevtools/swagger-parser": "^13.1.0",
@@ -68,6 +73,7 @@
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.3",
     "vite": "^8.3.4",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "esbuild": "^0.28.2"
   }
 }

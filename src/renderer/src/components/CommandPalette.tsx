@@ -185,9 +185,7 @@ export function CommandPalette({ onClose, commands }: Props): React.JSX.Element 
                     {row.entry.item.method === 'PATCH' ? 'PAT' : row.entry.item.method.slice(0, 4)}
                   </span>
                   <span className="truncate">{row.entry.item.name}</span>
-                  <span className="ml-auto shrink-0 truncate text-zinc-500">
-                    {row.entry.where}
-                  </span>
+                  <span className="ml-auto shrink-0 truncate text-zinc-500">{row.entry.where}</span>
                 </>
               )}
             </div>

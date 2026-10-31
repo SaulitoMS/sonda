@@ -58,17 +58,17 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API respond
 
 ## Resumen de funciones
 
-| Área                | Qué incluye                                                                                                          |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Peticiones          | Todos los métodos HTTP, body JSON, `x-www-form-urlencoded` y `multipart` con archivos, GraphQL, Server-Sent Events   |
-| Autenticación       | Bearer, Basic, API Key y OAuth 2.0, con herencia desde la colección o la carpeta e inspector de JWT                  |
-| Respuestas          | JSON en árbol, XML formateado, vista previa HTML, binarios, comparación con la respuesta anterior, exportación       |
-| Colecciones         | Carpetas, drag and drop, duplicar, renombrar, headers y autenticación heredados, búsqueda                            |
-| Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, HAR, cURL; exportación a Postman y a código                                |
-| Validación          | Respuesta y body contra el schema de la spec, con sincronización posterior de la colección                           |
-| Automatización      | Aserciones, extracción de variables, runner con datos CSV/JSON, reportes JSON, HTML y JUnit, monitor programado      |
-| Herramientas        | Rendimiento, fuzz, snapshot, mock server, historial, cookies                                                         |
-| Interfaz            | Pestañas con sesión restaurable, paleta de comandos, tema claro y oscuro, diseño responsive, layout configurable     |
+| Área                | Qué incluye                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Peticiones          | Todos los métodos HTTP, body JSON, `x-www-form-urlencoded` y `multipart` con archivos, GraphQL, Server-Sent Events |
+| Autenticación       | Bearer, Basic, API Key y OAuth 2.0, con herencia desde la colección o la carpeta e inspector de JWT                |
+| Respuestas          | JSON en árbol, XML formateado, vista previa HTML, binarios, comparación con la respuesta anterior, exportación     |
+| Colecciones         | Carpetas, drag and drop, duplicar, renombrar, headers y autenticación heredados, búsqueda                          |
+| Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, HAR, cURL; exportación a Postman y a código                              |
+| Validación          | Respuesta y body contra el schema de la spec, con sincronización posterior de la colección                         |
+| Automatización      | Aserciones, extracción de variables, runner con datos CSV/JSON, reportes JSON, HTML y JUnit, monitor programado    |
+| Herramientas        | Rendimiento, fuzz, snapshot, mock server, historial, cookies                                                       |
+| Interfaz            | Pestañas con sesión restaurable, paleta de comandos, tema claro y oscuro, diseño responsive, layout configurable   |
 
 ---
 
@@ -152,13 +152,13 @@ Los instaladores quedan en la carpeta `dist/`.
 
 ### Importar y exportar
 
-| Origen o destino        | Detalle                                                                                                                                              |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Swagger / OpenAPI**   | Swagger 2.0 y OpenAPI 3.x, por **URL** o desde un **archivo local** `.json`, `.yaml` o `.yml`                                                        |
-| **Postman**             | Importa colecciones `.json` y exporta tus colecciones al formato de Postman                                                                          |
-| **HAR**                 | Importa capturas del navegador. Se queda solo con las llamadas a APIs (XHR y fetch), junta las repetidas y usa `{{baseUrl}}` si todas van al mismo servidor |
-| **cURL**                | Pega un comando en la barra de URL y se importa. Entiende el formato de Chrome (`$'...'`). El modal permite exportar la petición como comando        |
-| **Código**              | Genera la petición en cURL, JavaScript (`fetch`), JavaScript (`axios`) y Python (`requests`)                                                         |
+| Origen o destino      | Detalle                                                                                                                                                     |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Swagger / OpenAPI** | Swagger 2.0 y OpenAPI 3.x, por **URL** o desde un **archivo local** `.json`, `.yaml` o `.yml`                                                               |
+| **Postman**           | Importa colecciones `.json` y exporta tus colecciones al formato de Postman                                                                                 |
+| **HAR**               | Importa capturas del navegador. Se queda solo con las llamadas a APIs (XHR y fetch), junta las repetidas y usa `{{baseUrl}}` si todas van al mismo servidor |
+| **cURL**              | Pega un comando en la barra de URL y se importa. Entiende el formato de Chrome (`$'...'`). El modal permite exportar la petición como comando               |
+| **Código**            | Genera la petición en cURL, JavaScript (`fetch`), JavaScript (`axios`) y Python (`requests`)                                                                |
 
 Al importar un Swagger:
 
@@ -176,27 +176,27 @@ Al importar un Swagger:
 - Marca una variable como **Secreto** para cifrarla con el keychain del sistema.
 - **Variables dinámicas** que se generan en cada envío:
 
-| Categoría | Variables                                                                                                         |
-| --------- | ----------------------------------------------------------------------------------------------------------------- |
-| Fechas    | `{{$timestamp}}`, `{{$timestampMs}}`, `{{$isoTimestamp}}`, `{{$date}}`, `{{$randomPastDate}}`, `{{$randomFutureDate}}` |
-| Datos     | `{{$uuid}}`, `{{$randomInt}}`, `{{$randomDecimal}}`, `{{$randomBool}}`, `{{$randomString}}`, `{{$randomColor}}`   |
-| Personas  | `{{$randomFirstName}}`, `{{$randomLastName}}`, `{{$randomFullName}}`, `{{$randomUsername}}`, `{{$randomEmail}}`, `{{$randomPhone}}`, `{{$randomPassword}}` |
-| Lugares y red | `{{$randomCity}}`, `{{$randomCompany}}`, `{{$randomIp}}`, `{{$randomUrl}}`                                    |
+| Categoría     | Variables                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fechas        | `{{$timestamp}}`, `{{$timestampMs}}`, `{{$isoTimestamp}}`, `{{$date}}`, `{{$randomPastDate}}`, `{{$randomFutureDate}}`                                     |
+| Datos         | `{{$uuid}}`, `{{$randomInt}}`, `{{$randomDecimal}}`, `{{$randomBool}}`, `{{$randomString}}`, `{{$randomColor}}`                                            |
+| Personas      | `{{$randomFirstName}}`, `{{$randomLastName}}`, `{{$randomFullName}}`, `{{$randomUsername}}`, `{{$randomEmail}}`, `{{$randomPhone}}`, `{{$randomPassword}}` |
+| Lugares y red | `{{$randomCity}}`, `{{$randomCompany}}`, `{{$randomIp}}`, `{{$randomUrl}}`                                                                                 |
 
 ### Validación contra el schema
 
 Es el diferenciador de Sonda. Las peticiones importadas de OpenAPI guardan los schemas de respuesta de cada status. Al enviarlas, una pestaña **Schema** te dice si la respuesta real cumple lo que la spec promete.
 
-| Qué revisa                                                                   | Resultado                                              |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Qué revisa                                                                   | Resultado                                               |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------- |
 | Tipos, campos requeridos, `enum`, `nullable`                                 | Error con la ruta exacta, por ejemplo `$.tags[1].label` |
-| Formatos (`date-time`, `email`, `uuid`, `uri`), rangos, longitudes, patrones | Error                                                  |
-| `multipleOf` y `not`                                                         | Error                                                  |
-| Arrays (`minItems`, `maxItems`, `uniqueItems`) y `additionalProperties`      | Error                                                  |
-| Combinaciones `allOf`, `anyOf`, `oneOf`                                      | Error con la variante más cercana                      |
-| Campos que la API devuelve pero la spec no documenta                         | Advertencia (no invalida)                              |
-| Status que la spec no declara (ej. un `500` inesperado)                      | Aviso de status no documentado                         |
-| Body vacío o JSON inválido cuando se esperaba un body                        | Error                                                  |
+| Formatos (`date-time`, `email`, `uuid`, `uri`), rangos, longitudes, patrones | Error                                                   |
+| `multipleOf` y `not`                                                         | Error                                                   |
+| Arrays (`minItems`, `maxItems`, `uniqueItems`) y `additionalProperties`      | Error                                                   |
+| Combinaciones `allOf`, `anyOf`, `oneOf`                                      | Error con la variante más cercana                       |
+| Campos que la API devuelve pero la spec no documenta                         | Advertencia (no invalida)                               |
+| Status que la spec no declara (ej. un `500` inesperado)                      | Aviso de status no documentado                          |
+| Body vacío o JSON inválido cuando se esperaba un body                        | Error                                                   |
 
 El schema se busca por status exacto (`200`), por rango (`4XX`) o por `default`.
 
@@ -224,13 +224,13 @@ Disponibles desde el menú **Herramientas** de la cabecera y desde la paleta de 
 
 | Herramienta     | Qué hace                                                                                                                                                         |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Historial**   | Guarda las peticiones enviadas y permite restaurarlas. Oculta credenciales en headers, query y bodies, y recorta los bodies largos                              |
+| **Historial**   | Guarda las peticiones enviadas y permite restaurarlas. Oculta credenciales en headers, query y bodies, y recorta los bodies largos                               |
 | **Cookies**     | Lista y borra las cookies guardadas de las respuestas                                                                                                            |
 | **Rendimiento** | Envía la petición varias veces (hasta 200) con concurrencia configurable (hasta 10) y muestra percentiles, entre ellos p50 y p95                                 |
-| **Fuzz**        | Genera bodies inválidos a partir del schema de la petición y clasifica la reacción de la API: rechazada, aceptada, dudosa o fallo (`5xx`)                       |
+| **Fuzz**        | Genera bodies inválidos a partir del schema de la petición y clasifica la reacción de la API: rechazada, aceptada, dudosa o fallo (`5xx`)                        |
 | **Snapshot**    | Guarda una respuesta como línea base y detecta cambios en la API, con una lista de campos a ignorar                                                              |
 | **Monitor**     | Ejecuta una colección cada cierto tiempo (de 1 minuto a 24 horas), calcula el uptime y avisa solo cuando el estado cambia: cuando empieza a fallar o se recupera |
-| **Mock**        | Levanta un servidor local con respuestas de ejemplo generadas desde los schemas de la colección, útil para desarrollar el frontend antes que el backend         |
+| **Mock**        | Levanta un servidor local con respuestas de ejemplo generadas desde los schemas de la colección, útil para desarrollar el frontend antes que el backend          |
 | **cURL**        | Importa o exporta la petición actual como comando                                                                                                                |
 | **Ajustes**     | Tiempo límite, SSL, proxy y reintentos                                                                                                                           |
 
@@ -254,13 +254,13 @@ Disponibles desde el menú **Herramientas** de la cabecera y desde la paleta de 
 
 ### Ajustes
 
-| Ajuste                       | Detalle                                                                                              |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Tiempo límite                | De 1 a 600 segundos (30 por defecto)                                                                 |
-| Redirecciones                | Seguirlas automáticamente o no                                                                       |
-| SSL                          | Automático (tolera certificados inválidos solo en `localhost`), siempre verificar o ignorar errores  |
-| Proxy                        | URL `http://` o `https://`                                                                           |
-| Reintentos automáticos       | De 0 a 5, con espera configurable entre intentos                                                     |
+| Ajuste                 | Detalle                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| Tiempo límite          | De 1 a 600 segundos (30 por defecto)                                                                |
+| Redirecciones          | Seguirlas automáticamente o no                                                                      |
+| SSL                    | Automático (tolera certificados inválidos solo en `localhost`), siempre verificar o ignorar errores |
+| Proxy                  | URL `http://` o `https://`                                                                          |
+| Reintentos automáticos | De 0 a 5, con espera configurable entre intentos                                                    |
 
 ---
 

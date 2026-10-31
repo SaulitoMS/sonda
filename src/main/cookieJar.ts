@@ -29,9 +29,7 @@ export async function persistCookies(): Promise<void> {
   if (!safeStorage.isEncryptionAvailable()) return
 
   const now = Date.now()
-  const persistent = [...jar.entries()].filter(
-    ([, c]) => c.expiresAt !== null && c.expiresAt > now
-  )
+  const persistent = [...jar.entries()].filter(([, c]) => c.expiresAt !== null && c.expiresAt > now)
   try {
     if (persistent.length === 0) {
       await fs.rm(cookiesFile(), { force: true })

@@ -9,7 +9,6 @@ import { registerCookieHandlers, loadCookies, persistCookies } from './cookieJar
 import { registerSettingsHandlers } from './settings'
 import { registerMockHandlers } from './mockServer'
 
-
 registerHttpHandlers()
 registerCollectionHandlers()
 registerCookieHandlers()
