@@ -37,6 +37,8 @@ export type SendRequestResult =
       /** Solo existe si la respuesta no es texto */
       binary?: BinaryBody
       timeMs: number
+      /** Tiempo hasta recibir los headers (primer byte), incluye DNS, conexión y TLS */
+      ttfbMs?: number
       sizeBytes: number
     }
   | {

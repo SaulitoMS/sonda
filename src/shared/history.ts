@@ -34,6 +34,70 @@ export function truncateResponse(
   return slim.body.length <= max ? slim : { ...slim, body: slim.body.slice(0, max) }
 }
 
+/** Headers cuyo valor casi siempre es una credencial */
+const SENSITIVE_HEADERS = new Set([
+  'authorization',
+  'proxy-authorization',
+  'cookie',
+  'set-cookie',
+  'x-api-key',
+  'api-key',
+  'x-auth-token',
+  'x-access-token',
+  'x-csrf-token',
+  'x-xsrf-token'
+])
+
+/** Parámetros de query que suelen llevar credenciales */
+const SENSITIVE_QUERY =
+  /([?&](?:access_token|refresh_token|id_token|token|api[-_]?key|apikey|secret|client_secret|password|pwd|signature)=)([^&#]*)/gi
+
+/** Una {{variable}} no es un secreto: su valor vive en el entorno (y los secretos, cifrados) */
+const blankUnlessVariable = (value: string | undefined): string =>
+  value && value.includes('{{') ? value : ''
+
+/**
+ * Copia de la entrada sin credenciales en texto plano, pensada para escribirla en disco.
+ * Se conservan las referencias {{variable}} para que la petición siga siendo reutilizable.
+ */
+export function redactEntry(entry: HistoryEntry): HistoryEntry {
+  const auth: AuthConfig | undefined = entry.auth && {
+    ...entry.auth,
+    token: blankUnlessVariable(entry.auth.token),
+    password: blankUnlessVariable(entry.auth.password),
+    keyValue: blankUnlessVariable(entry.auth.keyValue),
+    ...(entry.auth.oauthClientSecret !== undefined
+      ? { oauthClientSecret: blankUnlessVariable(entry.auth.oauthClientSecret) }
+      : {})
+  }
+
+  const response: SendRequestResult = entry.response.ok
+    ? {
+        ...entry.response,
+        headers: Object.fromEntries(
+          Object.entries(entry.response.headers).map(([key, value]) => [
+            key,
+            SENSITIVE_HEADERS.has(key.toLowerCase()) ? '[oculto]' : value
+          ])
+        )
+      }
+    : entry.response
+
+  return {
+    ...entry,
+    url: entry.url.replace(SENSITIVE_QUERY, (match, prefix: string, value: string) =>
+      value.startsWith('{{') ? match : prefix
+    ),
+    headers: entry.headers.map((h) =>
+      SENSITIVE_HEADERS.has(h.key.trim().toLowerCase())
+        ? { ...h, value: blankUnlessVariable(h.value) }
+        : h
+    ),
+    ...(auth ? { auth } : {}),
+    response
+  }
+}
+
 /** Agrega al inicio (lo más reciente primero) y respeta el límite */
 export function pushEntry(
   list: HistoryEntry[],

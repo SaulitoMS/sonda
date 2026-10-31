@@ -3,6 +3,7 @@ import { toBodyFormData } from '../../../shared/bodyForm'
 import {
   parseStored,
   pushEntry,
+  redactEntry,
   truncateResponse,
   type HistoryEntry
 } from '../../../shared/history'
@@ -19,8 +20,10 @@ function readRaw(): string | null {
 }
 
 /** Si el almacenamiento se llena, recorta a la mitad y reintenta */
+/** Si el almacenamiento se llena, recorta a la mitad y reintenta */
 function persist(list: HistoryEntry[]): void {
-  let current = list
+  // En disco nunca van tokens ni contraseñas en texto plano; en memoria se conservan hasta cerrar la app
+  let current = list.map(redactEntry)
   while (current.length > 0) {
     try {
       localStorage.setItem(KEY, JSON.stringify(current))

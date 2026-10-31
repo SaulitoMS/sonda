@@ -150,6 +150,9 @@ export function registerHttpHandlers(): void {
           ...(ignoreTls || proxyUrl ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls) } : {})
         })
 
+        // fetch resuelve al llegar los headers: es el tiempo hasta el primer byte
+        const ttfbMs = Math.round(performance.now() - start)
+
         // Guarda las cookies de la respuesta (res.url es la URL final si hubo redirecciones)
         storeCookies(new URL(res.url || url.href), res.headers.getSetCookie())
 
@@ -183,6 +186,7 @@ export function registerHttpHandlers(): void {
               }
             : {}),
           timeMs,
+          ttfbMs: Math.min(ttfbMs, timeMs),
           sizeBytes: buffer.byteLength
         }
       } catch (err) {

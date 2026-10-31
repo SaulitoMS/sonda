@@ -441,7 +441,19 @@ export function ResponsePanel(): React.JSX.Element {
           <span className={`rounded px-2 py-1 font-bold ${statusColor(response.status)}`}>
             {response.status} {response.statusText}
           </span>
-          <span className="text-zinc-400">{response.timeMs} ms</span>
+          <span
+            className="text-zinc-400"
+            title={
+              response.ttfbMs !== undefined
+                ? `Espera del servidor (hasta el primer byte): ${response.ttfbMs} ms · Descarga: ${response.timeMs - response.ttfbMs} ms`
+                : undefined
+            }
+          >
+            {response.timeMs} ms
+            {response.ttfbMs !== undefined && (
+              <span className="ml-1 text-zinc-500">(TTFB {response.ttfbMs})</span>
+            )}
+          </span>
           <span className="text-zinc-400">{formatSize(response.sizeBytes)}</span>
 
           <div className="relative">
