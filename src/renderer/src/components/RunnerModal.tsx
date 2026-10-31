@@ -25,6 +25,7 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { Modal } from './Modal'
 import { timingStats } from '../../../shared/timing'
+import { parseDataSet, withDataVars, type DataSet } from '../../../shared/csvData'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -45,6 +46,17 @@ interface Row {
   assertionResults?: AssertionResult[]
   /** Cuántas veces se envió (solo se muestra si hubo reintentos) */
   attempts?: number
+  /** Fila de datos con la que se envió (solo en ejecuciones con CSV/JSON) */
+  data?: Record<string, string>
+  /** Número de fila de datos, empezando en 1 */
+  iteration?: number
+}
+
+/** Una petición por enviar, con la fila de datos que le toca (si hay archivo de datos) */
+interface Job {
+  entry: Entry
+  data?: Record<string, string>
+  iteration?: number
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -79,6 +91,9 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
   const [stoppedEarly, setStoppedEarly] = useState(false)
   const [total, setTotal] = useState(0)
   const [rows, setRows] = useState<Row[]>([])
+  const [dataset, setDataset] = useState<DataSet | null>(null)
+  const [dataName, setDataName] = useState('')
+  const [dataError, setDataError] = useState('')
   const runId = useRef(0)
   // Petición en vuelo, para poder cancelarla al pulsar "Detener"
   const activeRequest = useRef<string | null>(null)
@@ -102,6 +117,28 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
   }, [collection])
 
   const planned = includeWrites ? all : all.filter((e) => SAFE_METHODS.includes(e.item.method))
+
+  // Con archivo de datos se recorre toda la cola una vez por fila
+  const jobs = useMemo<Job[]>(() => {
+    if (!dataset) return planned.map((entry) => ({ entry }))
+    return dataset.rows.flatMap((data, i) =>
+      planned.map((entry) => ({ entry, data, iteration: i + 1 }))
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataset, includeWrites, all])
+
+  const loadData = async (file: File | undefined): Promise<void> => {
+    if (!file) return
+    try {
+      setDataset(parseDataSet(await file.text()))
+      setDataName(file.name)
+      setDataError('')
+    } catch (err) {
+      setDataset(null)
+      setDataName('')
+      setDataError(err instanceof Error ? err.message : 'No se pudo leer el archivo')
+    }
+  }
   const writeCount = all.length - all.filter((e) => SAFE_METHODS.includes(e.item.method)).length
 
   const stats = useMemo(
@@ -110,9 +147,11 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
   )
 
   /** Envía una petición de la cola y la valida (sin reintentos) */
-  const runOne = async (entry: Entry): Promise<Row> => {
+  const runOne = async ({ entry, data, iteration }: Job): Promise<Row> => {
     // El entorno se lee en cada vuelta: una petición anterior pudo guardar variables (ej: token)
-    const env = useEnvironmentStore.getState().getActive()
+    const active = useEnvironmentStore.getState().getActive()
+    // Las columnas de la fila de datos pisan a las variables del entorno solo en esta petición
+    const env = data ? withDataVars(active, data) : active
     try {
       const saved = await window.api.readRequest(entry.item.path)
       const requestId = crypto.randomUUID()
@@ -134,6 +173,8 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
           : base
       return {
         entry,
+        data,
+        iteration,
         ...verdict,
         httpStatus: response.ok ? response.status : undefined,
         timeMs: response.timeMs,
@@ -146,6 +187,8 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
       activeRequest.current = null
       return {
         entry,
+        data,
+        iteration,
         status: 'fail',
         detail: err instanceof Error ? err.message : 'Error desconocido',
         timeMs: 0
@@ -153,7 +196,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
     }
   }
 
-  const run = async (queue: Entry[] = planned): Promise<void> => {
+  const run = async (queue: Job[] = jobs): Promise<void> => {
     const myRun = ++runId.current
     runEnvName.current = useEnvironmentStore.getState().getActive()?.name ?? null
     setRows([])
@@ -162,7 +205,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
     setTotal(queue.length)
     setRunning(true)
 
-    for (const [index, entry] of queue.entries()) {
+    for (const [index, job] of queue.entries()) {
       if (runId.current !== myRun) return
 
       // Pausa opcional entre peticiones (útil con APIs que limitan por ritmo)
@@ -171,7 +214,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
         if (runId.current !== myRun) return
       }
 
-      let row = await runOne(entry)
+      let row = await runOne(job)
 
       // Reintenta solo fallos pasajeros; un 404 o una aserción fallida no mejoran por insistir
       let attempt = 1
@@ -184,7 +227,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
         if (runId.current !== myRun) return
         await sleep(Math.max(delayMs, 500))
         if (runId.current !== myRun) return
-        row = await runOne(entry)
+        row = await runOne(job)
         attempt++
         row.attempts = attempt
       }
@@ -227,7 +270,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
       environment: runEnvName.current,
       rows: rows.map((r) => ({
         group: r.entry.group,
-        name: r.entry.item.name,
+        name: r.iteration ? `${r.entry.item.name} [fila ${r.iteration}]` : r.entry.item.name,
         method: r.entry.item.method,
         path: r.entry.item.path,
         status: r.status,
@@ -254,9 +297,54 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
       {!started && (
         <div className="space-y-3 text-xs text-zinc-300">
           <p>
-            Se enviarán <b>{planned.length}</b> de {all.length} peticiones usando el entorno activo
-            y se validará cada respuesta contra su schema y sus aserciones.
+            Se enviarán <b>{jobs.length}</b>
+            {dataset
+              ? ` peticiones (${planned.length} × ${dataset.rows.length} filas de datos)`
+              : ` de ${all.length} peticiones`}{' '}
+            usando el entorno activo y se validará cada respuesta contra su schema y sus aserciones.
           </p>
+          <div className="rounded-md border border-zinc-700 p-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <span>
+                <b>Datos de prueba</b> (CSV o JSON, opcional)
+                <span className="block text-[11px] text-zinc-500">
+                  Cada columna se usa como {'{{columna}}'}; la colección corre una vez por fila.
+                </span>
+              </span>
+              <span className="flex shrink-0 gap-2">
+                {dataset && (
+                  <button
+                    onClick={() => {
+                      setDataset(null)
+                      setDataName('')
+                    }}
+                    className="rounded px-2 py-1 text-zinc-400 hover:text-zinc-200"
+                  >
+                    Quitar
+                  </button>
+                )}
+                <label className="cursor-pointer rounded bg-zinc-800 px-3 py-1.5 text-zinc-200 hover:bg-zinc-700">
+                  {dataset ? 'Cambiar…' : 'Elegir archivo…'}
+                  <input
+                    type="file"
+                    accept=".csv,.json,text/csv,application/json"
+                    className="hidden"
+                    onChange={(e) => {
+                      void loadData(e.target.files?.[0])
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </span>
+            </div>
+            {dataset && (
+              <p className="mt-2 text-[11px] text-emerald-400">
+                {dataName}: {dataset.rows.length} {dataset.rows.length === 1 ? 'fila' : 'filas'} ·
+                columnas: {dataset.columns.join(', ')}
+              </p>
+            )}
+            {dataError && <p className="mt-2 text-[11px] text-red-400">{dataError}</p>}
+          </div>
           {writeCount > 0 && (
             <label className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-amber-200">
               <input
@@ -328,7 +416,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
           <div className="max-h-[50vh] overflow-auto rounded-md border border-zinc-800">
             {rows.map((row) => (
               <div
-                key={row.entry.item.path}
+                key={`${row.iteration ?? 0}:${row.entry.item.path}`}
                 onClick={() => openRow(row)}
                 className="flex cursor-pointer items-start gap-3 border-b border-zinc-800 px-3 py-1.5 text-xs last:border-b-0 hover:bg-zinc-800/60"
                 title="Abrir en el editor"
@@ -343,6 +431,9 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
                   <span className="block truncate text-zinc-200">
                     {row.entry.group && <span className="text-zinc-500">{row.entry.group} / </span>}
                     {row.entry.item.name}
+                    {row.iteration && (
+                      <span className="ml-2 text-[11px] text-zinc-500">fila {row.iteration}</span>
+                    )}
                     {row.attempts && row.attempts > 1 && (
                       <span className="ml-2 text-[11px] text-amber-400">
                         ({row.attempts} intentos)
@@ -399,7 +490,11 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
             {rows.some((r) => r.status === 'fail') && (
               <button
                 onClick={() =>
-                  void run(rows.filter((r) => r.status === 'fail').map((r) => r.entry))
+                  void run(
+                    rows
+                      .filter((r) => r.status === 'fail')
+                      .map((r) => ({ entry: r.entry, data: r.data, iteration: r.iteration }))
+                  )
                 }
                 className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
               >
@@ -424,7 +519,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
         ) : (
           <button
             onClick={() => void run()}
-            disabled={planned.length === 0}
+            disabled={jobs.length === 0}
             className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
           >
             {finished ? 'Ejecutar de nuevo' : 'Ejecutar'}
