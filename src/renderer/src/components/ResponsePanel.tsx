@@ -16,6 +16,7 @@ import { JsonTree } from './JsonTree'
 import { Highlight } from './Highlight'
 import { MAX_MATCHES, buildTreeSearch, countMatches } from '../lib/search'
 import { usePreviousDiff, type PreviousDiff } from '../lib/usePreviousDiff'
+import { formatXml, isHtmlResponse, isXmlResponse } from '../../../shared/markup'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes'
 
@@ -237,6 +238,7 @@ export function ResponsePanel(): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const [view, setView] = useState<'tree' | 'raw'>('tree')
+  const [htmlView, setHtmlView] = useState<'preview' | 'code'>('code')
   const [filter, setFilter] = useState('')
 
   const prettyBody = useMemo(() => {
@@ -244,7 +246,10 @@ export function ResponsePanel(): React.JSX.Element {
     try {
       return JSON.stringify(JSON.parse(response.body), null, 2)
     } catch {
-      return response.body
+      // XML bien formado se muestra indentado; si no lo está, se deja tal cual
+      return isXmlResponse(response.headers['content-type'], response.body)
+        ? (formatXml(response.body) ?? response.body)
+        : response.body
     }
   }, [response])
 
@@ -273,7 +278,15 @@ export function ResponsePanel(): React.JSX.Element {
   const searchInput = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
 
-  const canSearch = !!response?.ok && !response.binary && current === 'body'
+  const isHtml =
+    !!response?.ok &&
+    !response.binary &&
+    !parsed.ok &&
+    isHtmlResponse(response.headers['content-type'], response.body)
+  const showPreview = isHtml && htmlView === 'preview' && current === 'body'
+
+  // La vista previa es una página aparte: Ctrl+F no puede buscar dentro de ella
+  const canSearch = !!response?.ok && !response.binary && current === 'body' && !showPreview
   const searchQuery = searchOpen && canSearch ? query : ''
   const treeView = parsed.ok && view === 'tree'
 
@@ -565,6 +578,21 @@ export function ResponsePanel(): React.JSX.Element {
                 />
               </div>
             )}
+            {isHtml && (
+              <div className="mb-2 flex items-center gap-2 pr-16 text-xs">
+                <button
+                  onClick={() => setHtmlView(htmlView === 'preview' ? 'code' : 'preview')}
+                  className="rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700"
+                >
+                  {htmlView === 'preview' ? 'Ver código' : 'Vista previa'}
+                </button>
+                {htmlView === 'preview' && (
+                  <span className="text-zinc-500">
+                    Sin scripts, imágenes ni estilos externos (por seguridad)
+                  </span>
+                )}
+              </div>
+            )}
 
             <button
               onClick={copy}
@@ -573,7 +601,14 @@ export function ResponsePanel(): React.JSX.Element {
               {copied ? '¡Copiado!' : 'Copiar'}
             </button>
 
-            {treeView ? (
+            {showPreview ? (
+              <iframe
+                title="Vista previa HTML"
+                sandbox=""
+                srcDoc={response.body}
+                className="h-[65vh] min-h-[320px] w-full rounded border border-zinc-700 bg-white"
+              />
+            ) : treeView ? (
               filtered.found ? (
                 <JsonTree
                   value={filtered.value}

@@ -5,8 +5,7 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 
 const CLAIMS = ['sub', 'iss', 'aud', 'scope'] as const
 
-const show = (value: unknown): string =>
-  typeof value === 'string' ? value : JSON.stringify(value)
+const show = (value: unknown): string => (typeof value === 'string' ? value : JSON.stringify(value))
 
 /** Muestra qué dice el token (algoritmo, expiración, claims). No verifica la firma */
 export function JwtInfo({ token }: { token: string }): React.JSX.Element | null {
