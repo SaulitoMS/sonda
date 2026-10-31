@@ -56,6 +56,32 @@ const SENSITIVE_QUERY =
 const blankUnlessVariable = (value: string | undefined): string =>
   value && value.includes('{{') ? value : ''
 
+/** Nombres de campo cuyo valor es una credencial (en JSON, urlencoded o formularios) */
+const SECRET_FIELD =
+  'password|passwd|pwd|secret|client_secret|token|access_token|refresh_token|id_token|api[-_]?key|apikey|authorization'
+
+// El valor puede estar sin cerrar: el body del historial se recorta a 30 000 caracteres
+const JSON_SECRET = new RegExp(
+  `("(?:${SECRET_FIELD})"\\s*:\\s*)"((?:[^"\\\\]|\\\\.)*)(?:"|$)`,
+  'gi'
+)
+const FORM_SECRET = new RegExp(`((?:^|&)(?:${SECRET_FIELD})=)([^&]*)`, 'gi')
+const SECRET_KEY = new RegExp(`^(?:${SECRET_FIELD})$`, 'i')
+const isSecretField = (key: string): boolean => SECRET_KEY.test(key.trim())
+
+/**
+ * Oculta los valores de campos sensibles en un body JSON o urlencoded, sin reformatearlo
+ * (funciona aunque el texto esté recortado). `mask` es lo que queda en su lugar.
+ */
+const redactBodyText = (text: string, mask: string): string =>
+  text
+    .replace(JSON_SECRET, (match, prefix: string, value: string) =>
+      value.startsWith('{{') ? match : `${prefix}"${mask}"`
+    )
+    .replace(FORM_SECRET, (match, prefix: string, value: string) =>
+      value.startsWith('{{') ? match : `${prefix}${mask}`
+    )
+
 /**
  * Copia de la entrada sin credenciales en texto plano, pensada para escribirla en disco.
  * Se conservan las referencias {{variable}} para que la petición siga siendo reutilizable.
@@ -71,6 +97,13 @@ export function redactEntry(entry: HistoryEntry): HistoryEntry {
       : {})
   }
 
+  const bodyForm: BodyFormData | undefined = entry.bodyForm && {
+    ...entry.bodyForm,
+    fields: entry.bodyForm.fields.map((f) =>
+      f.type === 'text' && isSecretField(f.key) ? { ...f, value: blankUnlessVariable(f.value) } : f
+    )
+  }
+
   const response: SendRequestResult = entry.response.ok
     ? {
         ...entry.response,
@@ -79,7 +112,8 @@ export function redactEntry(entry: HistoryEntry): HistoryEntry {
             key,
             SENSITIVE_HEADERS.has(key.toLowerCase()) ? '[oculto]' : value
           ])
-        )
+        ),
+        body: redactBodyText(entry.response.body, '[oculto]')
       }
     : entry.response
 
@@ -93,6 +127,8 @@ export function redactEntry(entry: HistoryEntry): HistoryEntry {
         ? { ...h, value: blankUnlessVariable(h.value) }
         : h
     ),
+    body: redactBodyText(entry.body, ''),
+    ...(bodyForm ? { bodyForm } : {}),
     ...(auth ? { auth } : {}),
     response
   }

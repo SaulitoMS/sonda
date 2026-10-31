@@ -36,6 +36,42 @@ const isLoopbackHost = (hostname: string): boolean =>
 const inFlight = new Map<string, () => void>()
 
 const MAX_BINARY_BYTES = 20 * 1024 * 1024
+/** Tope absoluto de lo que se lee de una respuesta; más allá se corta para no agotar la memoria */
+const MAX_RESPONSE_BYTES = 100 * 1024 * 1024
+
+class ResponseTooLargeError extends Error {}
+
+/** Lee el body por partes y corta si supera el límite, para no agotar la memoria con descargas enormes */
+async function readBodyCapped(res: Response, max: number): Promise<Uint8Array> {
+  const declared = Number(res.headers.get('content-length'))
+  if (declared > max) {
+    await res.body?.cancel()
+    throw new ResponseTooLargeError()
+  }
+  if (!res.body) return new Uint8Array(0)
+
+  const chunks: Uint8Array[] = []
+  let total = 0
+  const reader = res.body.getReader()
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) {
+      await reader.cancel()
+      throw new ResponseTooLargeError()
+    }
+    chunks.push(value)
+  }
+
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    out.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return out
+}
 
 /** ¿La respuesta es un archivo y no texto? Se decide por Content-Type y, si no basta, por el contenido */
 function isBinaryResponse(contentType: string, bytes: Uint8Array): boolean {
@@ -156,7 +192,7 @@ export function registerHttpHandlers(): void {
         // Guarda las cookies de la respuesta (res.url es la URL final si hubo redirecciones)
         storeCookies(new URL(res.url || url.href), res.headers.getSetCookie())
 
-        const buffer = await res.arrayBuffer()
+        const buffer = await readBodyCapped(res, MAX_RESPONSE_BYTES)
         const timeMs = Math.round(performance.now() - start)
 
         const resHeaders: Record<string, string> = {}
@@ -164,7 +200,7 @@ export function registerHttpHandlers(): void {
           resHeaders[key] = value
         })
 
-        const bytes = new Uint8Array(buffer)
+        const bytes = buffer
         const contentType = res.headers.get('content-type') ?? ''
         const binary = isBinaryResponse(contentType, bytes)
         const tooBig = buffer.byteLength > MAX_BINARY_BYTES
@@ -191,6 +227,13 @@ export function registerHttpHandlers(): void {
         }
       } catch (err) {
         const timeMs = Math.round(performance.now() - start)
+        if (err instanceof ResponseTooLargeError) {
+          return {
+            ok: false,
+            error: `La respuesta supera los ${MAX_RESPONSE_BYTES / 1024 / 1024} MB y se descartó para no agotar la memoria`,
+            timeMs
+          }
+        }
         if (err instanceof Error && err.name === 'AbortError') {
           return {
             ok: false,
