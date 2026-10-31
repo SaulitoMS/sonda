@@ -112,7 +112,8 @@ export async function collectEventStream(
     if (err instanceof Error && err.name === 'AbortError') {
       return { text, endedBy: wasCancelled() ? 'cancelled' : 'timeout' }
     }
-    const cause = err instanceof Error && err.cause instanceof Error ? ` (${err.cause.message})` : ''
+    const cause =
+      err instanceof Error && err.cause instanceof Error ? ` (${err.cause.message})` : ''
     return {
       text,
       endedBy: 'error',

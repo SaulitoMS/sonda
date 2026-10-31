@@ -8,6 +8,7 @@ import { cookieHeaderFor, storeCookies } from './cookieJar'
 import { proxyError } from '../shared/settings'
 import { loadSettings } from './settings'
 import { collectEventStream, isEventStream } from '../shared/sse'
+import { sendFollowingRedirects } from '../shared/redirects'
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
@@ -258,6 +259,198 @@ export function registerHttpHandlers(): void {
           timeMs,
           ttfbMs: Math.min(ttfbMs, timeMs),
           sizeBytes: buffer.byteLength
+        }
+      } catch (err) {
+        const timeMs = Math.round(performance.now() - start)
+        if (err instanceof ResponseTooLargeError) {
+          return {
+            ok: false,
+            error: `La respuesta supera los ${MAX_RESPONSE_BYTES / 1024 / 1024} MB y se descartó para no agotar la memoria`,
+            timeMs
+          }
+        }
+        if (err instanceof Error && err.name === 'AbortError') {
+          return {
+            ok: false,
+            error: state.cancelled ? 'Petición cancelada' : 'La petición excedió el tiempo límite',
+            timeMs
+          }
+        }
+        const cause =
+          err instanceof Error && err.cause instanceof Error ? ` (${err.cause.message})` : ''
+        return {
+          ok: false,
+          error: (err instanceof Error ? err.message : 'Error desconocido') + cause,
+          timeMs
+        }
+      } finally {
+        clearTimeout(timeout)
+        if (input.requestId) inFlight.delete(input.requestId)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'http:send',
+    async (event, input: SendRequestInput): Promise<SendRequestResult> => {
+      const start = performance.now()
+
+      let url: URL
+      try {
+        url = new URL(input.url)
+      } catch {
+        return { ok: false, error: 'URL inválida. Incluye http:// o https://', timeMs: 0 }
+      }
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return { ok: false, error: 'Solo se permiten URLs http y https', timeMs: 0 }
+      }
+
+      const settings = await loadSettings()
+
+      // TLS y proxy se deciden por servidor: una redirección puede llevar a otro host
+      const connectionFor = (target: URL): { dispatcher?: Dispatcher } => {
+        const loopback = isLoopbackHost(target.hostname)
+        // Lo que venga en la petición tiene prioridad sobre los ajustes globales
+        const insecure =
+          input.insecure ??
+          (settings.sslMode === 'ignore' || (settings.sslMode === 'auto' && loopback))
+        const ignoreTls = insecure && target.protocol === 'https:'
+        // localhost nunca pasa por el proxy
+        const proxyUrl =
+          settings.proxyUrl && !proxyError(settings.proxyUrl) && !loopback ? settings.proxyUrl : ''
+        return ignoreTls || proxyUrl ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls) } : {}
+      }
+
+      const controller = new AbortController()
+      const timeout = setTimeout(
+        () => controller.abort(),
+        input.timeoutMs ?? settings.timeoutSeconds * 1000
+      )
+
+      // Distingue "el usuario canceló" de "se acabó el tiempo"
+      const state = { cancelled: false }
+      if (input.requestId) {
+        inFlight.set(input.requestId, () => {
+          state.cancelled = true
+          controller.abort()
+        })
+      }
+
+      try {
+        const headers = new Headers()
+        for (const h of input.headers) {
+          if (h.key.trim()) headers.append(h.key.trim(), h.value)
+        }
+
+        const canHaveBody = !['GET', 'HEAD'].includes(input.method)
+        let body: string | FormData | undefined
+        if (canHaveBody && input.formData) {
+          body = await buildFormData(input.formData)
+          // fetch pone su propio Content-Type con el boundary; uno escrito a mano lo rompería
+          headers.delete('content-type')
+        } else if (canHaveBody && input.body) {
+          body = input.body
+        }
+
+        // Las redirecciones se siguen a mano para ver cada salto y llevar las cookies en cada uno
+        let cookieIsUsers = headers.has('cookie')
+        const {
+          res,
+          url: finalUrl,
+          hops
+        } = await sendFollowingRedirects({
+          url,
+          method: input.method,
+          headers,
+          body,
+          follow: input.followRedirects ?? settings.followRedirects,
+          send: (target, init) =>
+            fetch(target, {
+              ...init,
+              signal: controller.signal,
+              redirect: 'manual',
+              ...connectionFor(target)
+            }),
+          // Cookies guardadas de respuestas anteriores (salvo que el usuario ponga su propio Cookie)
+          beforeSend: (target, h) => {
+            if (cookieIsUsers && h.has('cookie')) return
+            cookieIsUsers = false
+            h.delete('cookie')
+            const cookie = cookieHeaderFor(target)
+            if (cookie) h.set('cookie', cookie)
+          },
+          afterResponse: (target, r) => storeCookies(target, r.headers.getSetCookie())
+        })
+        const redirectInfo = hops.length > 0 ? { redirects: hops, finalUrl: finalUrl.href } : {}
+
+        // Los headers de la respuesta final ya llegaron: es el tiempo hasta el primer byte
+        const ttfbMs = Math.round(performance.now() - start)
+
+        const resHeaders: Record<string, string> = {}
+        res.headers.forEach((value, key) => {
+          resHeaders[key] = value
+        })
+        const contentType = res.headers.get('content-type') ?? ''
+
+        // Server-Sent Events: no terminan solos, así que se leen por trozos en vez de esperar el final
+        if (isEventStream(contentType)) {
+          // Desde la pestaña el stream dura hasta que el servidor lo cierre o el usuario cancele
+          if (input.live) clearTimeout(timeout)
+
+          const streamed = await collectEventStream(res, {
+            max: MAX_STREAM_BYTES,
+            wasCancelled: () => state.cancelled,
+            onText: (chunk) => {
+              if (input.live && input.requestId && !event.sender.isDestroyed()) {
+                event.sender.send('http:stream', { requestId: input.requestId, chunk })
+              }
+            }
+          })
+
+          return {
+            ok: true,
+            status: res.status,
+            statusText: res.statusText,
+            headers: resHeaders,
+            body: streamed.text,
+            timeMs: Math.round(performance.now() - start),
+            ttfbMs,
+            sizeBytes: Buffer.byteLength(streamed.text),
+            ...redirectInfo,
+            stream: {
+              endedBy: streamed.endedBy,
+              ...(streamed.error ? { error: streamed.error } : {})
+            }
+          }
+        }
+
+        const buffer = await readBodyCapped(res, MAX_RESPONSE_BYTES)
+        const timeMs = Math.round(performance.now() - start)
+
+        const bytes = buffer
+        const binary = isBinaryResponse(contentType, bytes)
+        const tooBig = buffer.byteLength > MAX_BINARY_BYTES
+
+        return {
+          ok: true,
+          status: res.status,
+          statusText: res.statusText,
+          headers: resHeaders,
+          body: binary ? '' : new TextDecoder('utf-8').decode(bytes),
+          ...(binary
+            ? {
+                binary: {
+                  contentType:
+                    contentType.split(';')[0].trim().toLowerCase() || 'application/octet-stream',
+                  base64: tooBig ? '' : Buffer.from(buffer).toString('base64'),
+                  truncated: tooBig
+                }
+              }
+            : {}),
+          timeMs,
+          ttfbMs: Math.min(ttfbMs, timeMs),
+          sizeBytes: buffer.byteLength,
+          ...redirectInfo
         }
       } catch (err) {
         const timeMs = Math.round(performance.now() - start)

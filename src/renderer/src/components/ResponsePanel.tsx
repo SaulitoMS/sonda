@@ -3,6 +3,7 @@ import { summarizeAssertions } from '../../../shared/assertions'
 import type {
   AssertionResult,
   ExtractionResult,
+  RedirectHop,
   SchemaValidation,
   StreamEnd
 } from '../../../shared/types'
@@ -240,6 +241,50 @@ const STREAM_NOTE: Record<StreamEnd, string> = {
 }
 
 const MAX_EVENTS_SHOWN = 500
+
+/** Los saltos de redirección que hubo hasta la respuesta final (plegado por defecto) */
+function RedirectChain({
+  hops,
+  finalUrl
+}: {
+  hops: RedirectHop[]
+  finalUrl: string
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-b border-zinc-800 px-4 py-1.5 text-xs">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 text-left text-zinc-400 hover:text-zinc-200"
+      >
+        <span className="text-zinc-500">{open ? '▾' : '▸'}</span>
+        <span className="font-semibold text-blue-300">
+          ↪ {plural(hops.length, 'redirección', 'redirecciones')}
+        </span>
+        <span className="selectable min-w-0 flex-1 truncate font-mono text-zinc-500">
+          {finalUrl}
+        </span>
+      </button>
+      {open && (
+        <ol className="selectable mt-1.5 space-y-1.5 font-mono">
+          {hops.map((h, i) => (
+            <li key={i} className="space-y-0.5">
+              <div className="flex flex-wrap items-center gap-x-2 text-zinc-300">
+                <span className="rounded bg-zinc-800 px-1.5 text-amber-300">{h.status}</span>
+                <span className="break-all">{h.url}</span>
+                <span className="text-zinc-500">
+                  {h.timeMs} ms
+                  {h.setCookies > 0 && ` · ${plural(h.setCookies, 'cookie', 'cookies')}`}
+                </span>
+              </div>
+              <div className="break-all pl-3 text-zinc-500">→ {h.location}</div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  )
+}
 
 const prettyData = (data: string): string => {
   try {
@@ -498,6 +543,10 @@ export function ResponsePanel(): React.JSX.Element {
     <div className="flex min-h-0 flex-1 flex-col">
       <WarningsBanner warnings={warnings} />
       <ExtractionsBanner results={extractionResults} />
+
+      {response.redirects && response.finalUrl && (
+        <RedirectChain hops={response.redirects} finalUrl={response.finalUrl} />
+      )}
 
       <div className="flex items-center justify-between border-b border-zinc-800 px-2">
         <div className="flex">

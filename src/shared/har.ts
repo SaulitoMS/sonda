@@ -28,7 +28,8 @@ const NOISE_HEADERS = new Set([
 ])
 
 /** Respuestas que son recursos de la página y no llamadas a una API */
-const STATIC_MIME = /^(?:image|font|audio|video)\/|text\/css|javascript|text\/html|application\/wasm/i
+const STATIC_MIME =
+  /^(?:image|font|audio|video)\/|text\/css|javascript|text\/html|application\/wasm/i
 
 /** ¿Es un archivo HAR (lo que exporta el navegador desde Red → "Guardar todo como HAR")? */
 export function looksLikeHar(data: unknown): boolean {
@@ -40,9 +41,7 @@ function decodeBasic(encoded: string): { username: string; password: string } | 
     const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0))
     const text = new TextDecoder().decode(bytes)
     const colon = text.indexOf(':')
-    return colon === -1
-      ? null
-      : { username: text.slice(0, colon), password: text.slice(colon + 1) }
+    return colon === -1 ? null : { username: text.slice(0, colon), password: text.slice(colon + 1) }
   } catch {
     return null
   }
@@ -62,7 +61,8 @@ function convertHeaders(raw: unknown): {
     const key = str(h.name).trim()
     const lower = key.toLowerCase()
     const value = str(h.value)
-    if (!key || key.startsWith(':') || NOISE_HEADERS.has(lower) || lower.startsWith('sec-')) continue
+    if (!key || key.startsWith(':') || NOISE_HEADERS.has(lower) || lower.startsWith('sec-'))
+      continue
     if (lower === 'cookie') {
       hadCookie = true
       continue
@@ -210,7 +210,9 @@ export function parseHar(data: unknown): ParsedPostman {
     )
   }
   if (found.length > MAX_REQUESTS) {
-    warnings.push(`El HAR tiene ${found.length} peticiones: se importaron las primeras ${MAX_REQUESTS}.`)
+    warnings.push(
+      `El HAR tiene ${found.length} peticiones: se importaron las primeras ${MAX_REQUESTS}.`
+    )
     found.length = MAX_REQUESTS
   }
 
@@ -223,12 +225,17 @@ export function parseHar(data: unknown): ParsedPostman {
   }))
 
   if (staticSkipped > 0) {
-    warnings.push(`Se omitieron ${staticSkipped} recursos de la página (imágenes, estilos, scripts…).`)
+    warnings.push(
+      `Se omitieron ${staticSkipped} recursos de la página (imágenes, estilos, scripts…).`
+    )
   }
-  if (badMethod > 0) warnings.push(`Se omitieron ${badMethod} peticiones con método o URL no válidos.`)
+  if (badMethod > 0)
+    warnings.push(`Se omitieron ${badMethod} peticiones con método o URL no válidos.`)
   if (duplicates > 0) warnings.push(`Se unieron ${duplicates} peticiones repetidas.`)
   if (hadCookie) {
-    warnings.push('Se omitió el header Cookie (guarda tu sesión). Si la API lo necesita, agrégalo a mano.')
+    warnings.push(
+      'Se omitió el header Cookie (guarda tu sesión). Si la API lo necesita, agrégalo a mano.'
+    )
   }
   if (hadToken) {
     warnings.push(

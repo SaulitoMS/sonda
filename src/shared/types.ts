@@ -21,6 +21,19 @@ export interface SendRequestInput {
   live?: boolean
 }
 
+/** Un salto de redirección que se siguió antes de llegar a la respuesta final */
+export interface RedirectHop {
+  /** 301, 302, 303, 307 o 308 */
+  status: number
+  /** Dónde se pidió */
+  url: string
+  /** A dónde mandó el servidor (ya resuelta si era relativa) */
+  location: string
+  timeMs: number
+  /** Cuántas cookies intentó guardar esa respuesta */
+  setCookies: number
+}
+
 /** Cómo terminó de leerse un stream de eventos */
 export type StreamEnd = 'closed' | 'cancelled' | 'timeout' | 'limit' | 'error'
 
@@ -62,13 +75,16 @@ export type SendRequestResult =
       sizeBytes: number
       /** Solo existe si la respuesta es un text/event-stream */
       stream?: StreamInfo
+      /** Saltos seguidos hasta llegar aquí. Solo existe si hubo redirecciones */
+      redirects?: RedirectHop[]
+      /** URL de la respuesta final. Solo existe si hubo redirecciones */
+      finalUrl?: string
     }
   | {
       ok: false
       error: string
       timeMs: number
     }
-
 // ---------- Colecciones ----------
 
 export interface KeyValueData {
