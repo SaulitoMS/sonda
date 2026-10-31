@@ -3,6 +3,7 @@ import { resolveAuthFor } from '../lib/inheritedAuth'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { VariableInput } from './VariableInput'
+import { JwtInfo } from './JwtInfo'
 
 const TYPES: { value: AuthType; label: string }[] = [
   { value: 'none', label: 'Sin autenticación' },
@@ -67,13 +68,16 @@ export function AuthForm({
       {children}
 
       {auth.type === 'bearer' && (
-        <Field label="Token">
-          <VariableInput
-            value={auth.token}
-            onChange={(token) => patch({ token })}
-            placeholder="{{token}}"
-          />
-        </Field>
+        <>
+          <Field label="Token">
+            <VariableInput
+              value={auth.token}
+              onChange={(token) => patch({ token })}
+              placeholder="{{token}}"
+            />
+          </Field>
+          <JwtInfo token={auth.token} />
+        </>
       )}
 
       {auth.type === 'basic' && (
