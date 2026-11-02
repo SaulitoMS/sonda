@@ -304,6 +304,8 @@ export interface SondaApi {
   importPostman: () => Promise<ImportResult | null>
   /** Exporta una colección a un archivo de Postman v2.1. null = el usuario canceló */
   exportPostman: (collectionId: string) => Promise<ExportResult | null>
+  /** Exporta la documentación de una colección en Markdown. null = el usuario canceló */
+  exportDocs: (collectionId: string) => Promise<ExportResult | null>
   loadEnvironments: () => Promise<EnvironmentsData>
   saveEnvironments: (data: EnvironmentsData) => Promise<void>
   previewSync: (collectionId: string) => Promise<SyncPreviewResult>

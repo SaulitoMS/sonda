@@ -34,6 +34,7 @@ const api: SondaApi = {
   importSwagger: (url) => ipcRenderer.invoke('swagger:import', url),
   importPostman: () => ipcRenderer.invoke('postman:import'),
   exportPostman: (id) => ipcRenderer.invoke('postman:export', id),
+  exportDocs: (id) => ipcRenderer.invoke('docs:export', id),
   loadEnvironments: () => ipcRenderer.invoke('environments:load'),
   saveEnvironments: (data) => ipcRenderer.invoke('environments:save', data),
   previewSync: (id) => ipcRenderer.invoke('swagger:previewSync', id),

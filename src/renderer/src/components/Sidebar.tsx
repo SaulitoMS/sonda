@@ -453,6 +453,16 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
     alert(`Se exportaron ${result.count} peticiones a:\n${result.path}`)
   }
 
+  const exportDocs = async (id: string): Promise<void> => {
+    const result = await window.api.exportDocs(id)
+    if (!result) return
+    if (!result.ok) {
+      alert(result.error)
+      return
+    }
+    alert(`Se documentaron ${result.count} peticiones en:\n${result.path}`)
+  }
+
   /* ---------- Arrastrar y soltar ---------- */
 
   const failed = (err: unknown): void =>
@@ -926,7 +936,10 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                   <ExportButton onClick={() => exportPostman(c.id)} title="Exportar a Postman" />
                 )}
                 {total > 0 && (
-                  <PlayButton onClick={() => onRun(c.id)} title="Ejecutar todas las peticiones" />
+                  <ExportButton
+                    onClick={() => exportDocs(c.id)}
+                    title="Exportar documentación (Markdown)"
+                  />
                 )}
 
                 <TrashButton

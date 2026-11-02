@@ -28,6 +28,7 @@ import {
 import { importFromUrl } from './swagger'
 import { parsePostmanCollection } from '../shared/postman'
 import { buildPostmanCollection } from '../shared/postmanExport'
+import { buildMarkdownDocs } from '../shared/docsExport'
 import { sortByOrder } from '../shared/reorder'
 import { looksLikeHar, parseHar } from '../shared/har'
 
@@ -546,6 +547,28 @@ export function registerCollectionHandlers(): void {
 
       const collection = buildPostmanCollection(name, meta?.baseUrl, files)
       await fs.writeFile(picked.filePath, JSON.stringify(collection, null, 2) + '\n', 'utf-8')
+      return { ok: true, path: picked.filePath, count: files.length }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  })
+
+    ipcMain.handle('docs:export', async (_e, id: string): Promise<ExportResult | null> => {
+    try {
+      const dir = safePath(id)
+      const meta = await readMeta(dir)
+      const files = await readCollectionFiles(dir)
+      if (files.length === 0) throw new Error('La colección no tiene peticiones para documentar')
+
+      const name = meta?.name ?? id
+      const picked = await dialog.showSaveDialog({
+        title: 'Exportar documentación de la colección',
+        defaultPath: join(app.getPath('documents'), `${slug(name)}.md`),
+        filters: [{ name: 'Markdown', extensions: ['md'] }]
+      })
+      if (picked.canceled || !picked.filePath) return null
+
+      await fs.writeFile(picked.filePath, buildMarkdownDocs(name, meta?.baseUrl, files), 'utf-8')
       return { ok: true, path: picked.filePath, count: files.length }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
