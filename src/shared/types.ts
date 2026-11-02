@@ -393,6 +393,16 @@ export interface SchemaValidation {
 /** Qué parte de una petición cambió en la spec */
 export type SyncChangeKind = 'url' | 'body' | 'requestSchema' | 'responseSchemas'
 
+export type ChangeImpact = 'breaking' | 'compatible'
+export type ChangeArea = 'endpoint' | 'url' | 'request' | 'response'
+
+/** Un cambio concreto de la spec, clasificado por si rompe a un cliente existente */
+export interface ApiChange {
+  impact: ChangeImpact
+  area: ChangeArea
+  message: string
+}
+
 export interface SyncEndpointInfo {
   key: string
   method: HttpMethod
@@ -409,6 +419,8 @@ export interface SyncChangeInfo {
   kinds: SyncChangeKind[]
   /** Lo que el usuario también editó: su versión se conserva */
   keptUserEdits: SyncChangeKind[]
+  /** Detalle de qué cambió y si rompe o no */
+  changes: ApiChange[]
 }
 
 export interface SyncRemovedInfo {

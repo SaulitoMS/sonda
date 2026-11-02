@@ -1,4 +1,5 @@
-import type { SavedRequest, SyncChangeKind } from './types'
+import { diffRequests } from './breakingChanges'
+import type { ApiChange, SavedRequest, SyncChangeKind } from './types'
 
 /** Cómo era el endpoint cuando se importó o sincronizó: sirve para saber qué editó el usuario */
 export interface EndpointStamp {
@@ -32,6 +33,8 @@ export interface PlannedChange extends Matched {
   kinds: SyncChangeKind[]
   /** De esos, lo que el usuario también editó: su versión se conserva */
   keptUserEdits: SyncChangeKind[]
+  /** Detalle de los cambios, con su impacto */
+  changes: ApiChange[]
 }
 
 export interface SyncPlan {
@@ -128,8 +131,13 @@ export function planSync(
       kinds.push('responseSchemas')
     }
 
-    if (kinds.length === 0) plan.unchanged.push({ file, endpoint: ep })
-    else plan.changed.push({ file, endpoint: ep, kinds, keptUserEdits: kept })
+    if (kinds.length === 0) {
+      plan.unchanged.push({ file, endpoint: ep })
+    } else {
+      // Se compara contra la URL importada, no contra la que el usuario pudo editar
+      const changes = diffRequests(file.request, ep.request, stamp?.url)
+      plan.changed.push({ file, endpoint: ep, kinds, keptUserEdits: kept, changes })
+    }
   }
 
   plan.removed = files.filter((f) => stamps[f.path] && !used.has(f.path))

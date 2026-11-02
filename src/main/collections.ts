@@ -576,6 +576,7 @@ export function registerCollectionHandlers(): void {
   })
 
   // Descarga la spec de nuevo y dice qué cambió, sin tocar nada
+  // Descarga la spec de nuevo y dice qué cambió, sin tocar nada
   ipcMain.handle('swagger:previewSync', async (_e, id: string): Promise<SyncPreviewResult> => {
     try {
       const { plan, spec, source, stamps, baseUrlChange } = await loadSyncContext(id)
@@ -595,7 +596,8 @@ export function registerCollectionHandlers(): void {
           method: c.file.request.method,
           name: c.file.request.name,
           kinds: c.kinds,
-          keptUserEdits: c.keptUserEdits
+          keptUserEdits: c.keptUserEdits,
+          changes: c.changes
         })),
         removed: plan.removed.map((f) => ({
           path: `${id}/${f.path}`,

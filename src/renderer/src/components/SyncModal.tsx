@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type {
   HttpMethod,
+  SyncChangeInfo,
   SyncChangeKind,
   SyncOptions,
   SyncPreviewResult,
@@ -45,6 +46,55 @@ function Row({
       </span>
       {detail && <span className="shrink-0 text-[11px] text-zinc-500">{detail}</span>}
       {warn && <span className="shrink-0 text-[11px] text-amber-400">{warn}</span>}
+    </div>
+  )
+}
+
+function ChangeRow({ change }: { change: SyncChangeInfo }): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const breaking = change.changes.filter((c) => c.impact === 'breaking').length
+
+  return (
+    <div>
+      <div
+        onClick={() => setOpen((o) => !o)}
+        className="flex cursor-pointer items-baseline gap-2 px-2 py-1 text-xs hover:bg-zinc-800/50"
+      >
+        <span className={`w-12 shrink-0 font-bold ${METHOD_COLORS[change.method]}`}>
+          {change.method}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-zinc-300" title={change.name}>
+          {change.name}
+        </span>
+        {breaking > 0 ? (
+          <span className="shrink-0 rounded bg-red-500/15 px-1.5 text-[10px] font-semibold text-red-400">
+            {breaking === 1 ? 'rompe' : `rompe (${breaking})`}
+          </span>
+        ) : change.changes.length > 0 ? (
+          <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 text-[10px] font-semibold text-emerald-400">
+            compatible
+          </span>
+        ) : null}
+        <span className="shrink-0 text-[11px] text-zinc-500">
+          {change.kinds.map((k) => KIND_LABEL[k]).join(', ')}
+        </span>
+      </div>
+      {change.keptUserEdits.length > 0 && (
+        <p className="pb-1 pl-16 text-[11px] text-amber-400">
+          tu {change.keptUserEdits.map((k) => KIND_LABEL[k]).join(' y ')} se conserva
+        </p>
+      )}
+      {open &&
+        change.changes.map((c, i) => (
+          <p
+            key={i}
+            className={`selectable pb-0.5 pl-16 pr-2 font-mono text-[11px] ${
+              c.impact === 'breaking' ? 'text-red-300' : 'text-zinc-400'
+            }`}
+          >
+            {c.impact === 'breaking' ? '✕' : '✓'} {c.message}
+          </p>
+        ))}
     </div>
   )
 }
@@ -176,6 +226,8 @@ export function SyncModal({ collectionId, collectionName, onClose }: Props): Rea
   // ---- Vista previa ----
   const { added, changed, removed, unchanged, baseUrlChange } = preview
   const total = added.length + changed.length + removed.length
+  const breakingCount =
+    changed.filter((c) => c.changes.some((x) => x.impact === 'breaking')).length + removed.length
   const selected =
     (options.add ? added.length : 0) +
     (options.update ? changed.length : 0) +
@@ -203,6 +255,12 @@ export function SyncModal({ collectionId, collectionName, onClose }: Props): Rea
         </p>
       ) : (
         <div className="max-h-[55vh] overflow-auto">
+          {breakingCount > 0 && (
+            <p className="mb-3 rounded-md border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-300">
+              ⚠ {plural(breakingCount, 'endpoint tiene', 'endpoints tienen')} cambios que pueden
+              romper a los clientes de la API. Pulsa un endpoint modificado para ver el detalle.
+            </p>
+          )}
           <Section
             title="Endpoints nuevos"
             count={added.length}
@@ -221,17 +279,7 @@ export function SyncModal({ collectionId, collectionName, onClose }: Props): Rea
             onToggle={(update) => setOptions((o) => ({ ...o, update }))}
           >
             {changed.map((c) => (
-              <Row
-                key={c.path}
-                method={c.method}
-                name={c.name}
-                detail={c.kinds.map((k) => KIND_LABEL[k]).join(', ')}
-                warn={
-                  c.keptUserEdits.length > 0
-                    ? `tu ${c.keptUserEdits.map((k) => KIND_LABEL[k]).join(' y ')} se conserva`
-                    : undefined
-                }
-              />
+              <ChangeRow key={c.path} change={c} />
             ))}
           </Section>
 
