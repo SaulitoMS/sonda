@@ -95,3 +95,72 @@ describe('generateCode con form-data', () => {
     expect(generateCode('fetch', { ...form, method: 'GET' })).not.toContain('FormData')
   })
 })
+
+describe('generateCode: Go, PHP, C# y PowerShell', () => {
+  const basic = { ...post, user: 'ana:123' }
+  const form: CurlRequest = {
+    method: 'POST',
+    url: 'https://api.ejemplo.com/upload',
+    headers: [{ key: 'Content-Type', value: 'multipart/form-data' }],
+    body: '',
+    formData: [
+      { key: 'name', kind: 'text', value: 'Ana' },
+      { key: 'avatar', kind: 'file', value: '/tmp/a.png' }
+    ]
+  }
+
+  it('go arma la petición con Basic y solo importa lo que usa', () => {
+    const code = generateCode('go', basic)
+    expect(code).toContain('http.NewRequest("POST", "https://api.ejemplo.com/users"')
+    expect(code).toContain('req.SetBasicAuth("ana", "123")')
+    expect(code).toContain('"strings"')
+    expect(code).not.toContain('"os"')
+  })
+
+  it('go usa multipart.Writer y deja el Content-Type al writer', () => {
+    const code = generateCode('go', form)
+    expect(code).toContain('writer.WriteField("name", "Ana")')
+    expect(code).toContain('writer.CreateFormFile("avatar", "a.png")')
+    expect(code).toContain('writer.FormDataContentType()')
+    expect(code).not.toContain('multipart/form-data"')
+  })
+
+  it('php escapa las comillas simples y no interpola $', () => {
+    const code = generateCode('php', {
+      ...post,
+      headers: [{ key: 'X-Tok', value: "it's $a" }]
+    })
+    expect(code).toContain("'X-Tok: it\\'s $a'")
+    expect(code).toContain("CURLOPT_CUSTOMREQUEST => 'POST'")
+  })
+
+  it('php usa CURLFile en multipart y NOBODY en HEAD', () => {
+    expect(generateCode('php', form)).toContain("new CURLFile('/tmp/a.png', '', 'a.png')")
+    expect(generateCode('php', { ...post, method: 'HEAD' })).toContain('CURLOPT_NOBODY => true')
+  })
+
+  it('csharp pone el Content-Type en el contenido, no en los headers de la petición', () => {
+    const code = generateCode('csharp', post)
+    expect(code).toContain('request.Content.Headers.TryAddWithoutValidation("Content-Type"')
+    expect(code).not.toContain('request.Headers.TryAddWithoutValidation("Content-Type"')
+  })
+
+  it('csharp usa MultipartFormDataContent con archivos', () => {
+    const code = generateCode('csharp', form)
+    expect(code).toContain('new MultipartFormDataContent()')
+    expect(code).toContain('File.OpenRead("/tmp/a.png")')
+  })
+
+  it('powershell duplica las comillas simples y usa -Form en multipart', () => {
+    const code = generateCode('powershell', {
+      ...post,
+      headers: [
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'X-Tok', value: "it's" }
+      ]
+    })
+    expect(code).toContain("'X-Tok' = 'it''s'")
+    expect(code).toContain('-ContentType')
+    expect(generateCode('powershell', form)).toContain('-Form $form')
+  })
+})
