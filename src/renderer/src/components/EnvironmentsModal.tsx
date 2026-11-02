@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { EnvVariable, Environment, EnvironmentsData } from '../../../shared/types'
+import { exportEnvironment, parseEnvironments } from '../../../shared/envTransfer'
+import { downloadText } from '../lib/download'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'
 
@@ -24,6 +26,8 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const selected = draft.environments.find((e) => e.id === selectedId) ?? null
 
@@ -80,6 +84,47 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
     if (!selected) return
     const next = selected.variables.filter((v) => v.id !== id)
     setVars(next.length ? next : [newVar()])
+  }
+
+    const exportEnv = (): void => {
+    if (!selected) return
+    const hasSecrets = selected.variables.some((v) => v.secret && v.value)
+    const includeSecrets =
+      hasSecrets &&
+      window.confirm(
+        'Este entorno tiene variables secretas.\n\nAceptar: incluir sus valores en el archivo.\nCancelar: exportarlas vacías.'
+      )
+    const fileName = selected.name.trim().replace(/[^\w.-]+/g, '-') || 'entorno'
+    downloadText(
+      `${fileName}.sonda-env.json`,
+      exportEnvironment(selected, includeSecrets),
+      'application/json'
+    )
+  }
+
+  const importEnv = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite volver a elegir el mismo archivo
+    if (!file) return
+    try {
+      const { environments, warnings } = parseEnvironments(
+        await file.text(),
+        file.name.replace(/\.[^.]+$/, '')
+      )
+      const taken = new Set(draft.environments.map((x) => x.name))
+      const added = environments.map((env) => {
+        let name = env.name
+        if (taken.has(name)) name = `${env.name} (importado)`
+        taken.add(name)
+        // Fila vacía al final, como en el resto del editor
+        return { ...env, name, variables: [...env.variables, newVar()] }
+      })
+      setDraft((d) => ({ ...d, environments: [...d.environments, ...added] }))
+      setSelectedId(added[0].id)
+      setError(warnings.join(' · '))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo importar el archivo')
+    }
   }
 
   const submit = async (): Promise<void> => {
@@ -140,21 +185,47 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
               </div>
             ))}
           </div>
-          <div className="mt-2 flex gap-1">
-            <button
-              onClick={addEnv}
-              className="flex-1 rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
-            >
-              + Nuevo
-            </button>
-            <button
-              onClick={duplicateEnv}
-              disabled={!selected}
-              className="rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
-              title="Duplicar entorno"
-            >
-              Duplicar
-            </button>
+          <div className="mt-2 flex flex-col gap-1">
+            <div className="flex gap-1">
+              <button
+                onClick={addEnv}
+                className="flex-1 rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              >
+                + Nuevo
+              </button>
+              <button
+                onClick={duplicateEnv}
+                disabled={!selected}
+                className="rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+                title="Duplicar entorno"
+              >
+                Duplicar
+              </button>
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="flex-1 rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+                title="Importar desde Sonda o Postman (.json)"
+              >
+                Importar
+              </button>
+              <button
+                onClick={exportEnv}
+                disabled={!selected}
+                className="flex-1 rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+                title="Exportar el entorno seleccionado"
+              >
+                Exportar
+              </button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={importEnv}
+              className="hidden"
+            />
           </div>
         </div>
 
