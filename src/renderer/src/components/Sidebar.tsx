@@ -926,6 +926,12 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                   }
                   title="Headers de la colección"
                 />
+                {total > 0 && (
+                  <PlayButton
+                    onClick={() => onRun(c.id)}
+                    title="Ejecutar todas las peticiones"
+                  />
+                )}
                 {c.source && (
                   <SyncButton
                     onClick={() => onSync(c.id, c.name)}

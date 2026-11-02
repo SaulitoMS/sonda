@@ -217,6 +217,9 @@ export function registerHttpHandlers(): void {
         res.headers.forEach((value, key) => {
           resHeaders[key] = value
         })
+        // forEach deja solo el último Set-Cookie; se juntan todos con saltos de línea
+        const allSetCookies = res.headers.getSetCookie()
+        if (allSetCookies.length > 0) resHeaders['set-cookie'] = allSetCookies.join('\n')
         const contentType = res.headers.get('content-type') ?? ''
 
         // Server-Sent Events: no terminan solos, así que se leen por trozos en vez de esperar el final

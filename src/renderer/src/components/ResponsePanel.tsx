@@ -27,8 +27,9 @@ import { isEventStream, parseSse, type SseEvent } from '../../../shared/sse'
 import { useStreamStore, type LiveStream } from '../store/useStreamStore'
 import { useTabsStore } from '../store/useTabsStore'
 import { Icon } from './Icon'
+import { checkSecurity, type SecurityFinding } from '../../../shared/securityCheck'
 
-type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes'
+type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security'
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`
@@ -142,6 +143,45 @@ function TestsReport({ results }: { results: AssertionResult[] }): React.JSX.Ele
 const showValue = (v: unknown): string => {
   const text = JSON.stringify(v) ?? 'undefined'
   return text.length > 80 ? `${text.slice(0, 77)}…` : text
+}
+
+const SEVERITY_STYLE: Record<SecurityFinding['severity'], { label: string; color: string }> = {
+  high: { label: 'Alto', color: 'bg-red-500/20 text-red-400' },
+  medium: { label: 'Medio', color: 'bg-amber-500/20 text-amber-400' },
+  low: { label: 'Bajo', color: 'bg-sky-500/20 text-sky-400' }
+}
+
+function SecurityReport({ findings }: { findings: SecurityFinding[] }): React.JSX.Element {
+  if (findings.length === 0) {
+    return (
+      <p className="text-xs font-semibold text-emerald-400">
+        No se detectaron problemas de seguridad evidentes en esta respuesta
+      </p>
+    )
+  }
+
+  return (
+    <div className="selectable space-y-3 text-xs">
+      <p className="font-semibold text-zinc-300">
+        {plural(findings.length, 'hallazgo', 'hallazgos')}
+      </p>
+      <ul className="space-y-2">
+        {findings.map((f) => (
+          <li key={f.id} className="flex gap-2">
+            <span
+              className={`h-fit shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${SEVERITY_STYLE[f.severity].color}`}
+            >
+              {SEVERITY_STYLE[f.severity].label}
+            </span>
+            <div>
+              <p className="font-medium text-zinc-200">{f.title}</p>
+              <p className="text-zinc-500">{f.detail}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 function ChangesReport({ diff }: { diff: PreviousDiff }): React.JSX.Element {
@@ -371,6 +411,18 @@ export function ResponsePanel(): React.JSX.Element {
   const [htmlView, setHtmlView] = useState<'preview' | 'code'>('code')
   const [sseView, setSseView] = useState<'events' | 'text'>('events')
   const [filter, setFilter] = useState('')
+
+  const securityFindings = useMemo(
+    () =>
+      response?.ok
+        ? checkSecurity({
+            url: response.finalUrl ?? url,
+            headers: response.headers,
+            body: response.binary ? '' : response.body
+          })
+        : [],
+    [response, url]
+  )
 
   const prettyBody = useMemo(() => {
     if (!response || !response.ok) return ''
@@ -618,6 +670,21 @@ export function ResponsePanel(): React.JSX.Element {
               </span>
             )}
           </button>
+
+          <button className={tabClass('security')} onClick={() => setTab('security')}>
+            Seguridad
+            <span
+              className={`ml-1 ${
+                securityFindings.length === 0
+                  ? 'text-emerald-400'
+                  : securityFindings.some((f) => f.severity === 'high')
+                    ? 'text-red-400'
+                    : 'text-amber-400'
+              }`}
+            >
+              {securityFindings.length === 0 ? '✓' : securityFindings.length}
+            </span>
+          </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 py-1 pr-2 text-xs">
@@ -852,6 +919,8 @@ export function ResponsePanel(): React.JSX.Element {
         {current === 'tests' && hasTests && <TestsReport results={assertionResults} />}
 
         {current === 'changes' && <ChangesReport diff={diff} />}
+
+        {current === 'security' && <SecurityReport findings={securityFindings} />}
       </div>
     </div>
   )
