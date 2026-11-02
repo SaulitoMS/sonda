@@ -9,6 +9,7 @@ import { proxyError } from '../shared/settings'
 import { loadSettings } from './settings'
 import { collectEventStream, isEventStream } from '../shared/sse'
 import { sendFollowingRedirects } from '../shared/redirects'
+import { newCounter, timedConnector, toConnectionTiming, withCounter } from './connectionTiming'
 
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
@@ -21,7 +22,7 @@ function dispatcherFor(proxyUrl: string, ignoreTls: boolean): Dispatcher {
   if (!dispatcher) {
     dispatcher = proxyUrl
       ? new ProxyAgent({ uri: proxyUrl, requestTls: { rejectUnauthorized: !ignoreTls } })
-      : new Agent({ connect: { rejectUnauthorized: !ignoreTls } })
+      : new Agent({ connect: timedConnector(!ignoreTls) })
     dispatchers.set(key, dispatcher)
   }
   return dispatcher
@@ -134,8 +135,11 @@ export function registerHttpHandlers(): void {
 
       const settings = await loadSettings()
 
+      // Si alguna conexión pasa por el proxy, no se reportan tiempos de conexión
+      let viaProxy = false
+
       // TLS y proxy se deciden por servidor: una redirección puede llevar a otro host
-      const connectionFor = (target: URL): { dispatcher?: Dispatcher } => {
+      const connectionFor = (target: URL): { dispatcher: Dispatcher } => {
         const loopback = isLoopbackHost(target.hostname)
         // Lo que venga en la petición tiene prioridad sobre los ajustes globales
         const insecure =
@@ -145,7 +149,9 @@ export function registerHttpHandlers(): void {
         // localhost nunca pasa por el proxy
         const proxyUrl =
           settings.proxyUrl && !proxyError(settings.proxyUrl) && !loopback ? settings.proxyUrl : ''
-        return ignoreTls || proxyUrl ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls) } : {}
+        if (proxyUrl) viaProxy = true
+        // Siempre se usa nuestro cliente, para poder medir la conexión
+        return { dispatcher: dispatcherFor(proxyUrl, ignoreTls) }
       }
 
       const controller = new AbortController()
@@ -181,34 +187,42 @@ export function registerHttpHandlers(): void {
 
         // Las redirecciones se siguen a mano para ver cada salto y llevar las cookies en cada uno
         let cookieIsUsers = headers.has('cookie')
+        const counter = newCounter()
         const {
           res,
           url: finalUrl,
           hops
-        } = await sendFollowingRedirects({
-          url,
-          method: input.method,
-          headers,
-          body,
-          follow: input.followRedirects ?? settings.followRedirects,
-          send: (target, init) =>
-            fetch(target, {
-              ...init,
-              signal: controller.signal,
-              redirect: 'manual',
-              ...connectionFor(target)
-            }),
-          // Cookies guardadas de respuestas anteriores (salvo que el usuario ponga su propio Cookie)
-          beforeSend: (target, h) => {
-            if (cookieIsUsers && h.has('cookie')) return
-            cookieIsUsers = false
-            h.delete('cookie')
-            const cookie = cookieHeaderFor(target)
-            if (cookie) h.set('cookie', cookie)
-          },
-          afterResponse: (target, r) => storeCookies(target, r.headers.getSetCookie())
-        })
-        const redirectInfo = hops.length > 0 ? { redirects: hops, finalUrl: finalUrl.href } : {}
+        } = await withCounter(counter, () =>
+          sendFollowingRedirects({
+            url,
+            method: input.method,
+            headers,
+            body,
+            follow: input.followRedirects ?? settings.followRedirects,
+            send: (target, init) =>
+              fetch(target, {
+                ...init,
+                signal: controller.signal,
+                redirect: 'manual',
+                ...connectionFor(target)
+              }),
+            // Cookies guardadas de respuestas anteriores (salvo que el usuario ponga su propio Cookie)
+            beforeSend: (target, h) => {
+              if (cookieIsUsers && h.has('cookie')) return
+              cookieIsUsers = false
+              h.delete('cookie')
+              const cookie = cookieHeaderFor(target)
+              if (cookie) h.set('cookie', cookie)
+            },
+            afterResponse: (target, r) => storeCookies(target, r.headers.getSetCookie())
+          })
+        )
+        // Datos opcionales de la respuesta: redirecciones y tiempos de conexión.
+        // Los dos `return` de abajo ya lo esparcen, no hace falta tocarlos.
+        const redirectInfo = {
+          ...(hops.length > 0 ? { redirects: hops, finalUrl: finalUrl.href } : {}),
+          ...(viaProxy ? {} : { connection: toConnectionTiming(counter) })
+        }
 
         // Los headers de la respuesta final ya llegaron: es el tiempo hasta el primer byte
         const ttfbMs = Math.round(performance.now() - start)

@@ -1,3 +1,5 @@
+import type { ConnectionTiming } from './types'
+
 export interface TimingStats {
   count: number
   min: number
@@ -32,4 +34,29 @@ export function timingStats(rows: { name: string; timeMs: number }[]): TimingSta
     p95: percentile(sorted, 95),
     slowest: { name: slowest.name, timeMs: slowest.timeMs }
   }
+}
+
+
+/** Texto con el desglose de una respuesta, para el tooltip. undefined si no hay datos */
+export function describeTiming(
+  timeMs: number,
+  ttfbMs: number | undefined,
+  connection?: ConnectionTiming
+): string | undefined {
+  if (ttfbMs === undefined) return undefined
+
+  const parts: string[] = []
+  let used = 0
+  if (connection) {
+    if (connection.reused) {
+      parts.push('Conexión reutilizada')
+    } else {
+      parts.push(`DNS: ${connection.dnsMs} ms`)
+      parts.push(`${connection.secure ? 'TCP + TLS' : 'TCP'}: ${connection.connectMs} ms`)
+      used = connection.dnsMs + connection.connectMs
+    }
+  }
+  parts.push(`Espera del servidor: ${Math.max(0, ttfbMs - used)} ms`)
+  parts.push(`Descarga: ${Math.max(0, timeMs - ttfbMs)} ms`)
+  return parts.join(' · ')
 }

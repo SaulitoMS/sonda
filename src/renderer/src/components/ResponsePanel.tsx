@@ -28,6 +28,7 @@ import { useStreamStore, type LiveStream } from '../store/useStreamStore'
 import { useTabsStore } from '../store/useTabsStore'
 import { Icon } from './Icon'
 import { checkSecurity, type SecurityFinding } from '../../../shared/securityCheck'
+import { describeTiming } from '../../../shared/timing'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security'
 
@@ -697,11 +698,7 @@ export function ResponsePanel(): React.JSX.Element {
           </span>
           <span
             className={`flex items-center gap-1 font-medium ${timeTone(response.timeMs)}`}
-            title={
-              response.ttfbMs !== undefined
-                ? `Espera del servidor (hasta el primer byte): ${response.ttfbMs} ms · Descarga: ${response.timeMs - response.ttfbMs} ms`
-                : undefined
-            }
+            title={describeTiming(response.timeMs, response.ttfbMs, response.connection)}
           >
             <Icon name="clock" size={12} />
             {response.timeMs} ms

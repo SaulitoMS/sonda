@@ -59,6 +59,16 @@ export interface BinaryBody {
   truncated: boolean
 }
 
+/** Cuánto tardó abrir la conexión. Solo existe en peticiones directas (no por proxy) */
+export interface ConnectionTiming {
+  dnsMs: number
+  /** TCP, más el handshake TLS si es https (sin el DNS) */
+  connectMs: number
+  secure: boolean
+  /** true = se reutilizó una conexión abierta, por eso no hubo DNS ni conexión */
+  reused: boolean
+}
+
 export type SendRequestResult =
   | {
       ok: true
@@ -79,6 +89,8 @@ export type SendRequestResult =
       redirects?: RedirectHop[]
       /** URL de la respuesta final. Solo existe si hubo redirecciones */
       finalUrl?: string
+      /** Tiempos de la conexión. Solo existe si la petición no pasó por un proxy */
+      connection?: ConnectionTiming
     }
   | {
       ok: false
