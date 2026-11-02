@@ -59,3 +59,16 @@ describe('isDirtyState', () => {
     expect(isDirtyState({ ...r, url: 'https://otra.com', baseline })).toBe(true)
   })
 })
+
+describe('requestSignature con notas', () => {
+  it('las notas vacías no cambian la firma (las pestañas antiguas no aparecen modificadas)', () => {
+    expect(requestSignature(base({ description: '' }))).toBe(requestSignature(base()))
+    expect(requestSignature(base({ description: '   ' }))).toBe(requestSignature(base()))
+  })
+
+  it('editar las notas cuenta como cambio sin guardar', () => {
+    const baseline = requestSignature(base({ description: 'Login' }))
+    expect(isDirtyState({ ...base({ description: 'Login' }), baseline })).toBe(false)
+    expect(isDirtyState({ ...base({ description: 'Login v2' }), baseline })).toBe(true)
+  })
+})

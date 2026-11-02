@@ -10,10 +10,13 @@ export interface SignatureInput {
   auth: AuthConfig
   assertions: Assertion[]
   extractions: Extraction[]
+  /** Notas o documentación de la petición */
+  description?: string
 }
 
 export function requestSignature(r: SignatureInput): string {
   const bodyForm = r.bodyForm ? toBodyFormData(r.bodyForm) : undefined
+  const description = r.description?.trim()
   return JSON.stringify({
     method: r.method,
     url: r.url.trim(),
@@ -24,8 +27,9 @@ export function requestSignature(r: SignatureInput): string {
     auth: r.auth.type === 'inherit' ? null : r.auth,
     assertions: r.assertions,
     extractions: r.extractions,
-    // Solo entra a la firma si existe, así las pestañas guardadas antes no aparecen como modificadas
-    ...(bodyForm ? { bodyForm } : {})
+    // Solo entran a la firma si existen, así las pestañas guardadas antes no aparecen como modificadas
+    ...(bodyForm ? { bodyForm } : {}),
+    ...(description ? { description } : {})
   })
 }
 

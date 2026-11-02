@@ -25,6 +25,8 @@ export interface PersistedRequest {
   auth: AuthConfig | null
   assertions: Assertion[]
   extractions: Extraction[]
+  /** Notas o documentación de la petición. Si no existe, no hay notas */
+  description?: string
   requestSchema: JsonSchema | null
   responseSchemas: ResponseSchemas | null
   currentFile: string | null
@@ -80,6 +82,7 @@ function parseRequest(x: unknown): PersistedRequest | null {
     auth: isObject(x.auth) ? (x.auth as unknown as AuthConfig) : null,
     assertions: Array.isArray(x.assertions) ? (x.assertions as Assertion[]) : [],
     extractions: Array.isArray(x.extractions) ? (x.extractions as Extraction[]) : [],
+    ...(typeof x.description === 'string' && x.description ? { description: x.description } : {}),
     requestSchema: isObject(x.requestSchema) ? x.requestSchema : null,
     responseSchemas: isObject(x.responseSchemas) ? (x.responseSchemas as ResponseSchemas) : null,
     currentFile: typeof x.currentFile === 'string' ? x.currentFile : null,

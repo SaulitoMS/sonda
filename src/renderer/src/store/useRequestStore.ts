@@ -51,6 +51,8 @@ export interface RequestState {
   assertions: Assertion[]
   /** Valores de la respuesta que se guardan en variables del entorno */
   extractions: Extraction[]
+  /** Notas o documentación de la petición (en las importadas de OpenAPI, la descripción de la spec) */
+  description: string
   loading: boolean
   response: SendRequestResult | null
 
@@ -82,6 +84,7 @@ export interface RequestState {
   setAuth: (a: AuthConfig) => void
   setAssertions: (a: Assertion[]) => void
   setExtractions: (e: Extraction[]) => void
+  setDescription: (d: string) => void
   send: () => Promise<void>
 
   loadSaved: (saved: SavedRequest, path: string) => void
@@ -102,6 +105,7 @@ export type RequestSnapshot = Pick<
   | 'auth'
   | 'assertions'
   | 'extractions'
+  | 'description'
   | 'loading'
   | 'response'
   | 'requestSchema'
@@ -128,6 +132,7 @@ export function blankSnapshot(): RequestSnapshot {
     auth: emptyAuth(),
     assertions: [] as Assertion[],
     extractions: [] as Extraction[],
+    description: '',
     loading: false,
     response: null,
     requestSchema: null,
@@ -152,7 +157,8 @@ export function snapshotFromSaved(saved: SavedRequest, path: string): LoadedStat
     bodyForm: fromBodyFormData(saved.bodyForm),
     auth: { ...emptyAuth(), ...saved.auth },
     assertions: saved.assertions ?? [],
-    extractions: saved.extractions ?? []
+    extractions: saved.extractions ?? [],
+    description: saved.description ?? ''
   }
   return {
     ...fields,
@@ -181,6 +187,7 @@ export function captureSnapshot(): RequestSnapshot {
     auth: s.auth,
     assertions: s.assertions,
     extractions: s.extractions,
+    description: s.description,
     loading: s.loading,
     response: s.response,
     requestSchema: s.requestSchema,
@@ -213,6 +220,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setAuth: (auth) => set({ auth }),
   setAssertions: (assertions) => set({ assertions }),
   setExtractions: (extractions) => set({ extractions }),
+  setDescription: (description) => set({ description }),
 
   send: async () => {
     const {
@@ -299,6 +307,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       auth,
       assertions,
       extractions,
+      description,
       requestSchema,
       responseSchemas
     } = get()
@@ -315,6 +324,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       ...(auth.type !== 'inherit' ? { auth } : {}),
       ...(assertions.length > 0 ? { assertions } : {}),
       ...(extractions.length > 0 ? { extractions } : {}),
+      ...(description.trim() ? { description } : {}),
       // Se conservan para no perderlos al volver a guardar una petición importada
       ...(requestSchema ? { requestSchema } : {}),
       ...(responseSchemas ? { responseSchemas } : {})

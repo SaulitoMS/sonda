@@ -12,13 +12,14 @@ import { BodyFormEditor } from './BodyFormEditor'
 import { ExtractionsPanel } from './ExtractionsPanel'
 import { GraphQLModal } from './GraphQLModal'
 import { KeyValueEditor } from './KeyValueEditor'
+import { NotesPanel } from './NotesPanel'
 import { RequestSchemaStatus } from './RequestSchemaStatus'
 import { editForKey } from '../../../shared/jsonEditing'
 import { applyEdit } from '../lib/applyEdit'
 import { VariableTextarea } from './VariableTextarea'
 import { Icon } from './Icon'
 
-type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'extract'
+type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'extract' | 'notes'
 
 export function RequestPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('params')
@@ -31,6 +32,7 @@ export function RequestPanel(): React.JSX.Element {
     auth,
     assertions,
     extractions,
+    description,
     requestSchema,
     method,
     setUrl,
@@ -157,6 +159,10 @@ export function RequestPanel(): React.JSX.Element {
         <button className={tabClass('extract')} onClick={() => setTab('extract')}>
           Extraer {extractions.length > 0 && <span className={pill}>{extractions.length}</span>}
         </button>
+        <button className={tabClass('notes')} onClick={() => setTab('notes')}>
+          Notas
+          {description.trim() && <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />}
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
@@ -176,6 +182,8 @@ export function RequestPanel(): React.JSX.Element {
         {tab === 'tests' && <AssertionsPanel />}
 
         {tab === 'extract' && <ExtractionsPanel />}
+
+        {tab === 'notes' && <NotesPanel />}
 
         {tab === 'body' && (
           <div className="flex h-full flex-col gap-3">
