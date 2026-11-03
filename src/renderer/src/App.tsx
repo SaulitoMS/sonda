@@ -37,6 +37,7 @@ import { WebSocketModal } from './components/WebSocketModal'
 import { togglePin, useQuickAccess } from './lib/quickAccess'
 import { VariablesAuditModal } from './components/VariablesAuditModal'
 import { FindReplaceModal } from './components/FindReplaceModal'
+import { ToolboxModal } from './components/ToolboxModal'
 
 type ModalType =
   | 'import'
@@ -58,6 +59,7 @@ type ModalType =
   | 'coverage'
   | 'vars'
   | 'replace'
+  | 'toolbox'
   | null
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -233,6 +235,13 @@ function App(): React.JSX.Element {
       label: 'Buscar y reemplazar',
       description: 'Cambiar un host, variable o header en toda una colección',
       onSelect: () => setModal('replace')
+    },
+    {
+      id: 'toolbox',
+      icon: 'link',
+      label: 'Caja de herramientas',
+      description: 'Base64, URL, hash y conversión de timestamps',
+      onSelect: () => setModal('toolbox')
     },
     {
       id: 'curl',
@@ -507,6 +516,7 @@ function App(): React.JSX.Element {
       {modal === 'websocket' && <WebSocketModal onClose={() => setModal(null)} />}
       {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
       {modal === 'replace' && <FindReplaceModal onClose={() => setModal(null)} />}
+      {modal === 'toolbox' && <ToolboxModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
