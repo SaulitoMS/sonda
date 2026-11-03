@@ -163,10 +163,13 @@ export async function executeRequest(
   const oauth =
     auth?.type === 'oauth2'
       ? {
+          grant: auth.oauthGrant ?? 'client_credentials',
           tokenUrl: resolve((auth.oauthTokenUrl ?? '').trim()),
           clientId: resolve((auth.oauthClientId ?? '').trim()),
           clientSecret: resolve(auth.oauthClientSecret ?? ''),
-          scope: resolve(auth.oauthScope ?? '')
+          scope: resolve(auth.oauthScope ?? ''),
+          username: resolve((auth.oauthUsername ?? '').trim()),
+          password: resolve(auth.oauthPassword ?? '')
         }
       : null
 

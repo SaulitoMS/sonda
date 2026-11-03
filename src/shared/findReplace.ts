@@ -82,7 +82,9 @@ const AUTH_FIELDS: (keyof AuthConfig)[] = [
   'oauthTokenUrl',
   'oauthClientId',
   'oauthClientSecret',
-  'oauthScope'
+  'oauthScope',
+  'oauthUsername',
+  'oauthPassword'
 ]
 
 /** Aplica la búsqueda y el reemplazo a una petición (no modifica la original) */

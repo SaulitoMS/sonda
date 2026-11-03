@@ -1,10 +1,16 @@
 import { toBase64 } from '../../../shared/auth'
 
+export type OAuthGrant = 'client_credentials' | 'password'
+
 export interface OAuthParams {
+  grant: OAuthGrant
   tokenUrl: string
   clientId: string
   clientSecret: string
   scope: string
+  /** Solo con el grant "password" */
+  username: string
+  password: string
 }
 
 export type OAuthTokenResult =
@@ -24,22 +30,29 @@ const SAFETY_MS = 30_000
 const DEFAULT_TTL_S = 3600
 
 const cacheKey = (p: OAuthParams): string =>
-  JSON.stringify([p.tokenUrl, p.clientId, p.clientSecret, p.scope])
+  JSON.stringify([p.grant, p.tokenUrl, p.clientId, p.clientSecret, p.scope, p.username, p.password])
 
 export function clearOAuthCache(): void {
   cache.clear()
 }
 
-/** Pide (o reutiliza) un access token con el flujo client credentials */
+/** Pide (o reutiliza) un access token con client credentials o password */
 export async function getOAuthToken(p: OAuthParams): Promise<OAuthTokenResult> {
   if (!p.tokenUrl) return { ok: false, error: 'OAuth 2.0: falta la URL del token.' }
   if (!p.clientId) return { ok: false, error: 'OAuth 2.0: falta el Client ID.' }
+  if (p.grant === 'password' && !p.username) {
+    return { ok: false, error: 'OAuth 2.0: falta el usuario.' }
+  }
 
   const key = cacheKey(p)
   const hit = cache.get(key)
   if (hit && hit.expiresAt > Date.now()) return { ok: true, token: hit.token, cached: true }
 
-  const body = new URLSearchParams({ grant_type: 'client_credentials' })
+  const body = new URLSearchParams({ grant_type: p.grant })
+  if (p.grant === 'password') {
+    body.set('username', p.username)
+    body.set('password', p.password)
+  }
   if (p.scope.trim()) body.set('scope', p.scope.trim())
 
   const res = await window.api.sendRequest({

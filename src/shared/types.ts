@@ -157,11 +157,15 @@ export interface AuthConfig {
   keyName: string
   keyValue: string
   keyIn: 'header' | 'query'
-  /** OAuth 2.0 (client credentials). Opcionales: solo existen si el usuario eligió este tipo */
+  /** OAuth 2.0. Opcionales: solo existen si el usuario eligió este tipo */
+  oauthGrant?: 'client_credentials' | 'password'
   oauthTokenUrl?: string
   oauthClientId?: string
   oauthClientSecret?: string
   oauthScope?: string
+  /** Solo para el grant "password" */
+  oauthUsername?: string
+  oauthPassword?: string
 }
 
 // ---------- Aserciones ----------

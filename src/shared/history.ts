@@ -94,6 +94,9 @@ export function redactEntry(entry: HistoryEntry): HistoryEntry {
     keyValue: blankUnlessVariable(entry.auth.keyValue),
     ...(entry.auth.oauthClientSecret !== undefined
       ? { oauthClientSecret: blankUnlessVariable(entry.auth.oauthClientSecret) }
+      : {}),
+    ...(entry.auth.oauthPassword !== undefined
+      ? { oauthPassword: blankUnlessVariable(entry.auth.oauthPassword) }
       : {})
   }
 

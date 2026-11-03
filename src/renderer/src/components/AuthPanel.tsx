@@ -10,7 +10,7 @@ const TYPES: { value: AuthType; label: string }[] = [
   { value: 'bearer', label: 'Bearer Token' },
   { value: 'basic', label: 'Basic Auth' },
   { value: 'apikey', label: 'API Key' },
-  { value: 'oauth2', label: 'OAuth 2.0 (Client Credentials)' }
+  { value: 'oauth2', label: 'OAuth 2.0' }
 ]
 
 function Field({
@@ -130,6 +130,16 @@ export function AuthForm({
 
       {auth.type === 'oauth2' && (
         <>
+          <Field label="Grant">
+            <select
+              value={auth.oauthGrant ?? 'client_credentials'}
+              onChange={(e) => patch({ oauthGrant: e.target.value as AuthConfig['oauthGrant'] })}
+              className={selectClass}
+            >
+              <option value="client_credentials">Client Credentials</option>
+              <option value="password">Password</option>
+            </select>
+          </Field>
           <Field label="URL del token">
             <VariableInput
               value={auth.oauthTokenUrl ?? ''}
@@ -151,6 +161,24 @@ export function AuthForm({
               placeholder="{{clientSecret}}"
             />
           </Field>
+          {auth.oauthGrant === 'password' && (
+            <>
+              <Field label="Usuario">
+                <VariableInput
+                  value={auth.oauthUsername ?? ''}
+                  onChange={(oauthUsername) => patch({ oauthUsername })}
+                  placeholder="{{username}}"
+                />
+              </Field>
+              <Field label="Contraseña">
+                <VariableInput
+                  value={auth.oauthPassword ?? ''}
+                  onChange={(oauthPassword) => patch({ oauthPassword })}
+                  placeholder="{{password}}"
+                />
+              </Field>
+            </>
+          )}
           <Field label="Scope">
             <VariableInput
               value={auth.oauthScope ?? ''}

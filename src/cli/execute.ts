@@ -51,16 +51,39 @@ const oauthCache = new Map<string, { token: string; expiresAt: number }>()
 
 async function getOAuthToken(
   send: Send,
-  p: { tokenUrl: string; clientId: string; clientSecret: string; scope: string }
+  p: {
+    grant: 'client_credentials' | 'password'
+    tokenUrl: string
+    clientId: string
+    clientSecret: string
+    scope: string
+    username: string
+    password: string
+  }
 ): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
   if (!p.tokenUrl) return { ok: false, error: 'OAuth 2.0: falta la URL del token.' }
   if (!p.clientId) return { ok: false, error: 'OAuth 2.0: falta el Client ID.' }
+  if (p.grant === 'password' && !p.username) {
+    return { ok: false, error: 'OAuth 2.0: falta el usuario.' }
+  }
 
-  const key = JSON.stringify([p.tokenUrl, p.clientId, p.clientSecret, p.scope])
+  const key = JSON.stringify([
+    p.grant,
+    p.tokenUrl,
+    p.clientId,
+    p.clientSecret,
+    p.scope,
+    p.username,
+    p.password
+  ])
   const hit = oauthCache.get(key)
   if (hit && hit.expiresAt > Date.now()) return { ok: true, token: hit.token }
 
-  const body = new URLSearchParams({ grant_type: 'client_credentials' })
+  const body = new URLSearchParams({ grant_type: p.grant })
+  if (p.grant === 'password') {
+    body.set('username', p.username)
+    body.set('password', p.password)
+  }
   if (p.scope.trim()) body.set('scope', p.scope.trim())
 
   const res = await send({
@@ -153,10 +176,13 @@ export async function executeRequest(
   const oauth =
     auth?.type === 'oauth2'
       ? {
+          grant: auth.oauthGrant ?? 'client_credentials',
           tokenUrl: resolve((auth.oauthTokenUrl ?? '').trim()),
           clientId: resolve((auth.oauthClientId ?? '').trim()),
           clientSecret: resolve(auth.oauthClientSecret ?? ''),
-          scope: resolve(auth.oauthScope ?? '')
+          scope: resolve(auth.oauthScope ?? ''),
+          username: resolve((auth.oauthUsername ?? '').trim()),
+          password: resolve(auth.oauthPassword ?? '')
         }
       : null
 
