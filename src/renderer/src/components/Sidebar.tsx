@@ -150,6 +150,30 @@ function SyncButton({ onClick, title }: { onClick: () => void; title: string }):
   )
 }
 
+function CoverageButton({
+  onClick,
+  title
+}: {
+  onClick: () => void
+  title: string
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className="hidden rounded p-0.5 text-zinc-500 hover:bg-zinc-700 hover:text-blue-400 group-hover:block"
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <path d="M3 3v18h18" />
+        <path d="m7 15 4-4 3 3 5-6" />
+      </svg>
+    </button>
+  )
+}
+
 function LockButton({
   onClick,
   title,
@@ -355,9 +379,10 @@ interface SidebarProps {
   onImport: () => void
   onRun: (collectionId: string) => void
   onSync: (collectionId: string, name: string) => void
+  onCoverage: (collectionId: string, name: string) => void
 }
 
-export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.Element {
+export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): React.JSX.Element {
   const { collections, refresh } = useCollectionsStore()
   const currentFile = useRequestStore((s) => s.currentFile)
 
@@ -930,6 +955,12 @@ export function Sidebar({ onImport, onRun, onSync }: SidebarProps): React.JSX.El
                   <PlayButton
                     onClick={() => onRun(c.id)}
                     title="Ejecutar todas las peticiones"
+                  />
+                )}
+                {total > 0 && (
+                  <CoverageButton
+                    onClick={() => onCoverage(c.id, c.name)}
+                    title="Cobertura de aserciones"
                   />
                 )}
                 {c.source && (

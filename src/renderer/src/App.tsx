@@ -32,6 +32,7 @@ import { getLayout, setLayout, useLayout } from './lib/layout'
 import { toggleTheme } from './lib/theme'
 import { useMediaQuery } from './lib/useMediaQuery'
 import { DEFAULT_LAYOUT } from '../../shared/layout'
+import { CoverageModal } from './components/CoverageModal'
 
 type ModalType =
   | 'import'
@@ -49,6 +50,7 @@ type ModalType =
   | 'snapshot'
   | 'monitor'
   | 'mock'
+  | 'coverage'
   | null
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -73,6 +75,7 @@ function App(): React.JSX.Element {
   const [modal, setModal] = useState<ModalType>(null)
   const [runCollectionId, setRunCollectionId] = useState('')
   const [syncCollection, setSyncCollection] = useState({ id: '', name: '' })
+  const [coverageCollection, setCoverageCollection] = useState({ id: '', name: '' })
   const [flash, setFlash] = useState('')
   const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -282,6 +285,10 @@ function App(): React.JSX.Element {
         setSyncCollection({ id, name })
         setModal('sync')
       }}
+      onCoverage={(id, name) => {
+        setCoverageCollection({ id, name })
+        setModal('coverage')
+      }}
     />
   )
 
@@ -435,6 +442,13 @@ function App(): React.JSX.Element {
         <SyncModal
           collectionId={syncCollection.id}
           collectionName={syncCollection.name}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal === 'coverage' && (
+        <CoverageModal
+          collectionId={coverageCollection.id}
+          collectionName={coverageCollection.name}
           onClose={() => setModal(null)}
         />
       )}
