@@ -4,7 +4,7 @@ import { exportEnvironment, parseEnvironments } from '../../../shared/envTransfe
 import { downloadText } from '../lib/download'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'
-import { diffEnvironments, type EnvDiffStatus } from '../../../shared/envDiff'
+import { diffEnvironments, type EnvDiffRow, type EnvDiffStatus } from '../../../shared/envDiff'
 
 const newVar = (): EnvVariable => ({
   id: crypto.randomUUID(),
@@ -37,12 +37,18 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
 
   const [compareId, setCompareId] = useState('')
 
+  const [onlyDiff, setOnlyDiff] = useState(false)
+
   const fileRef = useRef<HTMLInputElement>(null)
 
   const selected = draft.environments.find((e) => e.id === selectedId) ?? null
 
   const other = draft.environments.find((e) => e.id === compareId && e.id !== selected?.id) ?? null
   const diffRows = selected && other ? diffEnvironments(selected, other) : []
+
+  const counts = { different: 0, onlyA: 0, onlyB: 0, same: 0 }
+  for (const r of diffRows) counts[r.status]++
+  const shownRows = onlyDiff ? diffRows.filter((r) => r.status !== 'same') : diffRows
 
   const updateEnv = (id: string, patch: Partial<Environment>): void =>
     setDraft((d) => ({
@@ -108,6 +114,36 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
       .map((r) => ({ ...newVar(), key: r.key, secret: r.secretB }))
     if (!missing.length) return
     setVars([...selected.variables.filter((v) => v.key || v.value), ...missing, newVar()])
+  }
+
+    // Resuelve una diferencia concreta. Los valores secretos nunca se copian: solo la clave.
+  const applyRow = (r: EnvDiffRow): void => {
+    if (!selected || !other) return
+    if (r.status === 'different' && !r.secret) {
+      setVars(
+        selected.variables.map((v) =>
+          v.enabled && v.key.trim() === r.key ? { ...v, value: r.b ?? '' } : v
+        )
+      )
+    } else if (r.status === 'onlyB') {
+      const added: EnvVariable = {
+        ...newVar(),
+        key: r.key,
+        secret: r.secretB,
+        value: r.secretB ? '' : (r.b ?? '')
+      }
+      setVars([...selected.variables.filter((v) => v.key || v.value), added, newVar()])
+    } else if (r.status === 'onlyA') {
+      const added: EnvVariable = {
+        ...newVar(),
+        key: r.key,
+        secret: r.secret,
+        value: r.secret ? '' : (r.a ?? '')
+      }
+      updateEnv(other.id, {
+        variables: [...other.variables.filter((v) => v.key || v.value), added, newVar()]
+      })
+    }
   }
 
   const exportEnv = (): void => {
@@ -296,46 +332,93 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
               )}
 
               {other ? (
-                <div className="min-h-0 flex-1 overflow-auto">
-                  <table className="w-full text-left font-mono text-xs">
-                    <thead className="text-zinc-500">
-                      <tr>
-                        <th className="py-1 pr-2 font-normal">Variable</th>
-                        <th className="py-1 pr-2 font-normal">{selected.name}</th>
-                        <th className="py-1 pr-2 font-normal">{other.name}</th>
-                        <th className="py-1 font-normal" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {diffRows.map((r) => {
-                        const show = (v: string | undefined): string =>
-                          v === undefined ? '—' : r.secret ? '••••••' : v || '(vacío)'
-                        return (
-                          <tr key={r.key} className="border-t border-zinc-800">
-                            <td className="py-1.5 pr-2 text-zinc-200">{r.key}</td>
-                            <td className="max-w-40 truncate py-1.5 pr-2 text-zinc-400">
-                              {show(r.a)}
-                            </td>
-                            <td className="max-w-40 truncate py-1.5 pr-2 text-zinc-400">
-                              {show(r.b)}
-                            </td>
-                            <td className="py-1.5 text-right">
-                              <span
-                                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${DIFF_LABEL[r.status].tone}`}
-                              >
-                                {DIFF_LABEL[r.status].text}
-                              </span>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                  {diffRows.length === 0 && (
-                    <p className="py-4 text-center text-xs text-zinc-500">
-                      Ninguno de los dos tiene variables activas.
-                    </p>
-                  )}
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                    <span className="text-amber-400">{counts.different} distintas</span>
+                    <span className="text-blue-400">{counts.onlyA} solo aquí</span>
+                    <span className="text-red-400">{counts.onlyB} faltan aquí</span>
+                    <span className="text-zinc-500">{counts.same} iguales</span>
+                    <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-zinc-400">
+                      <input
+                        type="checkbox"
+                        checked={onlyDiff}
+                        onChange={(e) => setOnlyDiff(e.target.checked)}
+                        className="accent-blue-500"
+                      />
+                      Solo diferencias
+                    </label>
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-auto">
+                    <table className="w-full text-left font-mono text-xs">
+                      <thead className="text-zinc-500">
+                        <tr>
+                          <th className="py-1 pr-2 font-normal">Variable</th>
+                          <th className="py-1 pr-2 font-normal">{selected.name}</th>
+                          <th className="py-1 pr-2 font-normal">{other.name}</th>
+                          <th className="py-1 font-normal" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shownRows.map((r) => {
+                          const show = (v: string | undefined): string =>
+                            v === undefined ? '—' : r.secret ? '••••••' : v || '(vacío)'
+                          const action =
+                            r.status === 'different' && !r.secret
+                              ? { label: '← Traer valor', title: `Usar el valor de ${other.name}` }
+                              : r.status === 'onlyB'
+                                ? {
+                                    label: '← Agregar',
+                                    title: r.secretB
+                                      ? 'Agregar la variable (sin valor, es secreta)'
+                                      : `Agregar la variable con el valor de ${other.name}`
+                                  }
+                                : r.status === 'onlyA'
+                                  ? {
+                                      label: '→ Enviar',
+                                      title: r.secret
+                                        ? `Agregar la variable a ${other.name} (sin valor, es secreta)`
+                                        : `Copiar la variable a ${other.name}`
+                                    }
+                                  : null
+                          return (
+                            <tr key={r.key} className="border-t border-zinc-800">
+                              <td className="py-1.5 pr-2 text-zinc-200">{r.key}</td>
+                              <td className="max-w-40 truncate py-1.5 pr-2 text-zinc-400">
+                                {show(r.a)}
+                              </td>
+                              <td className="max-w-40 truncate py-1.5 pr-2 text-zinc-400">
+                                {show(r.b)}
+                              </td>
+                              <td className="whitespace-nowrap py-1.5 text-right">
+                                <span
+                                  className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${DIFF_LABEL[r.status].tone}`}
+                                >
+                                  {DIFF_LABEL[r.status].text}
+                                </span>
+                                {action && (
+                                  <button
+                                    onClick={() => applyRow(r)}
+                                    title={action.title}
+                                    className="ml-1.5 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700"
+                                  >
+                                    {action.label}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                    {shownRows.length === 0 && (
+                      <p className="py-4 text-center text-xs text-zinc-500">
+                        {diffRows.length > 0
+                          ? 'Los dos entornos tienen las mismas variables y valores.'
+                          : 'Ninguno de los dos tiene variables activas.'}
+                      </p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <>
