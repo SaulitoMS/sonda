@@ -417,6 +417,7 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   const currentFile = useRequestStore((s) => s.currentFile)
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const hasExpanded = Object.values(expanded).some(Boolean)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [query, setQuery] = useState('')
@@ -873,8 +874,8 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
         </div>
       </div>
 
-      <div className="border-b border-zinc-800 p-2">
-        <div className="relative">
+      <div className="flex items-center gap-1.5 border-b border-zinc-800 p-2">
+        <div className="relative min-w-0 flex-1">
           <Icon
             name="search"
             size={13}
@@ -900,6 +901,17 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
             </button>
           )}
         </div>
+
+        {hasExpanded && !searching && (
+          <button
+            onClick={() => setExpanded({})}
+            className="shrink-0 rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+            title="Colapsar todo"
+            aria-label="Colapsar todo"
+          >
+            <Icon name="chevronRight" size={14} />
+          </button>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-2">
