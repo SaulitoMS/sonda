@@ -28,10 +28,11 @@ import { useStreamStore, type LiveStream } from '../store/useStreamStore'
 import { useTabsStore } from '../store/useTabsStore'
 import { Icon } from './Icon'
 import { checkSecurity, type SecurityFinding } from '../../../shared/securityCheck'
+import { analyzeHeaders, type HeaderInsight } from '../../../shared/headerInsights'
 import { describeTiming } from '../../../shared/timing'
 import { jsonToTypeScript } from '../../../shared/jsonToTypes'
 
-type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security'
+type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`
@@ -182,6 +183,56 @@ function SecurityReport({ findings }: { findings: SecurityFinding[] }): React.JS
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+const INSIGHT_STYLE: Record<HeaderInsight['level'], { label: string; color: string }> = {
+  ok: { label: 'OK', color: 'bg-emerald-500/20 text-emerald-400' },
+  warn: { label: 'Atención', color: 'bg-amber-500/20 text-amber-400' },
+  info: { label: 'Info', color: 'bg-sky-500/20 text-sky-400' }
+}
+
+const INSIGHT_GROUPS: { id: HeaderInsight['group']; label: string }[] = [
+  { id: 'limits', label: 'Límites de uso' },
+  { id: 'cache', label: 'Caché' }
+]
+
+function LimitsReport({ insights }: { insights: HeaderInsight[] }): React.JSX.Element {
+  if (insights.length === 0) {
+    return (
+      <p className="text-xs text-zinc-500">
+        Esta respuesta no trae headers de caché ni de límites de uso.
+      </p>
+    )
+  }
+
+  return (
+    <div className="selectable space-y-4 text-xs">
+      {INSIGHT_GROUPS.map((group) => {
+        const rows = insights.filter((i) => i.group === group.id)
+        if (rows.length === 0) return null
+        return (
+          <div key={group.id}>
+            <p className="mb-2 font-semibold text-zinc-300">{group.label}</p>
+            <ul className="space-y-2">
+              {rows.map((i) => (
+                <li key={i.id} className="flex gap-2">
+                  <span
+                    className={`h-fit shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${INSIGHT_STYLE[i.level].color}`}
+                  >
+                    {INSIGHT_STYLE[i.level].label}
+                  </span>
+                  <div>
+                    <p className="font-medium text-zinc-200">{i.title}</p>
+                    <p className="break-all text-zinc-500">{i.detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -424,6 +475,11 @@ export function ResponsePanel(): React.JSX.Element {
           })
         : [],
     [response, url]
+  )
+
+  const limitInsights = useMemo(
+    () => (response?.ok ? analyzeHeaders(response.headers, method, response.status) : []),
+    [response, method]
   )
 
   const prettyBody = useMemo(() => {
@@ -693,6 +749,18 @@ export function ResponsePanel(): React.JSX.Element {
               {securityFindings.length === 0 ? '✓' : securityFindings.length}
             </span>
           </button>
+         <button className={tabClass('limits')} onClick={() => setTab('limits')}>
+            Límites
+            {limitInsights.length > 0 && (
+              <span
+                className={`ml-1 ${
+                  limitInsights.some((i) => i.level === 'warn') ? 'text-amber-400' : 'text-emerald-400'
+                }`}
+              >
+                {limitInsights.some((i) => i.level === 'warn') ? '!' : '✓'}
+              </span>
+            )}
+          </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 py-1 pr-2 text-xs">
@@ -935,6 +1003,8 @@ export function ResponsePanel(): React.JSX.Element {
         {current === 'changes' && <ChangesReport diff={diff} />}
 
         {current === 'security' && <SecurityReport findings={securityFindings} />}
+        
+        {current === 'limits' && <LimitsReport insights={limitInsights} />}
       </div>
     </div>
   )
