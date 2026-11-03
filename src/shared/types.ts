@@ -391,6 +391,12 @@ export interface AppSettings {
   retries: number
   /** Espera base entre reintentos en ms (se duplica en cada intento) */
   retryDelayMs: number
+  /** Ruta al certificado de cliente (PEM). Vacío = sin mTLS */
+  clientCertPath: string
+  /** Ruta a la llave privada del certificado de cliente (PEM, sin contraseña) */
+  clientKeyPath: string
+  /** Si se indica, el certificado solo se envía a ese host (ej: api.banco.com). Vacío = a todos los https */
+  clientCertHost: string
 }
 
 // ---------- Entornos ----------

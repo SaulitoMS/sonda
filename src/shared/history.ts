@@ -200,3 +200,18 @@ export function parseStored(raw: string | null): HistoryEntry[] {
     return []
   }
 }
+
+/**
+ * Tiempos (ms) de las últimas peticiones iguales a `entry` (mismo método y URL) hasta ese momento,
+ * de la más antigua a la más nueva. `list` va con lo más reciente primero.
+ */
+export function latencySeries(list: HistoryEntry[], entry: HistoryEntry, max = 20): number[] {
+  const out: number[] = []
+  for (const e of list) {
+    if (e.method === entry.method && e.url === entry.url && e.at <= entry.at) {
+      out.push(e.response.timeMs)
+      if (out.length === max) break
+    }
+  }
+  return out.reverse()
+}

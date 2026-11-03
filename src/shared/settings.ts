@@ -13,13 +13,18 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sslMode: 'auto',
   proxyUrl: '',
   retries: 0,
-  retryDelayMs: 500
+  retryDelayMs: 500,
+  clientCertPath: '',
+  clientKeyPath: '',
+  clientCertHost: ''
 }
 
 const toInt = (value: unknown, fallback: number, min: number, max: number): number => {
   const n = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
   return Math.min(max, Math.max(min, n))
 }
+
+const toText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
 
 /** Valida lo que viene de disco o de la interfaz: lo inválido vuelve a su valor por defecto */
 export function normalizeSettings(raw: unknown): AppSettings {
@@ -38,14 +43,17 @@ export function normalizeSettings(raw: unknown): AppSettings {
       r.sslMode === 'verify' || r.sslMode === 'ignore' || r.sslMode === 'auto'
         ? r.sslMode
         : DEFAULT_SETTINGS.sslMode,
-    proxyUrl: typeof r.proxyUrl === 'string' ? r.proxyUrl.trim() : '',
+    proxyUrl: toText(r.proxyUrl),
     retries: toInt(r.retries, DEFAULT_SETTINGS.retries, MIN_RETRIES, MAX_RETRIES),
     retryDelayMs: toInt(
       r.retryDelayMs,
       DEFAULT_SETTINGS.retryDelayMs,
       MIN_RETRY_DELAY_MS,
       MAX_RETRY_DELAY_MS
-    )
+    ),
+    clientCertPath: toText(r.clientCertPath),
+    clientKeyPath: toText(r.clientKeyPath),
+    clientCertHost: toText(r.clientCertHost).toLowerCase()
   }
 }
 

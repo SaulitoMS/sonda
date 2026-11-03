@@ -111,6 +111,49 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             <p className={hint}>Vacío = sin proxy. Las peticiones a localhost no lo usan.</p>
           </div>
 
+                    <div>
+            <label className={label}>Certificado de cliente (mTLS)</label>
+            <div className="space-y-2">
+              {(
+                [
+                  ['clientCertPath', 'Certificado (.pem / .crt)'],
+                  ['clientKeyPath', 'Llave privada (.key / .pem)']
+                ] as const
+              ).map(([key, placeholder]) => (
+                <div key={key} className="flex gap-2">
+                  <input
+                    value={draft[key]}
+                    onChange={(e) => set(key, e.target.value)}
+                    placeholder={placeholder}
+                    spellCheck={false}
+                    className={field}
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const path = await window.api.pickFile()
+                      if (path) set(key, path)
+                    }}
+                    className="shrink-0 rounded bg-zinc-800 px-3 text-xs text-zinc-300 hover:bg-zinc-700"
+                  >
+                    Elegir
+                  </button>
+                </div>
+              ))}
+              <input
+                value={draft.clientCertHost}
+                onChange={(e) => set('clientCertHost', e.target.value)}
+                placeholder="Solo para este host (opcional): api.banco.com"
+                spellCheck={false}
+                className={field}
+              />
+            </div>
+            <p className={hint}>
+              Se envía en peticiones https cuando ya hay certificado y llave. La llave no debe tener
+              contraseña. Si cambias el contenido de los archivos, reinicia la app.
+            </p>
+          </div>
+
           <div>
             <div className="grid grid-cols-2 gap-3">
               <div>

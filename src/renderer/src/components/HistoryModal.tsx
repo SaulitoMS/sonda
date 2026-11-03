@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { dayLabel, filterHistory, type HistoryEntry } from '../../../shared/history'
+import { dayLabel, filterHistory, latencySeries, type HistoryEntry } from '../../../shared/history'
 import { applyHistory } from '../lib/applyHistory'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useHistoryStore } from '../store/useHistoryStore'
@@ -19,6 +19,36 @@ const statusText = (e: HistoryEntry): string =>
 
 const hour = (at: number): string =>
   new Date(at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+
+
+/** Mini gráfica de los últimos tiempos de una misma petición. Con menos de 3 puntos no se dibuja */
+function Sparkline({ values }: { values: number[] }): React.JSX.Element {
+  if (values.length < 3) return <span className="w-16 shrink-0" />
+  const w = 64
+  const h = 16
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const span = max - min || 1
+  const points = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * w
+      const y = h - 2 - ((v - min) / span) * (h - 4)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+  return (
+    <svg width={w} height={h} className="shrink-0 text-sky-400">
+      <title>{`Últimos ${values.length} envíos: de ${min} a ${max} ms`}</title>
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 interface Props {
   onClose: () => void
@@ -88,6 +118,7 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
                 <span className="min-w-0 flex-1 truncate font-mono text-zinc-300" title={e.url}>
                   {e.url}
                 </span>
+                <Sparkline values={latencySeries(entries, e)} />
                 <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${statusClass(e)}`}>
                   {statusText(e)}
                 </span>

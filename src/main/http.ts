@@ -1,5 +1,5 @@
 import { dialog, ipcMain } from 'electron'
-import { openAsBlob } from 'fs'
+import { openAsBlob, readFileSync } from 'fs'
 import { stat } from 'fs/promises'
 import { basename } from 'path'
 import type { FormPart, SendRequestInput, SendRequestResult } from '../shared/types'
@@ -14,15 +14,24 @@ const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
 const dispatchers = new Map<string, Dispatcher>()
 
-/** Reutiliza un cliente por combinación de proxy + verificación TLS */
-/** Reutiliza un cliente por combinación de proxy + verificación TLS */
-function dispatcherFor(proxyUrl: string, ignoreTls: boolean): Dispatcher {
-  const key = `${proxyUrl}|${ignoreTls}`
+/** Reutiliza un cliente por combinación de proxy + verificación TLS + certificado de cliente */
+function dispatcherFor(
+  proxyUrl: string,
+  ignoreTls: boolean,
+  clientCert?: { cert: string; key: string }
+): Dispatcher {
+  const key = `${proxyUrl}|${ignoreTls}|${clientCert?.cert ?? ''}|${clientCert?.key ?? ''}`
   let dispatcher = dispatchers.get(key)
   if (!dispatcher) {
+    const tls = {
+      rejectUnauthorized: !ignoreTls,
+      ...(clientCert
+        ? { cert: readFileSync(clientCert.cert), key: readFileSync(clientCert.key) }
+        : {})
+    }
     dispatcher = proxyUrl
-      ? new ProxyAgent({ uri: proxyUrl, requestTls: { rejectUnauthorized: !ignoreTls } })
-      : new Agent({ connect: { rejectUnauthorized: !ignoreTls } })
+      ? new ProxyAgent({ uri: proxyUrl, requestTls: tls })
+      : new Agent({ connect: tls })
     dispatchers.set(key, dispatcher)
   }
   return dispatcher
@@ -136,6 +145,7 @@ export function registerHttpHandlers(): void {
       const settings = await loadSettings()
 
       // TLS y proxy se deciden por servidor: una redirección puede llevar a otro host
+      // TLS, proxy y certificado de cliente se deciden por servidor: una redirección puede llevar a otro host
       const connectionFor = (target: URL): { dispatcher?: Dispatcher } => {
         const loopback = isLoopbackHost(target.hostname)
         // Lo que venga en la petición tiene prioridad sobre los ajustes globales
@@ -146,7 +156,18 @@ export function registerHttpHandlers(): void {
         // localhost nunca pasa por el proxy
         const proxyUrl =
           settings.proxyUrl && !proxyError(settings.proxyUrl) && !loopback ? settings.proxyUrl : ''
-        return ignoreTls || proxyUrl ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls) } : {}
+        // El certificado solo viaja por https y, si se configuró un host, solo a ese host
+        const useClientCert =
+          target.protocol === 'https:' &&
+          settings.clientCertPath !== '' &&
+          settings.clientKeyPath !== '' &&
+          (settings.clientCertHost === '' || target.hostname === settings.clientCertHost)
+        const clientCert = useClientCert
+          ? { cert: settings.clientCertPath, key: settings.clientKeyPath }
+          : undefined
+        return ignoreTls || proxyUrl || clientCert
+          ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls, clientCert) }
+          : {}
       }
 
       const controller = new AbortController()
