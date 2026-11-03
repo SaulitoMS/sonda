@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { SondaApi, StreamChunk } from '../shared/types'
 import { electronAPI } from '@electron-toolkit/preload'
 
+
 const api: SondaApi = {
   sendRequest: (input) => ipcRenderer.invoke('http:send', input),
   cancelRequest: (requestId) => ipcRenderer.invoke('http:cancel', requestId),
@@ -48,7 +49,8 @@ const api: SondaApi = {
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   startMock: (collectionId, port) => ipcRenderer.invoke('mock:start', collectionId, port),
   stopMock: () => ipcRenderer.invoke('mock:stop'),
-  getMockStatus: () => ipcRenderer.invoke('mock:status')
+  getMockStatus: () => ipcRenderer.invoke('mock:status'),
+  runScript: (input) => ipcRenderer.invoke('script:run', input)
 }
 
 if (process.contextIsolated) {

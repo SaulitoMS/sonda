@@ -18,8 +18,9 @@ import { editForKey } from '../../../shared/jsonEditing'
 import { applyEdit } from '../lib/applyEdit'
 import { VariableTextarea } from './VariableTextarea'
 import { Icon } from './Icon'
+import { ScriptsPanel } from './ScriptsPanel'
 
-type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'extract' | 'notes'
+type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'scripts' | 'extract' | 'notes'
 
 export function RequestPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('params')
@@ -32,6 +33,8 @@ export function RequestPanel(): React.JSX.Element {
     auth,
     assertions,
     extractions,
+    preScript,
+    postScript,
     description,
     requestSchema,
     method,
@@ -156,6 +159,12 @@ export function RequestPanel(): React.JSX.Element {
         <button className={tabClass('tests')} onClick={() => setTab('tests')}>
           Tests {assertions.length > 0 && <span className={pill}>{assertions.length}</span>}
         </button>
+        <button className={tabClass('scripts')} onClick={() => setTab('scripts')}>
+          Scripts
+          {(preScript.trim() || postScript.trim()) && (
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+          )}
+        </button>
         <button className={tabClass('extract')} onClick={() => setTab('extract')}>
           Extraer {extractions.length > 0 && <span className={pill}>{extractions.length}</span>}
         </button>
@@ -180,6 +189,8 @@ export function RequestPanel(): React.JSX.Element {
         {tab === 'headers' && <KeyValueEditor rows={headers} onChange={setHeaders} />}
 
         {tab === 'tests' && <AssertionsPanel />}
+
+        {tab === 'scripts' && <ScriptsPanel />}
 
         {tab === 'extract' && <ExtractionsPanel />}
 

@@ -25,6 +25,13 @@ import { collectionVarsForPath } from './collectionVariables'
 import { resolveHeadersForPath } from './inheritedHeaders'
 import { retryDelayMs, shouldRetry } from '../../../shared/retry'
 import { isCancelled } from './inFlight'
+import {
+  applyScriptRequest,
+  headersToObject,
+  scriptAssertionResults,
+  scriptEnvResults,
+  scriptLogWarnings
+} from '../../../shared/scriptApply'
 
 export interface RequestDraft {
   method: HttpMethod
@@ -40,6 +47,10 @@ export interface RequestDraft {
   assertions?: Assertion[] | null
   /** Valores de la respuesta que se guardarán en el entorno (lo hace quien llama) */
   extractions?: Extraction[] | null
+  /** Script que corre antes de resolver variables y enviar */
+  preScript?: string | null
+  /** Script que corre con la respuesta ya recibida */
+  postScript?: string | null
 }
 
 export interface ExecuteResult {
@@ -69,13 +80,51 @@ const looksLikeJson = (text: string): boolean => {
  * Lo usan tanto el botón "Enviar" como el runner de colecciones.
  */
 export async function executeRequest(
-  draft: RequestDraft,
+  input: RequestDraft,
   env: Environment | null,
   options: { requestId?: string; path?: string | null; live?: boolean } = {}
 ): Promise<ExecuteResult> {
   // Las variables de la colección valen solo si el entorno no define la misma clave
   const vars = buildVarMap(withCollectionVariables(env, collectionVarsForPath(options.path)))
   const missing = new Set<string>()
+  const warnings: string[] = []
+  // Variables que asignaron los scripts: se guardan en el entorno igual que las extracciones
+  let scriptEnv: ExtractionResult[] = []
+
+  const failed = (error: string): ExecuteResult => ({
+    response: { ok: false, error, timeMs: 0 },
+    validation: null,
+    requestValidation: null,
+    assertionResults: [],
+    extractions: scriptEnv,
+    warnings
+  })
+
+  // ---- Pre-script: puede cambiar la petición y asignar variables ----
+  let draft = input
+  if (input.preScript?.trim()) {
+    const out = await window.api.runScript({
+      phase: 'pre',
+      code: input.preScript,
+      vars,
+      request: {
+        method: input.method,
+        url: input.url,
+        headers: headersToObject(input.headers),
+        body: input.body
+      }
+    })
+    warnings.push(...scriptLogWarnings(out.logs, 'pre'))
+    if (!out.ok || !out.request) {
+      return failed(`Error en el pre-script: ${out.error || 'sin resultado'}`)
+    }
+    const applied = applyScriptRequest(input, out.request)
+    if (!applied.ok) return failed(`Error en el pre-script: ${applied.error}`)
+
+    Object.assign(vars, out.envSet)
+    scriptEnv = scriptEnvResults(out.envSet)
+    draft = { ...input, ...applied.request }
+  }
 
   const resolve = (text: string): string => {
     const result = interpolate(text, vars)
@@ -126,30 +175,14 @@ export async function executeRequest(
     const hint = env
       ? `Defínelas en el entorno "${env.name}".`
       : 'Selecciona o crea un entorno en la cabecera.'
-    return {
-      response: { ok: false, error: `Variables sin definir: ${names}. ${hint}`, timeMs: 0 },
-      validation: null,
-      requestValidation: null,
-      assertionResults: [],
-      extractions: [],
-      warnings: []
-    }
+    return failed(`Variables sin definir: ${names}. ${hint}`)
   }
 
   // OAuth 2.0: pide el token (o reutiliza el que sigue vigente) y lo manda como Bearer
   let oauthFromCache = false
   if (oauth) {
     const result = await getOAuthToken(oauth)
-    if (!result.ok) {
-      return {
-        response: { ok: false, error: result.error, timeMs: 0 },
-        validation: null,
-        requestValidation: null,
-        assertionResults: [],
-        extractions: [],
-        warnings: []
-      }
-    }
+    if (!result.ok) return failed(result.error)
     oauthFromCache = result.cached
     authParts.headers.push({ key: 'Authorization', value: `Bearer ${result.token}` })
   }
@@ -176,7 +209,7 @@ export async function executeRequest(
     // El schema de la spec es de JSON: solo tiene sentido con el body de texto
     body: mode === 'raw' ? (finalBody ?? '') : ''
   })
-  const warnings = [...authParts.warnings]
+  warnings.push(...authParts.warnings)
   if (requestValidation?.verdict === 'invalid') {
     const n = requestValidation.issues.filter((i) => i.severity === 'error').length
     warnings.push(
@@ -234,5 +267,32 @@ export async function executeRequest(
 
   const extractions = response.ok ? evaluateExtractions(draft.extractions, response) : []
 
-  return { response, validation, requestValidation, assertionResults, extractions, warnings }
+  // ---- Post-script: tests y variables a partir de la respuesta ----
+  if (response.ok && draft.postScript?.trim()) {
+    const out = await window.api.runScript({
+      phase: 'post',
+      code: draft.postScript,
+      vars,
+      response: {
+        status: response.status,
+        statusText: response.statusText,
+        timeMs: response.timeMs,
+        headers: response.headers,
+        body: response.body
+      }
+    })
+    warnings.push(...scriptLogWarnings(out.logs, 'post'))
+    assertionResults.push(...scriptAssertionResults(out))
+    scriptEnv = [...scriptEnv, ...scriptEnvResults(out.envSet)]
+  }
+
+  return {
+    response,
+    validation,
+    requestValidation,
+    assertionResults,
+    // Primero lo de los scripts: si una extracción asigna la misma variable, esa gana
+    extractions: [...scriptEnv, ...extractions],
+    warnings
+  }
 }

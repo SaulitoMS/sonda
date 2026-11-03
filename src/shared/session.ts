@@ -27,6 +27,9 @@ export interface PersistedRequest {
   extractions: Extraction[]
   /** Notas o documentación de la petición. Si no existe, no hay notas */
   description?: string
+  /** Scripts de la petición. Si no existen, no hay script */
+  preScript?: string
+  postScript?: string
   requestSchema: JsonSchema | null
   responseSchemas: ResponseSchemas | null
   currentFile: string | null
@@ -83,6 +86,8 @@ function parseRequest(x: unknown): PersistedRequest | null {
     assertions: Array.isArray(x.assertions) ? (x.assertions as Assertion[]) : [],
     extractions: Array.isArray(x.extractions) ? (x.extractions as Extraction[]) : [],
     ...(typeof x.description === 'string' && x.description ? { description: x.description } : {}),
+    ...(typeof x.preScript === 'string' && x.preScript ? { preScript: x.preScript } : {}),
+    ...(typeof x.postScript === 'string' && x.postScript ? { postScript: x.postScript } : {}),
     requestSchema: isObject(x.requestSchema) ? x.requestSchema : null,
     responseSchemas: isObject(x.responseSchemas) ? (x.responseSchemas as ResponseSchemas) : null,
     currentFile: typeof x.currentFile === 'string' ? x.currentFile : null,

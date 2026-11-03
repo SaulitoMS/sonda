@@ -8,12 +8,16 @@ import { registerEnvironmentHandlers } from './environments'
 import { registerCookieHandlers, loadCookies, persistCookies } from './cookieJar'
 import { registerSettingsHandlers } from './settings'
 import { registerMockHandlers } from './mockServer'
+import { runScript } from './scriptEngine'
+import type { ScriptInput } from '../shared/types'
 
 registerHttpHandlers()
 registerCollectionHandlers()
 registerCookieHandlers()
 registerSettingsHandlers()
 registerMockHandlers()
+
+ipcMain.handle('script:run', (_e, input: ScriptInput) => runScript(input))
 
 function createWindow(): void {
   // Create the browser window.

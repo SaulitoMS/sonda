@@ -12,6 +12,9 @@ export interface SignatureInput {
   extractions: Extraction[]
   /** Notas o documentación de la petición */
   description?: string
+  /** Scripts de la petición */
+  preScript?: string
+  postScript?: string
 }
 
 export function requestSignature(r: SignatureInput): string {
@@ -29,7 +32,9 @@ export function requestSignature(r: SignatureInput): string {
     extractions: r.extractions,
     // Solo entran a la firma si existen, así las pestañas guardadas antes no aparecen como modificadas
     ...(bodyForm ? { bodyForm } : {}),
-    ...(description ? { description } : {})
+    ...(description ? { description } : {}),
+    ...(r.preScript?.trim() ? { preScript: r.preScript } : {}),
+    ...(r.postScript?.trim() ? { postScript: r.postScript } : {})
   })
 }
 

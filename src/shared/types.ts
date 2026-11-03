@@ -126,6 +126,10 @@ export interface SavedRequest {
   assertions?: Assertion[]
   /** Valores de la respuesta que se guardan en variables del entorno. Si no existe, no se extrae nada */
   extractions?: Extraction[]
+  /** Script que corre antes de enviar. Si no existe, no hay script */
+  preScript?: string
+  /** Script que corre al recibir la respuesta. Si no existe, no hay script */
+  postScript?: string
 }
 
 // ---------- Autenticación ----------
@@ -336,6 +340,8 @@ export interface SondaApi {
   startMock: (collectionId: string, port: number) => Promise<MockStartResult>
   stopMock: () => Promise<void>
   getMockStatus: () => Promise<MockStatus>
+  /** Ejecuta un script de usuario en un contexto aislado (máximo 2 s) */
+  runScript: (input: ScriptInput) => Promise<ScriptOutput>
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'
@@ -528,3 +534,51 @@ export type MockStatus =
 
 export type MockStartResult =
   { ok: true; port: number; routes: MockRouteInfo[] } | { ok: false; error: string }
+
+
+// ---------- Scripts ----------
+
+/** Lo que se le entrega a un script antes (pre) o después (post) de enviar una petición */
+export interface ScriptInput {
+  phase: 'pre' | 'post'
+  code: string
+  /** Variables visibles para el script (entorno + colección + datos), ya resueltas */
+  vars: Record<string, string>
+  /** Solo en el pre-script: la petición que está por enviarse, sin resolver {{variables}} */
+  request?: ScriptRequest
+  /** Solo en el post-script: la respuesta recibida */
+  response?: ScriptResponse
+}
+
+export interface ScriptRequest {
+  method: string
+  url: string
+  headers: Record<string, string>
+  body: string
+}
+
+export interface ScriptResponse {
+  status: number
+  statusText: string
+  timeMs: number
+  headers: Record<string, string>
+  body: string
+}
+
+export interface ScriptTest {
+  name: string
+  passed: boolean
+  message: string
+}
+
+export interface ScriptOutput {
+  /** false si el script no compiló, lanzó un error o tardó demasiado */
+  ok: boolean
+  error: string
+  logs: string[]
+  tests: ScriptTest[]
+  /** Variables que el script asignó con sonda.env.set */
+  envSet: Record<string, string>
+  /** Solo en el pre-script: la petición tal como la dejó el script */
+  request?: ScriptRequest
+}

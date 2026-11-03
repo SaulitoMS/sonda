@@ -51,6 +51,10 @@ export interface RequestState {
   assertions: Assertion[]
   /** Valores de la respuesta que se guardan en variables del entorno */
   extractions: Extraction[]
+  /** Script que corre antes de enviar (puede cambiar la petición y asignar variables) */
+  preScript: string
+  /** Script que corre al recibir la respuesta (tests y variables) */
+  postScript: string
   /** Notas o documentación de la petición (en las importadas de OpenAPI, la descripción de la spec) */
   description: string
   loading: boolean
@@ -84,6 +88,8 @@ export interface RequestState {
   setAuth: (a: AuthConfig) => void
   setAssertions: (a: Assertion[]) => void
   setExtractions: (e: Extraction[]) => void
+  setPreScript: (s: string) => void
+  setPostScript: (s: string) => void
   setDescription: (d: string) => void
   send: () => Promise<void>
 
@@ -105,6 +111,8 @@ export type RequestSnapshot = Pick<
   | 'auth'
   | 'assertions'
   | 'extractions'
+  | 'preScript'
+  | 'postScript'
   | 'description'
   | 'loading'
   | 'response'
@@ -132,6 +140,8 @@ export function blankSnapshot(): RequestSnapshot {
     auth: emptyAuth(),
     assertions: [] as Assertion[],
     extractions: [] as Extraction[],
+    preScript: '',
+    postScript: '',
     description: '',
     loading: false,
     response: null,
@@ -158,6 +168,8 @@ export function snapshotFromSaved(saved: SavedRequest, path: string): LoadedStat
     auth: { ...emptyAuth(), ...saved.auth },
     assertions: saved.assertions ?? [],
     extractions: saved.extractions ?? [],
+    preScript: saved.preScript ?? '',
+    postScript: saved.postScript ?? '',
     description: saved.description ?? ''
   }
   return {
@@ -187,6 +199,8 @@ export function captureSnapshot(): RequestSnapshot {
     auth: s.auth,
     assertions: s.assertions,
     extractions: s.extractions,
+    preScript: s.preScript,
+    postScript: s.postScript,
     description: s.description,
     loading: s.loading,
     response: s.response,
@@ -220,6 +234,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setAuth: (auth) => set({ auth }),
   setAssertions: (assertions) => set({ assertions }),
   setExtractions: (extractions) => set({ extractions }),
+    setPreScript: (preScript) => set({ preScript }),
+  setPostScript: (postScript) => set({ postScript }),
   setDescription: (description) => set({ description }),
 
   send: async () => {
@@ -232,6 +248,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       auth,
       assertions,
       extractions,
+      preScript,
+      postScript,
       loading,
       requestSchema,
       responseSchemas,
@@ -260,17 +278,19 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         auth,
         assertions,
         extractions,
+        preScript,
+        postScript,
         requestSchema,
         responseSchemas
       },
       useEnvironmentStore.getState().getActive(),
-      { requestId, path: currentFile, live: true } // ← CAMBIO: live: true
+      { requestId, path: currentFile, live: true }
     )
     const wasCancelled = finishInFlight(tabId)
     // Ya llegó la respuesta completa: la vista en vivo sobra
-    useStreamStore.getState().clear(tabId) // ← NUEVO
+    useStreamStore.getState().clear(tabId)
 
-    // Los valores extraídos pasan al entorno para que la siguiente petición ya los use
+    // Los valores extraídos (y los que asignaron los scripts) pasan al entorno para que la siguiente petición ya los use
     const persistWarnings = await persistExtractions(extractionResults)
 
     const result = {
@@ -307,6 +327,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       auth,
       assertions,
       extractions,
+      preScript,
+      postScript,
       description,
       requestSchema,
       responseSchemas
@@ -324,6 +346,8 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       ...(auth.type !== 'inherit' ? { auth } : {}),
       ...(assertions.length > 0 ? { assertions } : {}),
       ...(extractions.length > 0 ? { extractions } : {}),
+      ...(preScript.trim() ? { preScript } : {}),
+      ...(postScript.trim() ? { postScript } : {}),
       ...(description.trim() ? { description } : {}),
       // Se conservan para no perderlos al volver a guardar una petición importada
       ...(requestSchema ? { requestSchema } : {}),
