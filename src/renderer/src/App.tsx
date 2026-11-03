@@ -35,6 +35,7 @@ import { DEFAULT_LAYOUT } from '../../shared/layout'
 import { CoverageModal } from './components/CoverageModal'
 import { WebSocketModal } from './components/WebSocketModal'
 import { togglePin, useQuickAccess } from './lib/quickAccess'
+import { VariablesAuditModal } from './components/VariablesAuditModal'
 
 type ModalType =
   | 'import'
@@ -54,6 +55,7 @@ type ModalType =
   | 'mock'
   | 'websocket'
   | 'coverage'
+  | 'vars'
   | null
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -215,6 +217,13 @@ function App(): React.JSX.Element {
       label: 'WebSocket',
       description: 'Conectarse, enviar mensajes y ver lo que llega en tiempo real',
       onSelect: () => setModal('websocket')
+    },
+    {
+      id: 'vars',
+      icon: 'search',
+      label: 'Variables',
+      description: 'Detectar variables sin definir o sin usar en tus colecciones',
+      onSelect: () => setModal('vars')
     },
     {
       id: 'curl',
@@ -487,6 +496,7 @@ function App(): React.JSX.Element {
       {modal === 'monitor' && <MonitorModal onClose={() => setModal(null)} />}
       {modal === 'mock' && <MockModal onClose={() => setModal(null)} />}
       {modal === 'websocket' && <WebSocketModal onClose={() => setModal(null)} />}
+      {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
