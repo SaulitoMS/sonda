@@ -1,6 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildVarMap, interpolate } from '../../../shared/variables'
 import {
+  hexPreview,
+  hexToBytes,
   parseHeaderLines,
   parseProtocols,
   prettyIfJson,
@@ -164,6 +166,9 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
   const [filter, setFilter] = useState('')
   const [dirFilter, setDirFilter] = useState<DirFilter>('all')
   const [follow, setFollow] = useState(true)
+  const [binaryMode, setBinaryMode] = useState(false)
+  /** En modo binario: bytes del borrador (null si no es hex válido o aún tiene {{variables}}) */
+  const draftBytes = binaryMode && !draft.includes('{{') ? hexToBytes(draft) : null
 
   /** Id de la conexión vigente: los eventos de cualquier otra se descartan */
   const idRef = useRef<string | null>(null)
@@ -206,17 +211,23 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
     return out
   }, [])
 
-  /** Manda un texto por la conexión vigente y lo anota en el registro */
+  /** Manda un mensaje por la conexión vigente y lo anota en el registro (en modo binario `text` es hex) */
   const sendRaw = useCallback(
-    async (text: string, auto = false): Promise<boolean> => {
+    async (text: string, auto = false, binary = false): Promise<boolean> => {
       const id = idRef.current
       if (!id) return false
-      const failure = await window.api.wsSend(id, text)
+      const bytes = binary ? hexToBytes(text) : null
+      if (binary && !bytes) {
+        setError('El hexadecimal no es válido (ejemplo: de ad be ef)')
+        return false
+      }
+      const failure = await window.api.wsSend(id, text, binary)
       if (failure) {
         setError(failure)
         return false
       }
-      add('out', text, { size: new TextEncoder().encode(text).length, auto })
+      if (bytes) add('out', hexPreview(bytes), { binary: true, size: bytes.byteLength, auto })
+      else add('out', text, { size: new TextEncoder().encode(text).length, auto })
       return true
     },
     [add]
@@ -426,7 +437,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
     setError('')
     const text = resolve(draft)
     if (text === null) return
-    if (await sendRaw(text)) rememberMessage(draft)
+    if (await sendRaw(text, false, binaryMode)) rememberMessage(draft)
   }
 
   const exportLog = (): void => {
@@ -680,7 +691,11 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         <textarea
           className={`${field} h-16 flex-1 resize-none font-mono`}
           value={draft}
-          placeholder={'Mensaje a enviar, por ejemplo {"type":"ping"}'}
+          placeholder={
+            binaryMode
+              ? 'Bytes en hexadecimal, por ejemplo de ad be ef'
+              : 'Mensaje a enviar, por ejemplo {"type":"ping"}'
+          }
           spellCheck={false}
           onChange={(e) => {
             historyIdx.current = -1
@@ -709,6 +724,44 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
           <Icon name="send" size={13} />
           Enviar
         </button>
+      </div>
+
+      <div className="mt-1 flex items-center gap-3 text-[10px] text-zinc-500">
+        <div className="flex overflow-hidden rounded border border-zinc-700">
+          {([false, true] as const).map((bin) => (
+            <button
+              key={String(bin)}
+              onClick={() => setBinaryMode(bin)}
+              className={`px-2 py-0.5 ${
+                binaryMode === bin ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800'
+              }`}
+            >
+              {bin ? 'Binario (hex)' : 'Texto'}
+            </button>
+          ))}
+        </div>
+        {binaryMode ? (
+          draft.trim() &&
+          !draft.includes('{{') &&
+          (draftBytes ? (
+            <span className="text-emerald-400">{draftBytes.length} bytes</span>
+          ) : (
+            <span className="text-amber-300">Hex no válido</span>
+          ))
+        ) : (
+          <>
+            {draftJson === 'ok' && <span className="text-emerald-400">JSON válido</span>}
+            {draftJson === 'bad' && <span className="text-amber-300">JSON con errores</span>}
+            <button
+              onClick={() => setDraft(prettyIfJson(draft).text)}
+              disabled={draftJson !== 'ok'}
+              className="rounded px-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-40"
+            >
+              Formatear
+            </button>
+          </>
+        )}
+        <span className="ml-auto">Ctrl/⌘ + ↑ ↓ para recorrer mensajes anteriores</span>
       </div>
 
       <div className="mt-1 flex items-center gap-3 text-[10px] text-zinc-500">

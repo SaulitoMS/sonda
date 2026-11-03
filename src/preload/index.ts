@@ -53,7 +53,7 @@ const api: SondaApi = {
   getMockStatus: () => ipcRenderer.invoke('mock:status'),
   runScript: (input) => ipcRenderer.invoke('script:run', input),
   wsConnect: (input) => ipcRenderer.invoke('ws:connect', input),
-  wsSend: (id, data) => ipcRenderer.invoke('ws:send', id, data),
+  wsSend: (id, data, binary) => ipcRenderer.invoke('ws:send', id, data, binary),
   wsClose: (id) => ipcRenderer.invoke('ws:close', id),
   onWsEvent: (listener) => {
     const handler = (_event: IpcRendererEvent, msg: WsEvent): void => listener(msg)

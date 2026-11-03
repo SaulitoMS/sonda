@@ -75,6 +75,15 @@ export function hexPreview(bytes: Uint8Array, max = 64): string {
   return bytes.length > max ? `${head} … (+${bytes.length - max} bytes)` : head
 }
 
+/** "de ad be ef", "0xDE 0xAD" o "dead,beef" → bytes. null si no es hexadecimal válido o está vacío */
+export function hexToBytes(text: string): Uint8Array | null {
+  const clean = text.replace(/(^|[\s,:_-])0x/gi, '$1').replace(/[\s,:_-]+/g, '')
+  if (clean.length === 0 || clean.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(clean)) return null
+  const bytes = new Uint8Array(clean.length / 2)
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16)
+  return bytes
+}
+
 /** Si el texto es JSON lo devuelve indentado; si no, tal cual */
 export function prettyIfJson(text: string): { text: string; json: boolean } {
   const t = text.trim()

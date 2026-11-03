@@ -346,8 +346,8 @@ export interface SondaApi {
   runScript: (input: ScriptInput) => Promise<ScriptOutput>
   /** Abre una conexión WebSocket (solo una a la vez). Lo que llega se recibe con onWsEvent */
   wsConnect: (input: WsConnectInput) => Promise<WsConnectResult>
-  /** Envía un mensaje de texto. Devuelve el error, o null si salió bien */
-  wsSend: (id: string, data: string) => Promise<string | null>
+  /** Envía un mensaje: texto, o bytes si `binary` es true (entonces `data` es hexadecimal). Devuelve el error, o null si salió bien */
+  wsSend: (id: string, data: string, binary?: boolean) => Promise<string | null>
   wsClose: (id: string) => Promise<void>
   /** Escucha los eventos de la conexión. Devuelve la función para dejar de escuchar */
   onWsEvent: (listener: (event: WsEvent) => void) => () => void
