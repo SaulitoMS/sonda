@@ -30,6 +30,8 @@ const api: SondaApi = {
     ipcRenderer.invoke('collections:setAuth', collectionId, folder, auth),
   setScopeHeaders: (collectionId, folder, headers) =>
     ipcRenderer.invoke('collections:setHeaders', collectionId, folder, headers),
+  setCollectionVariables: (collectionId, variables) =>
+    ipcRenderer.invoke('collections:setVariables', collectionId, variables),
   openWorkspace: () => ipcRenderer.invoke('collections:openWorkspace'),
   importSwagger: (url) => ipcRenderer.invoke('swagger:import', url),
   importPostman: () => ipcRenderer.invoke('postman:import'),

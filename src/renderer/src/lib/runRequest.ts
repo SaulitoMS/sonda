@@ -20,7 +20,8 @@ import type {
   SendRequestResult
 } from '../../../shared/types'
 import { validateRequestBody, validateResponse } from '../../../shared/validate'
-import { buildVarMap, interpolate } from '../../../shared/variables'
+import { buildVarMap, interpolate, withCollectionVariables } from '../../../shared/variables'
+import { collectionVarsForPath } from './collectionVariables'
 import { resolveHeadersForPath } from './inheritedHeaders'
 import { retryDelayMs, shouldRetry } from '../../../shared/retry'
 import { isCancelled } from './inFlight'
@@ -72,7 +73,8 @@ export async function executeRequest(
   env: Environment | null,
   options: { requestId?: string; path?: string | null; live?: boolean } = {}
 ): Promise<ExecuteResult> {
-  const vars = buildVarMap(env)
+  // Las variables de la colección valen solo si el entorno no define la misma clave
+  const vars = buildVarMap(withCollectionVariables(env, collectionVarsForPath(options.path)))
   const missing = new Set<string>()
 
   const resolve = (text: string): string => {

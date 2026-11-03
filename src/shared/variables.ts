@@ -1,5 +1,5 @@
 import { resolveDynamic } from './dynamicVariables'
-import type { Environment } from './types'
+import type { Environment, KeyValueData } from './types'
 
 // El $ inicial es opcional: {{nombre}} es del entorno, {{$nombre}} es dinámica
 const VAR_RE = /\{\{\s*(\$?[\w.-]+)\s*\}\}/g
@@ -12,6 +12,36 @@ export function buildVarMap(env: Environment | null | undefined): Record<string,
     if (v.enabled && v.key.trim()) map[v.key.trim()] = v.value
   }
   return map
+}
+
+/**
+ * Suma las variables de una colección a un entorno. Tienen la prioridad más baja:
+ * si el entorno define la misma clave, gana el entorno.
+ */
+export function withCollectionVariables(
+  env: Environment | null,
+  collectionVars: KeyValueData[] | undefined
+): Environment | null {
+  const extra = (collectionVars ?? []).filter((v) => v.enabled && v.key.trim())
+  if (extra.length === 0) return env
+
+  const base = env?.variables ?? []
+  const taken = new Set(base.filter((v) => v.enabled && v.key.trim()).map((v) => v.key.trim()))
+  const added = extra
+    .filter((v) => !taken.has(v.key.trim()))
+    .map((v) => ({
+      id: `collection:${v.key.trim()}`,
+      key: v.key.trim(),
+      value: v.value,
+      secret: false,
+      enabled: true
+    }))
+
+  return {
+    id: env?.id ?? 'collection',
+    name: env?.name ?? 'Colección',
+    variables: [...base, ...added]
+  }
 }
 
 export interface InterpolateOptions {

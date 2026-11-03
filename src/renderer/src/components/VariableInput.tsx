@@ -12,7 +12,7 @@ import {
   type VarSuggestion
 } from '../../../shared/varSuggest'
 import { buildVarMap } from '../../../shared/variables'
-import { useEnvironmentStore } from '../store/useEnvironmentStore'
+import { useEffectiveEnv } from '../lib/collectionVariables'
 
 const VAR_SPLIT = /(\{\{\s*\$?[\w.-]+\s*\}\})/g
 const VAR_NAME = /\{\{\s*(\$?[\w.-]+)\s*\}\}/
@@ -46,8 +46,7 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
   const [hover, setHover] = useState<Hover | null>(null)
   const [suggest, setSuggest] = useState<SuggestState | null>(null)
 
-  const data = useEnvironmentStore((s) => s.data)
-  const activeEnv = data.environments.find((e) => e.id === data.activeId)
+  const activeEnv = useEffectiveEnv()
   const vars = buildVarMap(activeEnv)
 
   const envInfo = (activeEnv?.variables ?? [])

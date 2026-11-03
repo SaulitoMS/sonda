@@ -247,6 +247,8 @@ export interface CollectionItem {
   auth?: AuthConfig
   /** Headers que heredan todas las peticiones de la colección */
   headers?: KeyValueData[]
+  /** Variables de la colección. Valen solo si el entorno activo no define la misma clave */
+  variables?: KeyValueData[]
 }
 
 export interface SaveRequestInput {
@@ -310,6 +312,8 @@ export interface SondaApi {
     folder: string | null,
     headers: KeyValueData[] | null
   ) => Promise<void>
+  /** Guarda las variables de una colección. null = quitarlas */
+  setCollectionVariables: (collectionId: string, variables: KeyValueData[] | null) => Promise<void>
   openWorkspace: () => Promise<void>
   importSwagger: (url: string) => Promise<ImportResult>
   /** Abre el selector de archivos e importa una colección de Postman. null = el usuario canceló */

@@ -11,7 +11,7 @@ import { buildVarMap } from '../../../shared/variables'
 import { applyEdit } from '../lib/applyEdit'
 import { caretPosition } from '../lib/caretPosition'
 import { findAll } from '../lib/search'
-import { useEnvironmentStore } from '../store/useEnvironmentStore'
+import { useEffectiveEnv } from '../lib/collectionVariables'
 
 const LIST_WIDTH = 360
 const ITEM_HEIGHT = 30
@@ -63,8 +63,7 @@ export function VariableTextarea({
   const [findQuery, setFindQuery] = useState('')
   const [findActive, setFindActive] = useState(0)
 
-  const data = useEnvironmentStore((s) => s.data)
-  const activeEnv = data.environments.find((e) => e.id === data.activeId)
+  const activeEnv = useEffectiveEnv()
   const vars = buildVarMap(activeEnv)
   const envInfo = (activeEnv?.variables ?? [])
     .filter((v) => v.enabled && v.key.trim())

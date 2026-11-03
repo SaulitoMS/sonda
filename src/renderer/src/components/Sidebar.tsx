@@ -9,6 +9,7 @@ import { ScopeAuthModal, type AuthScope } from './ScopeAuthModal'
 import { ScopeHeadersModal, type HeadersScope } from './ScopeHeadersModal'
 import { placeItem, type Place } from '../../../shared/reorder'
 import { Icon } from './Icon'
+import { ScopeVariablesModal, type VariablesScope } from './ScopeVariablesModal'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -231,6 +232,35 @@ function HeadersButton({
   )
 }
 
+function VariablesButton({
+  onClick,
+  title,
+  active
+}: {
+  onClick: () => void
+  title: string
+  /** true si ya tiene variables: el icono se ve siempre */
+  active: boolean
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className={`rounded p-0.5 hover:bg-zinc-700 hover:text-blue-400 ${
+        active ? 'block text-blue-400 group-hover:block' : 'hidden text-zinc-500 group-hover:block'
+      }`}
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1" />
+        <path d="M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1" />
+      </svg>
+    </button>
+  )
+}
+
 function ExportButton({
   onClick,
   title
@@ -392,6 +422,7 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   const [query, setQuery] = useState('')
   const [authScope, setAuthScope] = useState<AuthScope | null>(null)
   const [headersScope, setHeadersScope] = useState<HeadersScope | null>(null)
+  const [variablesScope, setVariablesScope] = useState<VariablesScope | null>(null)
   // Lo que se arrastra vive en un ref: así los eventos de soltar no dependen de un re-render
   const dragRef = useRef<DragItem | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
@@ -951,6 +982,17 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                   }
                   title="Headers de la colección"
                 />
+                <VariablesButton
+                  active={!!c.variables?.length}
+                  onClick={() =>
+                    setVariablesScope({
+                      collectionId: c.id,
+                      collectionName: c.name,
+                      variables: c.variables
+                    })
+                  }
+                  title="Variables de la colección"
+                />
                 {total > 0 && (
                   <PlayButton
                     onClick={() => onRun(c.id)}
@@ -1107,6 +1149,9 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
       {authScope && <ScopeAuthModal scope={authScope} onClose={() => setAuthScope(null)} />}
       {headersScope && (
         <ScopeHeadersModal scope={headersScope} onClose={() => setHeadersScope(null)} />
+      )}
+      {variablesScope && (
+        <ScopeVariablesModal scope={variablesScope} onClose={() => setVariablesScope(null)} />
       )}
     </aside>
   )
