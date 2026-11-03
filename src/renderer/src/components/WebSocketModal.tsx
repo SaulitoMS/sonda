@@ -65,7 +65,6 @@ let lastForm = {
 /** Mensajes enviados antes, del más viejo al más nuevo */
 let messageHistory: string[] = []
 
-
 /** La conexión guardada que está abierta en el formulario (guardar la sobrescribe) */
 interface OpenSaved {
   path: string
@@ -187,7 +186,6 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
   const [binaryMode, setBinaryMode] = useState(false)
   /** En modo binario: bytes del borrador (null si no es hex válido o aún tiene {{variables}}) */
   const draftBytes = binaryMode && !draft.includes('{{') ? hexToBytes(draft) : null
-
 
   const collections = useCollectionsStore((s) => s.collections)
   const [saved, setSaved] = useState<SavedWebSocketItem[]>([])
@@ -501,7 +499,8 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase()
     return log.filter(
-      (i) => (dirFilter === 'all' || i.dir === dirFilter) && (!q || i.text.toLowerCase().includes(q))
+      (i) =>
+        (dirFilter === 'all' || i.dir === dirFilter) && (!q || i.text.toLowerCase().includes(q))
     )
   }, [log, filter, dirFilter])
 
@@ -517,7 +516,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
     }
   }, [draft])
 
-    const openSavedConnection = async (path: string): Promise<void> => {
+  const openSavedConnection = async (path: string): Promise<void> => {
     setConfirmDelete(false)
     setSavePanel(false)
     if (!path) {
@@ -631,7 +630,6 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         <code className="text-zinc-400">https://</code> (se convierten a ws y wss). Al cerrar esta
         ventana se cierra la conexión.
       </p>
-
 
       <div className="mb-3 rounded-md border border-zinc-800 bg-zinc-900/60 p-2">
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -976,7 +974,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         </button>
       </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
         <span className="text-zinc-500" title="Se guardan junto con la conexión">
           Mensajes guardados
         </span>

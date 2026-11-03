@@ -234,7 +234,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setAuth: (auth) => set({ auth }),
   setAssertions: (assertions) => set({ assertions }),
   setExtractions: (extractions) => set({ extractions }),
-    setPreScript: (preScript) => set({ preScript }),
+  setPreScript: (preScript) => set({ preScript }),
   setPostScript: (postScript) => set({ postScript }),
   setDescription: (description) => set({ description }),
 

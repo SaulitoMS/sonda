@@ -4,6 +4,7 @@ import { exportEnvironment, parseEnvironments } from '../../../shared/envTransfe
 import { downloadText } from '../lib/download'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'
+import { diffEnvironments, type EnvDiffStatus } from '../../../shared/envDiff'
 
 const newVar = (): EnvVariable => ({
   id: crypto.randomUUID(),
@@ -16,6 +17,13 @@ const newVar = (): EnvVariable => ({
 const inputClass =
   'rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 font-mono text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500'
 
+const DIFF_LABEL: Record<EnvDiffStatus, { text: string; tone: string }> = {
+  different: { text: 'Distinta', tone: 'bg-amber-500/20 text-amber-400' },
+  onlyA: { text: 'Solo aquí', tone: 'bg-blue-500/20 text-blue-400' },
+  onlyB: { text: 'Falta aquí', tone: 'bg-red-500/20 text-red-400' },
+  same: { text: 'Igual', tone: 'bg-zinc-800 text-zinc-500' }
+}
+
 export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.JSX.Element {
   const { data, save } = useEnvironmentStore()
 
@@ -27,9 +35,14 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const [compareId, setCompareId] = useState('')
+
   const fileRef = useRef<HTMLInputElement>(null)
 
   const selected = draft.environments.find((e) => e.id === selectedId) ?? null
+
+  const other = draft.environments.find((e) => e.id === compareId && e.id !== selected?.id) ?? null
+  const diffRows = selected && other ? diffEnvironments(selected, other) : []
 
   const updateEnv = (id: string, patch: Partial<Environment>): void =>
     setDraft((d) => ({
@@ -86,7 +99,18 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
     setVars(next.length ? next : [newVar()])
   }
 
-    const exportEnv = (): void => {
+  // Agrega al entorno actual las variables que solo existen en el otro (sin valor)
+  const addMissing = (): void => {
+    if (!selected) return
+    const have = new Set(selected.variables.map((v) => v.key.trim()))
+    const missing = diffRows
+      .filter((r) => r.status === 'onlyB' && !have.has(r.key))
+      .map((r) => ({ ...newVar(), key: r.key, secret: r.secretB }))
+    if (!missing.length) return
+    setVars([...selected.variables.filter((v) => v.key || v.value), ...missing, newVar()])
+  }
+
+  const exportEnv = (): void => {
     if (!selected) return
     const hasSecrets = selected.variables.some((v) => v.secret && v.value)
     const includeSecrets =
@@ -242,58 +266,133 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
                 className={`${inputClass} mb-3 font-sans text-sm font-semibold`}
               />
 
-              <p className="mb-2 text-xs text-zinc-500">
-                Úsalas como <code>{'{{nombre}}'}</code> en la URL, los headers o el body. Las
-                marcadas como secreto se cifran en el keychain.
-              </p>
-
-              <div className="min-h-0 flex-1 overflow-auto">
-                <div className="flex flex-col gap-2">
-                  {selected.variables.map((v) => (
-                    <div key={v.id} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={v.enabled}
-                        onChange={(e) => patchVar(v.id, { enabled: e.target.checked })}
-                        className="accent-blue-500"
-                      />
-                      <input
-                        value={v.key}
-                        onChange={(e) => patchVar(v.id, { key: e.target.value })}
-                        placeholder="Variable"
-                        spellCheck={false}
-                        className={`${inputClass} w-40`}
-                      />
-                      <input
-                        type={v.secret ? 'password' : 'text'}
-                        value={v.value}
-                        onChange={(e) => patchVar(v.id, { value: e.target.value })}
-                        placeholder="Valor"
-                        spellCheck={false}
-                        className={`${inputClass} min-w-0 flex-1`}
-                      />
-                      <button
-                        onClick={() => patchVar(v.id, { secret: !v.secret })}
-                        className={`rounded-md px-2 py-1.5 text-[10px] font-semibold ${
-                          v.secret
-                            ? 'bg-amber-500/20 text-amber-400'
-                            : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
-                        }`}
-                        title="Guardar este valor cifrado en el keychain"
-                      >
-                        Secreto
-                      </button>
-                      <button
-                        onClick={() => removeVar(v.id)}
-                        className="px-1 text-zinc-500 hover:text-red-400"
-                        title="Eliminar variable"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+              {draft.environments.length > 1 && (
+                <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
+                  <span>Comparar con</span>
+                  <select
+                    value={other?.id ?? ''}
+                    onChange={(e) => setCompareId(e.target.value)}
+                    className={`${inputClass} font-sans`}
+                  >
+                    <option value="">— ninguno —</option>
+                    {draft.environments
+                      .filter((e) => e.id !== selected.id)
+                      .map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.name}
+                        </option>
+                      ))}
+                  </select>
+                  {other && diffRows.some((r) => r.status === 'onlyB') && (
+                    <button
+                      onClick={addMissing}
+                      className="ml-auto rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+                      title="Agrega aquí las variables que solo existen en el otro entorno (sin valor)"
+                    >
+                      Agregar las que faltan
+                    </button>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {other ? (
+                <div className="min-h-0 flex-1 overflow-auto">
+                  <table className="w-full text-left font-mono text-xs">
+                    <thead className="text-zinc-500">
+                      <tr>
+                        <th className="py-1 pr-2 font-normal">Variable</th>
+                        <th className="py-1 pr-2 font-normal">{selected.name}</th>
+                        <th className="py-1 pr-2 font-normal">{other.name}</th>
+                        <th className="py-1 font-normal" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {diffRows.map((r) => {
+                        const show = (v: string | undefined): string =>
+                          v === undefined ? '—' : r.secret ? '••••••' : v || '(vacío)'
+                        return (
+                          <tr key={r.key} className="border-t border-zinc-800">
+                            <td className="py-1.5 pr-2 text-zinc-200">{r.key}</td>
+                            <td className="max-w-40 truncate py-1.5 pr-2 text-zinc-400">
+                              {show(r.a)}
+                            </td>
+                            <td className="max-w-40 truncate py-1.5 pr-2 text-zinc-400">
+                              {show(r.b)}
+                            </td>
+                            <td className="py-1.5 text-right">
+                              <span
+                                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${DIFF_LABEL[r.status].tone}`}
+                              >
+                                {DIFF_LABEL[r.status].text}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                  {diffRows.length === 0 && (
+                    <p className="py-4 text-center text-xs text-zinc-500">
+                      Ninguno de los dos tiene variables activas.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="mb-2 text-xs text-zinc-500">
+                    Úsalas como <code>{'{{nombre}}'}</code> en la URL, los headers o el body. Las
+                    marcadas como secreto se cifran en el keychain.
+                  </p>
+
+                  <div className="min-h-0 flex-1 overflow-auto">
+                    <div className="flex flex-col gap-2">
+                      {selected.variables.map((v) => (
+                        <div key={v.id} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={v.enabled}
+                            onChange={(e) => patchVar(v.id, { enabled: e.target.checked })}
+                            className="accent-blue-500"
+                          />
+                          <input
+                            value={v.key}
+                            onChange={(e) => patchVar(v.id, { key: e.target.value })}
+                            placeholder="Variable"
+                            spellCheck={false}
+                            className={`${inputClass} w-40`}
+                          />
+                          <input
+                            type={v.secret ? 'password' : 'text'}
+                            value={v.value}
+                            onChange={(e) => patchVar(v.id, { value: e.target.value })}
+                            placeholder="Valor"
+                            spellCheck={false}
+                            className={`${inputClass} min-w-0 flex-1`}
+                          />
+                          <button
+                            onClick={() => patchVar(v.id, { secret: !v.secret })}
+                            className={`rounded-md px-2 py-1.5 text-[10px] font-semibold ${
+                              v.secret
+                                ? 'bg-amber-500/20 text-amber-400'
+                                : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
+                            }`}
+                            title="Guardar este valor cifrado en el keychain"
+                          >
+                            Secreto
+                          </button>
+                          <button
+                            onClick={() => removeVar(v.id)}
+                            className="px-1 text-zinc-500 hover:text-red-400"
+                            title="Eliminar variable"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

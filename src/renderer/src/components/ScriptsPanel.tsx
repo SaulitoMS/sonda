@@ -66,11 +66,10 @@ export function ScriptsPanel(): React.JSX.Element {
             Pre: sonda.request.method / .url / .body / .headers[&quot;Nombre&quot;] (editables; la
             URL conserva sus {'{{variables}}'})
           </p>
+          <p>Post: sonda.response.status / .statusText / .timeMs / .headers / .text / .json()</p>
           <p>
-            Post: sonda.response.status / .statusText / .timeMs / .headers / .text /
-            .json()
+            sonda.test(&quot;nombre&quot;, () =&gt; &#123; ... &#125;) · sonda.assert(cond, msg)
           </p>
-          <p>sonda.test(&quot;nombre&quot;, () =&gt; &#123; ... &#125;) · sonda.assert(cond, msg)</p>
           <p>
             sonda.expect(x).toBe / toEqual / toContain / toMatch / toBeGreaterThan / toBeLessThan /
             toBeTruthy / toBeFalsy / toHaveProperty (con .not)

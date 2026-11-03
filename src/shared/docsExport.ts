@@ -130,5 +130,10 @@ export function buildMarkdownDocs(
     out.push(`## ${folder}`, '')
     for (const f of list) out.push(...requestToMarkdown(f.request), '---', '')
   }
-  return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
+  return (
+    out
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trimEnd() + '\n'
+  )
 }

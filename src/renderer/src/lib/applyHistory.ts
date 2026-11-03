@@ -3,7 +3,6 @@ import { fromBodyFormData } from '../../../shared/bodyForm'
 import type { HistoryEntry } from '../../../shared/history'
 import { newRow, useRequestStore } from '../store/useRequestStore'
 
-
 export function applyHistory(entry: HistoryEntry): void {
   useRequestStore.setState({
     method: entry.method,

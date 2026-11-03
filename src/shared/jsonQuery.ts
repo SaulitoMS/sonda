@@ -85,7 +85,8 @@ const toNumber = (v: unknown): number =>
   typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN
 
 function looseEquals(actual: unknown, expected: unknown): boolean {
-  if (typeof expected === 'number' && typeof actual === 'string') return toNumber(actual) === expected
+  if (typeof expected === 'number' && typeof actual === 'string')
+    return toNumber(actual) === expected
   if (typeof expected === 'string' && typeof actual === 'number') return String(actual) === expected
   return actual === expected
 }

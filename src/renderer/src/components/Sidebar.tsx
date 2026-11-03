@@ -994,10 +994,7 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                   title="Variables de la colección"
                 />
                 {total > 0 && (
-                  <PlayButton
-                    onClick={() => onRun(c.id)}
-                    title="Ejecutar todas las peticiones"
-                  />
+                  <PlayButton onClick={() => onRun(c.id)} title="Ejecutar todas las peticiones" />
                 )}
                 {total > 0 && (
                   <CoverageButton

@@ -50,7 +50,10 @@ export function togglePin(path: string): void {
 
 export function pushRecent(path: string): void {
   if (state.recent[0] === path) return
-  commit({ ...state, recent: [path, ...state.recent.filter((p) => p !== path)].slice(0, MAX_RECENT) })
+  commit({
+    ...state,
+    recent: [path, ...state.recent.filter((p) => p !== path)].slice(0, MAX_RECENT)
+  })
 }
 
 export function useQuickAccess(): QuickAccessState {

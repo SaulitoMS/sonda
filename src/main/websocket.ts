@@ -152,25 +152,22 @@ async function connect(sender: WebContents, input: WsConnectInput): Promise<WsCo
 export function registerWebSocketHandlers(): void {
   ipcMain.handle('ws:connect', (event, input: WsConnectInput) => connect(event.sender, input))
 
-  ipcMain.handle(
-    'ws:send',
-    (_event, id: string, data: string, binary?: boolean): string | null => {
-      if (!current || current.id !== id) return 'No hay una conexión abierta'
-      if (current.socket.readyState !== WebSocket.OPEN) return 'La conexión aún no está abierta'
-      try {
-        if (binary) {
-          const bytes = hexToBytes(data)
-          if (!bytes) return 'El hexadecimal no es válido (ejemplo: de ad be ef)'
-          current.socket.send(bytes)
-        } else {
-          current.socket.send(data)
-        }
-        return null
-      } catch (err) {
-        return err instanceof Error ? err.message : 'No se pudo enviar el mensaje'
+  ipcMain.handle('ws:send', (_event, id: string, data: string, binary?: boolean): string | null => {
+    if (!current || current.id !== id) return 'No hay una conexión abierta'
+    if (current.socket.readyState !== WebSocket.OPEN) return 'La conexión aún no está abierta'
+    try {
+      if (binary) {
+        const bytes = hexToBytes(data)
+        if (!bytes) return 'El hexadecimal no es válido (ejemplo: de ad be ef)'
+        current.socket.send(bytes)
+      } else {
+        current.socket.send(data)
       }
+      return null
+    } catch (err) {
+      return err instanceof Error ? err.message : 'No se pudo enviar el mensaje'
     }
-  )
+  })
 
   ipcMain.handle('ws:close', (_event, id: string): void => {
     if (current?.id === id) closeCurrent()

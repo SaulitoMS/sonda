@@ -65,11 +65,7 @@ interface Props {
   onClose: () => void
 }
 
-export function CoverageModal({
-  collectionId,
-  collectionName,
-  onClose
-}: Props): React.JSX.Element {
+export function CoverageModal({ collectionId, collectionName, onClose }: Props): React.JSX.Element {
   const collection = useCollectionsStore((s) => s.collections.find((c) => c.id === collectionId))
   const [rows, setRows] = useState<Row[] | null>(null)
   const [onlyGaps, setOnlyGaps] = useState(true)

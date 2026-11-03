@@ -561,7 +561,6 @@ export type MockStatus =
 export type MockStartResult =
   { ok: true; port: number; routes: MockRouteInfo[] } | { ok: false; error: string }
 
-
 // ---------- Scripts ----------
 
 /** Lo que se le entrega a un script antes (pre) o después (post) de enviar una petición */

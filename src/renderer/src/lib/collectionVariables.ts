@@ -6,9 +6,7 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
 
 /** Variables de la colección a la que pertenece una petición ("coleccion/…/peticion.json") */
-export function collectionVarsForPath(
-  path: string | null | undefined
-): KeyValueData[] | undefined {
+export function collectionVarsForPath(path: string | null | undefined): KeyValueData[] | undefined {
   const id = path?.split('/')[0]
   if (!id) return undefined
   return useCollectionsStore.getState().collections.find((c) => c.id === id)?.variables

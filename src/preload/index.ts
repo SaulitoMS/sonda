@@ -3,7 +3,6 @@ import type { SondaApi, StreamChunk } from '../shared/types'
 import type { WsEvent } from '../shared/websocket'
 import { electronAPI } from '@electron-toolkit/preload'
 
-
 const api: SondaApi = {
   sendRequest: (input) => ipcRenderer.invoke('http:send', input),
   cancelRequest: (requestId) => ipcRenderer.invoke('http:cancel', requestId),

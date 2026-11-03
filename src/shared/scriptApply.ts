@@ -75,13 +75,16 @@ export function scriptAssertionResults(out: ScriptOutput): AssertionResult[] {
     message: t.message
   }))
   if (!out.ok) {
-    rows.push({ id: 'script:error', label: 'Script de respuesta', passed: false, message: out.error })
+    rows.push({
+      id: 'script:error',
+      label: 'Script de respuesta',
+      passed: false,
+      message: out.error
+    })
   }
   return rows
 }
 
 /** Lo que el script escribió con console.log, como avisos (máximo 20) */
 export const scriptLogWarnings = (logs: string[], phase: 'pre' | 'post'): string[] =>
-  logs
-    .slice(0, 20)
-    .map((l) => `console (${phase === 'pre' ? 'pre-script' : 'post-script'}): ${l}`)
+  logs.slice(0, 20).map((l) => `console (${phase === 'pre' ? 'pre-script' : 'post-script'}): ${l}`)

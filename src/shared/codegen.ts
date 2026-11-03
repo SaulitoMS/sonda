@@ -1,7 +1,8 @@
 import { toCurl, type CurlRequest } from './curl'
 import type { FormPart } from './types'
 
-export type CodeLang = 'curl' | 'fetch' | 'axios' | 'python' | 'go' | 'php' | 'csharp' | 'powershell'
+export type CodeLang =
+  'curl' | 'fetch' | 'axios' | 'python' | 'go' | 'php' | 'csharp' | 'powershell'
 
 export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'curl', label: 'cURL' },

@@ -22,11 +22,13 @@ const LEAK_PATTERNS: { re: RegExp; label: string }[] = [
   { re: /Traceback \(most recent call last\)/, label: 'traceback de Python' },
   { re: /\bat\s+[\w$.]+\([\w$]+\.java:\d+\)/, label: 'stack trace de Java' },
   { re: /System\.[A-Za-z.]*Exception/, label: 'excepción de .NET' },
-  { re: /SQLSTATE|syntax error at or near|ORA-\d{5}|You have an error in your SQL/i, label: 'error de SQL' }
+  {
+    re: /SQLSTATE|syntax error at or near|ORA-\d{5}|You have an error in your SQL/i,
+    label: 'error de SQL'
+  }
 ]
 
-const SECRET_KEY =
-  /"(password|passwd|pwd|secret|client_secret|private_?key)"\s*:\s*"[^"]{3,}"/i
+const SECRET_KEY = /"(password|passwd|pwd|secret|client_secret|private_?key)"\s*:\s*"[^"]{3,}"/i
 
 const ORDER: Record<SecuritySeverity, number> = { high: 0, medium: 1, low: 2 }
 
@@ -76,7 +78,8 @@ export function checkSecurity(input: SecurityInput): SecurityFinding[] {
       id: 'cors-wildcard-credentials',
       severity: 'high',
       title: 'CORS: "*" junto con credenciales',
-      detail: 'Access-Control-Allow-Origin es "*" y Allow-Credentials es true. Es una mala configuración.'
+      detail:
+        'Access-Control-Allow-Origin es "*" y Allow-Credentials es true. Es una mala configuración.'
     })
   } else if (origin === '*') {
     add({
@@ -174,7 +177,8 @@ export function checkSecurity(input: SecurityInput): SecurityFinding[] {
       id: 'secret-in-body',
       severity: 'high',
       title: `El JSON incluye el campo "${secret[1]}" con valor`,
-      detail: 'Comprueba que sea intencional: una API normal no devuelve contraseñas ni claves privadas.'
+      detail:
+        'Comprueba que sea intencional: una API normal no devuelve contraseñas ni claves privadas.'
     })
   }
 

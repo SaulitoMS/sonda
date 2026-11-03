@@ -201,7 +201,11 @@ export function findLiteralSecrets(
     if (m[2] && !m[2].includes('{{')) found.add(`URL ?${m[1]}`)
   }
 
-  const texts = [conn.onOpen, conn.keepAliveMsg, ...conn.messages.filter((m) => !m.binary).map((m) => m.text)]
+  const texts = [
+    conn.onOpen,
+    conn.keepAliveMsg,
+    ...conn.messages.filter((m) => !m.binary).map((m) => m.text)
+  ]
   for (const text of texts) {
     for (const m of text.matchAll(SECRET_JSON_FIELD)) {
       if (!m[2].includes('{{')) found.add(`mensaje "${m[1]}"`)

@@ -47,7 +47,10 @@ function diffSchema(
     const removed = ta.some((t) => !tb.includes(t))
     const added = tb.some((t) => !ta.includes(t))
     const breaking = side === 'request' ? removed : added
-    push(breaking ? 'breaking' : 'compatible', `el tipo cambió de ${ta.join('|')} a ${tb.join('|')}`)
+    push(
+      breaking ? 'breaking' : 'compatible',
+      `el tipo cambió de ${ta.join('|')} a ${tb.join('|')}`
+    )
   }
 
   // Enum
@@ -73,7 +76,10 @@ function diffSchema(
       )
     }
   } else if (ea && !eb) {
-    push(side === 'response' ? 'breaking' : 'compatible', 'se quitó la restricción de valores (enum)')
+    push(
+      side === 'response' ? 'breaking' : 'compatible',
+      'se quitó la restricción de valores (enum)'
+    )
   } else if (!ea && eb) {
     push(side === 'request' ? 'breaking' : 'compatible', 'ahora solo admite ciertos valores (enum)')
   }
@@ -92,7 +98,10 @@ function diffSchema(
   for (const key of Object.keys(pb)) {
     if (!(key in pa)) {
       const mandatory = side === 'request' && rb.has(key)
-      push(mandatory ? 'breaking' : 'compatible', `campo nuevo "${key}"${mandatory ? ' (obligatorio)' : ''}`)
+      push(
+        mandatory ? 'breaking' : 'compatible',
+        `campo nuevo "${key}"${mandatory ? ' (obligatorio)' : ''}`
+      )
     }
   }
   for (const key of Object.keys(pb)) {

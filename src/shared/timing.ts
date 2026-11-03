@@ -36,7 +36,6 @@ export function timingStats(rows: { name: string; timeMs: number }[]): TimingSta
   }
 }
 
-
 /** Texto con el desglose de una respuesta, para el tooltip. undefined si no hay datos */
 export function describeTiming(
   timeMs: number,

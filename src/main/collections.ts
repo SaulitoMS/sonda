@@ -449,7 +449,7 @@ export function registerCollectionHandlers(): void {
     async (_e, collectionId: string, folder: string | null, headers: KeyValueData[] | null) => {
       const dir = folder ? safePath(collectionId, folder) : safePath(collectionId)
       await writeScopeHeaders(dir, headers)
-    } 
+    }
   )
 
   ipcMain.handle(
@@ -572,7 +572,7 @@ export function registerCollectionHandlers(): void {
     }
   })
 
-    ipcMain.handle('docs:export', async (_e, id: string): Promise<ExportResult | null> => {
+  ipcMain.handle('docs:export', async (_e, id: string): Promise<ExportResult | null> => {
     try {
       const dir = safePath(id)
       const meta = await readMeta(dir)
