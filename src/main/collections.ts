@@ -32,6 +32,7 @@ import { buildMarkdownDocs } from '../shared/docsExport'
 import { sortByOrder } from '../shared/reorder'
 import { looksLikeHar, parseHar } from '../shared/har'
 import { buildOpenApi } from '../shared/openapiExport'
+import { looksLikeInsomnia, parseInsomnia } from '../shared/insomnia'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -505,9 +506,14 @@ export function registerCollectionHandlers(): void {
 
   ipcMain.handle('postman:import', async (): Promise<ImportResult | null> => {
     const picked = await dialog.showOpenDialog({
-      title: 'Importar colección de Postman o archivo HAR',
+      title: 'Importar colección de Postman, Insomnia o archivo HAR',
       properties: ['openFile'],
-      filters: [{ name: 'Colección de Postman (.json) o HAR (.har)', extensions: ['json', 'har'] }]
+      filters: [
+        {
+          name: 'Postman / Insomnia (.json) o HAR (.har)',
+          extensions: ['json', 'har']
+        }
+      ]
     })
     if (picked.canceled || !picked.filePaths[0]) return null
 
@@ -518,8 +524,12 @@ export function registerCollectionHandlers(): void {
       } catch {
         throw new Error('El archivo no es un JSON válido')
       }
-      // Un HAR (captura de la pestaña Red del navegador) o una colección de Postman
-      const parsed = looksLikeHar(json) ? parseHar(json) : parsePostmanCollection(json)
+      // Un HAR (captura del navegador), un export de Insomnia o una colección de Postman
+      const parsed = looksLikeHar(json)
+        ? parseHar(json)
+        : looksLikeInsomnia(json)
+          ? parseInsomnia(json)
+          : parsePostmanCollection(json)
 
       await fs.mkdir(getRoot(), { recursive: true })
       const dir = await uniquePath(getRoot(), slug(parsed.name), '')

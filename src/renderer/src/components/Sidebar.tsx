@@ -857,7 +857,7 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
           <button
             onClick={importPostman}
             className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
-            title="Importar colección de Postman (.json) o captura HAR (.har)"
+            title="Importar colección de Postman o Insomnia (.json) o captura HAR (.har)"
           >
             <Icon name="download" size={13} />
             Postman
