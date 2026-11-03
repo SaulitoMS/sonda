@@ -36,6 +36,7 @@ import { CoverageModal } from './components/CoverageModal'
 import { WebSocketModal } from './components/WebSocketModal'
 import { togglePin, useQuickAccess } from './lib/quickAccess'
 import { VariablesAuditModal } from './components/VariablesAuditModal'
+import { FindReplaceModal } from './components/FindReplaceModal'
 
 type ModalType =
   | 'import'
@@ -56,6 +57,7 @@ type ModalType =
   | 'websocket'
   | 'coverage'
   | 'vars'
+  | 'replace'
   | null
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -224,6 +226,13 @@ function App(): React.JSX.Element {
       label: 'Variables',
       description: 'Detectar variables sin definir o sin usar en tus colecciones',
       onSelect: () => setModal('vars')
+    },
+    {
+      id: 'replace',
+      icon: 'copy',
+      label: 'Buscar y reemplazar',
+      description: 'Cambiar un host, variable o header en toda una colección',
+      onSelect: () => setModal('replace')
     },
     {
       id: 'curl',
@@ -497,6 +506,7 @@ function App(): React.JSX.Element {
       {modal === 'mock' && <MockModal onClose={() => setModal(null)} />}
       {modal === 'websocket' && <WebSocketModal onClose={() => setModal(null)} />}
       {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
+      {modal === 'replace' && <FindReplaceModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
