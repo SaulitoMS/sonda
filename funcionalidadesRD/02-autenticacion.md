@@ -25,11 +25,11 @@ Cómo decirle a Sonda quién eres cuando una API lo exige: **Bearer**, **Basic**
 
 Hay tres lugares, de más específico a más general:
 
-| Nivel         | Cómo llegar                                                                                  | Alcance                                           |
-| ------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| **Petición**  | Pestaña **Auth** de la petición                                                              | Solo esa petición                                 |
-| **Carpeta**   | Candado 🔒 de la carpeta en la barra lateral (**"Autenticación de la carpeta"**)             | Todas las peticiones de la carpeta                |
-| **Colección** | Candado 🔒 de la colección en la barra lateral (**"Autenticación de la colección"**)         | Todas las peticiones de la colección              |
+| Nivel         | Cómo llegar                                                                          | Alcance                              |
+| ------------- | ------------------------------------------------------------------------------------ | ------------------------------------ |
+| **Petición**  | Pestaña **Auth** de la petición                                                      | Solo esa petición                    |
+| **Carpeta**   | Candado 🔒 de la carpeta en la barra lateral (**"Autenticación de la carpeta"**)     | Todas las peticiones de la carpeta   |
+| **Colección** | Candado 🔒 de la colección en la barra lateral (**"Autenticación de la colección"**) | Todas las peticiones de la colección |
 
 El candado aparece al pasar el cursor sobre la fila. Si la colección o la carpeta **ya tienen auth configurada**, el candado se ve siempre, en azul.
 
@@ -37,15 +37,15 @@ El candado aparece al pasar el cursor sobre la fila. Si la colección o la carpe
 
 En la pestaña **Auth** de una petición, el selector **Tipo** ofrece:
 
-| Opción                                   | Qué hace                                                      |
-| ---------------------------------------- | ------------------------------------------------------------- |
-| **Heredar de la carpeta / colección**    | Usa la auth definida arriba (es lo que traen las peticiones nuevas) |
-| **Sin autenticación**                    | No envía auth, aunque la carpeta o la colección tengan        |
-| **Bearer Token**                         | Token en el header `Authorization`                            |
-| **Basic Auth**                           | Usuario y contraseña                                          |
-| **Digest Auth**                          | Usuario y contraseña con desafío del servidor                 |
-| **API Key**                              | Clave en un header o en la query                              |
-| **OAuth 2.0**                            | Token pedido automáticamente (client credentials o password)  |
+| Opción                                | Qué hace                                                            |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| **Heredar de la carpeta / colección** | Usa la auth definida arriba (es lo que traen las peticiones nuevas) |
+| **Sin autenticación**                 | No envía auth, aunque la carpeta o la colección tengan              |
+| **Bearer Token**                      | Token en el header `Authorization`                                  |
+| **Basic Auth**                        | Usuario y contraseña                                                |
+| **Digest Auth**                       | Usuario y contraseña con desafío del servidor                       |
+| **API Key**                           | Clave en un header o en la query                                    |
+| **OAuth 2.0**                         | Token pedido automáticamente (client credentials o password)        |
 
 La pestaña **Auth** muestra un **punto azul** cuando la petición tiene un tipo de auth propio (distinto de _Heredar_ y _Sin autenticación_).
 
@@ -137,9 +137,9 @@ Avisos: si falta el nombre o el valor, la clave no se agrega y Sonda lo indica.
 
 Sonda pide el **token** por ti y lo manda como `Authorization: Bearer …`. Soporta dos flujos:
 
-| Flujo                  | Cuándo usarlo                                                        |
-| ---------------------- | -------------------------------------------------------------------- |
-| **Client Credentials** | Comunicación entre servicios: solo necesitas Client ID y Secret      |
+| Flujo                  | Cuándo usarlo                                                            |
+| ---------------------- | ------------------------------------------------------------------------ |
+| **Client Credentials** | Comunicación entre servicios: solo necesitas Client ID y Secret          |
 | **Password**           | El servidor acepta usuario y contraseña de una persona para dar un token |
 
 Configuración:
@@ -148,13 +148,13 @@ Configuración:
 2. En **Grant**, elige **Client Credentials** o **Password**.
 3. Completa:
 
-| Campo            | Para qué                                                    |
-| ---------------- | ----------------------------------------------------------- |
-| **URL del token** | Endpoint que entrega el token (`{{baseUrl}}/oauth/token`)  |
-| **Client ID**    | Identificador de tu aplicación                              |
-| **Client Secret** | Secreto de tu aplicación                                   |
-| **Usuario** y **Contraseña** | Solo con el grant **Password**                  |
-| **Scope**        | Permisos pedidos, separados por espacio (opcional)          |
+| Campo                        | Para qué                                                  |
+| ---------------------------- | --------------------------------------------------------- |
+| **URL del token**            | Endpoint que entrega el token (`{{baseUrl}}/oauth/token`) |
+| **Client ID**                | Identificador de tu aplicación                            |
+| **Client Secret**            | Secreto de tu aplicación                                  |
+| **Usuario** y **Contraseña** | Solo con el grant **Password**                            |
+| **Scope**                    | Permisos pedidos, separados por espacio (opcional)        |
 
 4. Envía la petición.
 
@@ -170,13 +170,13 @@ Cómo funciona:
 
 Errores comunes:
 
-| Mensaje                                                          | Causa                                           |
-| ---------------------------------------------------------------- | ----------------------------------------------- |
-| _OAuth 2.0: falta la URL del token._                             | El campo está vacío                             |
-| _OAuth 2.0: falta el Client ID._                                 | El campo está vacío                             |
-| _OAuth 2.0: falta el usuario._                                   | Con grant Password, no escribiste usuario       |
-| _OAuth 2.0: no se pudo pedir el token (…)_                       | Error de red al llegar a la URL del token       |
-| _OAuth 2.0: el servidor respondió 400 · invalid_client_          | El servidor rechazó las credenciales (se muestra su detalle si lo da) |
+| Mensaje                                                 | Causa                                                                 |
+| ------------------------------------------------------- | --------------------------------------------------------------------- |
+| _OAuth 2.0: falta la URL del token._                    | El campo está vacío                                                   |
+| _OAuth 2.0: falta el Client ID._                        | El campo está vacío                                                   |
+| _OAuth 2.0: falta el usuario._                          | Con grant Password, no escribiste usuario                             |
+| _OAuth 2.0: no se pudo pedir el token (…)_              | Error de red al llegar a la URL del token                             |
+| _OAuth 2.0: el servidor respondió 400 · invalid_client_ | El servidor rechazó las credenciales (se muestra su detalle si lo da) |
 
 ---
 
@@ -247,14 +247,14 @@ Si ya escribiste a mano un header con el mismo nombre que el que genera la auth 
 
 ## Avisos y errores frecuentes
 
-| Mensaje                                                                  | Qué hacer                                                         |
-| ------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| _Auth Bearer: el token está vacío…_                                      | Escribe el token o revisa que la variable tenga valor             |
-| _Auth Basic: usuario y contraseña están vacíos…_                         | Completa los campos                                               |
-| _Auth API Key: falta el nombre, no se agregó._                           | Escribe el nombre del header o parámetro                          |
-| _Variables sin definir: {{token}}…_                                      | Define la variable en el entorno activo                           |
-| _La carpeta y la colección no tienen autenticación: se envía sin auth._  | Configura la auth en la colección o carpeta, o en la petición     |
-| _El token OAuth guardado fue rechazado (401). Se descartó…_              | Vuelve a enviar: se pedirá un token nuevo                         |
+| Mensaje                                                                 | Qué hacer                                                     |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------- |
+| _Auth Bearer: el token está vacío…_                                     | Escribe el token o revisa que la variable tenga valor         |
+| _Auth Basic: usuario y contraseña están vacíos…_                        | Completa los campos                                           |
+| _Auth API Key: falta el nombre, no se agregó._                          | Escribe el nombre del header o parámetro                      |
+| _Variables sin definir: {{token}}…_                                     | Define la variable en el entorno activo                       |
+| _La carpeta y la colección no tienen autenticación: se envía sin auth._ | Configura la auth en la colección o carpeta, o en la petición |
+| _El token OAuth guardado fue rechazado (401). Se descartó…_             | Vuelve a enviar: se pedirá un token nuevo                     |
 
 ---
 

@@ -77,16 +77,16 @@ Cuando la respuesta llega, el panel de respuesta muestra estado, tiempo, TTFB, t
 
 Debajo de la barra hay una fila de pestañas:
 
-| Pestaña      | Para qué sirve                                                           |
-| ------------ | ------------------------------------------------------------------------ |
-| **Params**   | Parámetros de query, sincronizados con la URL                            |
-| **Auth**     | Autenticación de la petición (ver la guía de _Autenticación_)            |
-| **Headers**  | Headers HTTP, con casilla para activar o desactivar cada uno             |
-| **Body**     | Cuerpo de la petición                                                    |
-| **Tests**    | Aserciones sobre la respuesta                                            |
-| **Scripts**  | Scripts previos y posteriores al envío                                   |
-| **Extraer**  | Guardar valores de la respuesta en variables del entorno                 |
-| **Notas**    | Descripción de la petición                                               |
+| Pestaña     | Para qué sirve                                                |
+| ----------- | ------------------------------------------------------------- |
+| **Params**  | Parámetros de query, sincronizados con la URL                 |
+| **Auth**    | Autenticación de la petición (ver la guía de _Autenticación_) |
+| **Headers** | Headers HTTP, con casilla para activar o desactivar cada uno  |
+| **Body**    | Cuerpo de la petición                                         |
+| **Tests**   | Aserciones sobre la respuesta                                 |
+| **Scripts** | Scripts previos y posteriores al envío                        |
+| **Extraer** | Guardar valores de la respuesta en variables del entorno      |
+| **Notas**   | Descripción de la petición                                    |
 
 Algunas pestañas muestran un indicador cuando tienen contenido: un número azul (Params, Headers, Tests, Extraer), un punto azul (Auth, Scripts, Notas) o, en Body, una marca verde o un número rojo cuando la petición viene de un OpenAPI y se valida contra su schema.
 
@@ -136,11 +136,11 @@ Notas:
 
 Abre la pestaña **Body**. Arriba eliges el tipo:
 
-| Tipo                       | Cuándo usarlo                                         |
-| -------------------------- | ----------------------------------------------------- |
-| **Texto / JSON**           | JSON, texto plano, XML, GraphQL                       |
-| **x-www-form-urlencoded**  | Formularios clásicos (`campo=valor&campo2=valor2`)    |
-| **form-data**              | Formularios con archivos (multipart)                  |
+| Tipo                      | Cuándo usarlo                                      |
+| ------------------------- | -------------------------------------------------- |
+| **Texto / JSON**          | JSON, texto plano, XML, GraphQL                    |
+| **x-www-form-urlencoded** | Formularios clásicos (`campo=valor&campo2=valor2`) |
+| **form-data**             | Formularios con archivos (multipart)               |
 
 > Con `GET` y `HEAD` el body no se envía. Si abres la pestaña con uno de esos métodos verás el aviso _"GET no envía body. Cambia el método para usarlo."_
 
@@ -240,13 +240,13 @@ Si el servidor responde con `Content-Type: text/event-stream`, Sonda lo trata co
 
 Cómo termina un stream (Sonda lo indica junto a la respuesta):
 
-| Motivo                  | Mensaje                                                                |
-| ----------------------- | ---------------------------------------------------------------------- |
-| El servidor lo cerró    | _El servidor cerró el stream._                                         |
-| Lo detuviste            | _Detuviste el stream: esto es lo recibido hasta ese momento._          |
-| Tiempo límite           | _Se alcanzó el tiempo límite: esto es lo recibido hasta entonces._     |
-| Límite de tamaño        | _Se cortó al llegar al límite de 20 MB._                               |
-| Error de conexión       | _La conexión se interrumpió._                                          |
+| Motivo               | Mensaje                                                            |
+| -------------------- | ------------------------------------------------------------------ |
+| El servidor lo cerró | _El servidor cerró el stream._                                     |
+| Lo detuviste         | _Detuviste el stream: esto es lo recibido hasta ese momento._      |
+| Tiempo límite        | _Se alcanzó el tiempo límite: esto es lo recibido hasta entonces._ |
+| Límite de tamaño     | _Se cortó al llegar al límite de 20 MB._                           |
+| Error de conexión    | _La conexión se interrumpió._                                      |
 
 > Para detener un stream que no termina, usa el botón **Cancelar**: conservas todo lo recibido hasta ese momento.
 
@@ -269,10 +269,10 @@ Sonda puede repetir una petición cuando falla por causas pasajeras.
 
 **Cómo activarlo:** **Herramientas → Ajustes → Reintentos automáticos** (de 0 a 5; por defecto 0, es decir, desactivado).
 
-| Ajuste               | Rango            | Por defecto |
-| -------------------- | ---------------- | ----------- |
-| Reintentos           | 0 a 5            | 0           |
-| Espera base (ms)     | 100 a 10 000 ms  | 500 ms      |
+| Ajuste           | Rango           | Por defecto |
+| ---------------- | --------------- | ----------- |
+| Reintentos       | 0 a 5           | 0           |
+| Espera base (ms) | 100 a 10 000 ms | 500 ms      |
 
 Cuándo reintenta:
 
@@ -331,39 +331,39 @@ Persistencia: las cookies **con fecha de caducidad** se guardan cifradas con el 
 
 Se abren desde **Herramientas → Ajustes**.
 
-| Ajuste                                     | Qué controla                                                                                              |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| **Tiempo límite (segundos)**               | De 1 a 600 s. Si el servidor no responde a tiempo, la petición falla. Por defecto, 30 s                  |
-| **Seguir redirecciones automáticamente**   | Activado por defecto                                                                                      |
-| **Certificados SSL**                       | _Automático_ (tolera certificados inválidos solo en `localhost`), _Siempre verificar_ o _Ignorar errores_ |
-| **Proxy**                                  | URL `http://` o `https://`. Vacío = sin proxy. Las peticiones a `localhost` no lo usan                    |
-| **Reintentos automáticos / Espera base**   | Ver [Reintentos automáticos](#reintentos-automáticos)                                                     |
+| Ajuste                                   | Qué controla                                                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Tiempo límite (segundos)**             | De 1 a 600 s. Si el servidor no responde a tiempo, la petición falla. Por defecto, 30 s                   |
+| **Seguir redirecciones automáticamente** | Activado por defecto                                                                                      |
+| **Certificados SSL**                     | _Automático_ (tolera certificados inválidos solo en `localhost`), _Siempre verificar_ o _Ignorar errores_ |
+| **Proxy**                                | URL `http://` o `https://`. Vacío = sin proxy. Las peticiones a `localhost` no lo usan                    |
+| **Reintentos automáticos / Espera base** | Ver [Reintentos automáticos](#reintentos-automáticos)                                                     |
 
 ---
 
 ## Errores y avisos frecuentes
 
-| Mensaje                                                      | Qué significa y qué hacer                                                                   |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| _Variables sin definir: {{x}}. Defínelas en el entorno "…"_  | La petición usa variables que no existen. Defínelas en el entorno activo                    |
-| _Selecciona o crea un entorno en la cabecera._               | Usas variables pero no hay entorno activo                                                   |
-| _URL inválida. Incluye http:// o https://_                   | Falta el protocolo o la URL está mal escrita                                                |
-| _Solo se permiten URLs http y https_                         | Otros protocolos (`ftp://`, `file://`, …) no están soportados                               |
-| _JSON inválido: …_                                           | El body parece JSON pero tiene un error de sintaxis (se envía igual si lo dejas así)        |
-| _El campo "…" no tiene archivo seleccionado_                 | Una fila `form-data` de tipo Archivo está vacía                                             |
-| _La respuesta supera los 100 MB y se descartó_               | Sonda limita las respuestas a 100 MB para no agotar la memoria                              |
-| _El body enviado no cumple el schema de la spec (N errores)_ | Aviso de validación; la petición se envía de todos modos                                    |
+| Mensaje                                                      | Qué significa y qué hacer                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| _Variables sin definir: {{x}}. Defínelas en el entorno "…"_  | La petición usa variables que no existen. Defínelas en el entorno activo             |
+| _Selecciona o crea un entorno en la cabecera._               | Usas variables pero no hay entorno activo                                            |
+| _URL inválida. Incluye http:// o https://_                   | Falta el protocolo o la URL está mal escrita                                         |
+| _Solo se permiten URLs http y https_                         | Otros protocolos (`ftp://`, `file://`, …) no están soportados                        |
+| _JSON inválido: …_                                           | El body parece JSON pero tiene un error de sintaxis (se envía igual si lo dejas así) |
+| _El campo "…" no tiene archivo seleccionado_                 | Una fila `form-data` de tipo Archivo está vacía                                      |
+| _La respuesta supera los 100 MB y se descartó_               | Sonda limita las respuestas a 100 MB para no agotar la memoria                       |
+| _El body enviado no cumple el schema de la spec (N errores)_ | Aviso de validación; la petición se envía de todos modos                             |
 
 ---
 
 ## Atajos
 
-| Atajo                      | Acción                                  |
-| -------------------------- | --------------------------------------- |
-| `Enter` en la barra de URL | Enviar la petición                      |
-| `Cmd/Ctrl + Enter`         | Enviar la petición                      |
-| `Cmd/Ctrl + T`             | Abrir una pestaña nueva                 |
-| `Cmd/Ctrl + S`             | Guardar la petición                     |
+| Atajo                      | Acción                  |
+| -------------------------- | ----------------------- |
+| `Enter` en la barra de URL | Enviar la petición      |
+| `Cmd/Ctrl + Enter`         | Enviar la petición      |
+| `Cmd/Ctrl + T`             | Abrir una pestaña nueva |
+| `Cmd/Ctrl + S`             | Guardar la petición     |
 
 ---
 

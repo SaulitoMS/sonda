@@ -20,10 +20,14 @@ export interface Tab {
 interface TabsState {
   tabs: Tab[]
   activeId: string
+  /** Pestañas cerradas, la más reciente primero (para reabrirlas) */
+  closed: RequestSnapshot[]
 
   select: (id: string) => void
   newTab: () => void
   close: (id: string) => void
+  /** Reabre la última pestaña cerrada */
+  reopenClosed: () => void
   /** Abre una petición de una colección: salta a su pestaña si ya está abierta */
   openSaved: (saved: SavedRequest, path: string) => void
   /** Actualiza una pestaña inactiva (ej: llegó la respuesta de una petición en vuelo) */
@@ -35,6 +39,8 @@ interface TabsState {
   /** Vuelve a leer del disco las pestañas de esos archivos, salvo las que tienen cambios sin guardar */
   refreshFiles: (paths: string[]) => Promise<void>
 }
+
+const MAX_CLOSED = 10
 
 const makeTab = (): Tab => ({ id: crypto.randomUUID(), snapshot: null })
 
@@ -48,6 +54,7 @@ export const useTabsStore = create<TabsState>((set, get) => {
   return {
     tabs: [first],
     activeId: first.id,
+    closed: [],
 
     select: (id) => {
       const { tabs, activeId } = get()
@@ -67,18 +74,25 @@ export const useTabsStore = create<TabsState>((set, get) => {
     },
 
     close: (id) => {
-      const { tabs, activeId } = get()
+      const { tabs, activeId, closed } = get()
       const next = nextActiveAfterClose(
         tabs.map((t) => t.id),
         id,
         activeId
       )
 
+      // Se recuerda la pestaña para poder reabrirla; las que están en blanco no
+      const snap = id === activeId ? captureSnapshot() : tabs.find((t) => t.id === id)?.snapshot
+      const remembered =
+        snap && (snap.currentFile || snap.url.trim())
+          ? [{ ...snap, loading: false }, ...closed].slice(0, MAX_CLOSED)
+          : closed
+
       // Era la última: queda una pestaña en blanco
       if (next === null) {
         const tab = makeTab()
         useRequestStore.setState(blankSnapshot())
-        set({ tabs: [tab], activeId: tab.id })
+        set({ tabs: [tab], activeId: tab.id, closed: remembered })
         return
       }
 
@@ -86,14 +100,35 @@ export const useTabsStore = create<TabsState>((set, get) => {
 
       // Se cerró una inactiva
       if (next === activeId) {
-        set({ tabs: remaining })
+        set({ tabs: remaining, closed: remembered })
         return
       }
 
       // Se cerró la activa: se carga la vecina
       const target = remaining.find((t) => t.id === next)
       useRequestStore.setState(target?.snapshot ?? blankSnapshot())
-      set({ tabs: remaining, activeId: next })
+      set({ tabs: remaining, activeId: next, closed: remembered })
+    },
+
+    reopenClosed: () => {
+      const { tabs, activeId, closed } = get()
+      const [snapshot, ...rest] = closed
+      if (!snapshot) return
+
+      const live = useRequestStore.getState()
+      const liveIsBlank = !live.currentFile && !live.url.trim() && !live.body.trim()
+
+      // Si la pestaña activa está en blanco, se reutiliza
+      if (liveIsBlank) {
+        useRequestStore.setState(snapshot)
+        set({ closed: rest })
+        return
+      }
+
+      const frozen = freeze(tabs, activeId)
+      const tab = makeTab()
+      useRequestStore.setState(snapshot)
+      set({ tabs: [...frozen, tab], activeId: tab.id, closed: rest })
     },
 
     openSaved: (saved, path) => {

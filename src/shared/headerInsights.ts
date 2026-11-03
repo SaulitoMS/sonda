@@ -104,7 +104,8 @@ export function analyzeHeaders(
       id: 'retry-after',
       group: 'limits',
       level: 'warn',
-      title: wait !== null ? `El servidor pide esperar ${humanSeconds(wait)}` : 'Retry-After presente',
+      title:
+        wait !== null ? `El servidor pide esperar ${humanSeconds(wait)}` : 'Retry-After presente',
       detail: `Retry-After: ${retryAfter}. Reintenta después de ese tiempo.`
     })
   } else if (status === 429) {

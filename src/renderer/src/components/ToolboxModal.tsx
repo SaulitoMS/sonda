@@ -132,7 +132,12 @@ export function ToolboxModal({ onClose }: { onClose: () => void }): React.JSX.El
         <button
           onClick={() => {
             setInput(result.text)
-            if (!algo && mode !== 'ts') setMode(mode.endsWith('enc') ? mode.replace('enc', 'dec') as Mode : mode.replace('dec', 'enc') as Mode)
+            if (!algo && mode !== 'ts')
+              setMode(
+                mode.endsWith('enc')
+                  ? (mode.replace('enc', 'dec') as Mode)
+                  : (mode.replace('dec', 'enc') as Mode)
+              )
           }}
           disabled={!result.text || result.error}
           className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 disabled:opacity-40"

@@ -68,6 +68,7 @@ function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
   const currentFile = useRequestStore((s) => s.currentFile)
   const newTab = useTabsStore((s) => s.newTab)
+  const reopenClosed = useTabsStore((s) => s.reopenClosed)
   const loadEnvironments = useEnvironmentStore((s) => s.load)
   const monitorActive = useMonitorStore((s) => s.active)
   const monitorFailing = useMonitorStore((s) => (s.runs[0]?.fail ?? 0) > 0)
@@ -135,12 +136,17 @@ function App(): React.JSX.Element {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (!(e.metaKey || e.ctrlKey)) return
+      if (e.key.toLowerCase() === 't' && e.shiftKey) {
+        e.preventDefault()
+        reopenClosed()
+        return
+      }
       if (e.key === 'Enter') send()
       if (e.key === 's') {
         e.preventDefault()
         save()
       }
-      if (e.key === 't') {
+      if (e.key === 't' && !e.shiftKey) {
         e.preventDefault()
         newTab()
       }
@@ -159,7 +165,7 @@ function App(): React.JSX.Element {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [send, save, newTab, toggleSidebar, toggleDirection])
+  }, [send, save, newTab, reopenClosed, toggleSidebar, toggleDirection])
 
   // Herramientas: un solo lugar para el menú de la cabecera y la paleta de comandos
   const tools: ToolItem[] = [
@@ -262,6 +268,13 @@ function App(): React.JSX.Element {
   // Todo lo anterior más las acciones generales, para buscarlas con Cmd/Ctrl + K
   const commands: Command[] = [
     { id: 'new-tab', label: 'Nueva pestaña', hint: `${MOD}T`, run: newTab },
+    {
+      id: 'reopen-tab',
+      label: 'Reabrir pestaña cerrada',
+      hint: `${MOD}⇧T`,
+      keywords: 'deshacer cerrar restaurar',
+      run: reopenClosed
+    },
     { id: 'save', label: 'Guardar', hint: `${MOD}S`, run: () => void save() },
     ...(currentFile
       ? [{ id: 'save-as', label: 'Guardar como…', run: () => setModal('save') }]

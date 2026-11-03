@@ -30,12 +30,12 @@ Todo lo que Sonda te muestra después de enviar una petición: estado, tiempos, 
 
 ## Estados del panel
 
-| Estado                | Qué verás                                                                                          |
-| --------------------- | -------------------------------------------------------------------------------------------------- |
-| **Sin enviar**        | _"Aún no hay respuesta"_, con el recordatorio de `Ctrl/⌘ + Enter` para enviar                      |
-| **Enviando**          | Un indicador giratorio con _"Enviando petición…"_. Si es un stream SSE, el texto llega en vivo     |
-| **Respuesta**         | La barra de resumen, las pestañas y el contenido                                                   |
-| **Error**             | Un recuadro rojo **"Error en la petición"** con el motivo y cuánto tardó en fallar                 |
+| Estado         | Qué verás                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| **Sin enviar** | _"Aún no hay respuesta"_, con el recordatorio de `Ctrl/⌘ + Enter` para enviar                  |
+| **Enviando**   | Un indicador giratorio con _"Enviando petición…"_. Si es un stream SSE, el texto llega en vivo |
+| **Respuesta**  | La barra de resumen, las pestañas y el contenido                                               |
+| **Error**      | Un recuadro rojo **"Error en la petición"** con el motivo y cuánto tardó en fallar             |
 
 El estado **Error** aparece cuando no hubo respuesta del servidor: no se pudo resolver el dominio, se rechazó la conexión, venció el tiempo límite, etc. Una respuesta `404` o `500` **no** es un error de este tipo: es una respuesta normal con su status.
 
@@ -51,22 +51,22 @@ A la derecha de las pestañas aparecen tres datos y el botón de exportar:
 
 Un indicador con el código y el texto (por ejemplo `200 OK`), con color según la familia:
 
-| Códigos   | Color   |
-| --------- | ------- |
-| `2xx`     | Verde   |
-| `3xx`     | Azul    |
-| `4xx`     | Ámbar   |
-| `5xx`     | Rojo    |
+| Códigos | Color |
+| ------- | ----- |
+| `2xx`   | Verde |
+| `3xx`   | Azul  |
+| `4xx`   | Ámbar |
+| `5xx`   | Rojo  |
 
 ### Tiempo
 
 El tiempo total en milisegundos, con un reloj. El color indica qué tan rápida fue:
 
-| Tiempo        | Color   |
-| ------------- | ------- |
+| Tiempo          | Color |
+| --------------- | ----- |
 | Menos de 300 ms | Verde |
-| 300 a 999 ms  | Ámbar   |
-| 1000 ms o más | Rojo    |
+| 300 a 999 ms    | Ámbar |
+| 1000 ms o más   | Rojo  |
 
 Junto al tiempo aparece **(TTFB n)**: el _time to first byte_, es decir, cuánto tardó el servidor en empezar a responder.
 
@@ -99,15 +99,15 @@ Si la respuesta es JSON, se muestra como un **árbol** navegable.
 
 Encima del árbol hay un campo de filtro. Escribe una consulta y se muestra **solo** lo que coincide.
 
-| Consulta                                        | Qué devuelve                                         |
-| ----------------------------------------------- | ---------------------------------------------------- |
-| `data.items[0].name`                            | Una ruta concreta                                    |
-| `items[-1]`                                     | El último elemento de una lista                      |
-| `items[*].id` o `items.*.id`                    | El campo `id` de todos los elementos                 |
-| `..email`                                       | Todos los `email`, a cualquier profundidad           |
-| `items[?(@.price > 10)]`                        | Los elementos que cumplen una condición              |
-| `items[?(@.price > 10 && @.active == true)]`    | Varias condiciones con `&&`                          |
-| `items[?(@.name ~= 'ana' \|\| @.role == "admin")]` | Alternativas con `\|\|`                           |
+| Consulta                                           | Qué devuelve                               |
+| -------------------------------------------------- | ------------------------------------------ |
+| `data.items[0].name`                               | Una ruta concreta                          |
+| `items[-1]`                                        | El último elemento de una lista            |
+| `items[*].id` o `items.*.id`                       | El campo `id` de todos los elementos       |
+| `..email`                                          | Todos los `email`, a cualquier profundidad |
+| `items[?(@.price > 10)]`                           | Los elementos que cumplen una condición    |
+| `items[?(@.price > 10 && @.active == true)]`       | Varias condiciones con `&&`                |
+| `items[?(@.name ~= 'ana' \|\| @.role == "admin")]` | Alternativas con `\|\|`                    |
 
 Operadores en las condiciones: `==`, `!=`, `>`, `>=`, `<`, `<=` y `~=` (**contiene**, sin distinguir mayúsculas). Un `@.campo` solo, sin operador, pide que el campo exista y no sea `null` ni `false`.
 
@@ -191,10 +191,10 @@ Una tabla con todos los headers de la respuesta. La pestaña muestra cuántos ha
 
 Estas dos pestañas **solo aparecen cuando aplican**:
 
-| Pestaña    | Aparece si…                                                              | Indicador                                                              |
-| ---------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| **Schema** | La petición viene de un OpenAPI y la respuesta se validó                 | `✓` válida · `✗ N` errores · `⚠` status no documentado · `–` sin schema |
-| **Tests**  | La petición tiene aserciones                                             | `3/4` en verde si pasan todas, en rojo si falla alguna                 |
+| Pestaña    | Aparece si…                                              | Indicador                                                               |
+| ---------- | -------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Schema** | La petición viene de un OpenAPI y la respuesta se validó | `✓` válida · `✗ N` errores · `⚠` status no documentado · `–` sin schema |
+| **Tests**  | La petición tiene aserciones                             | `3/4` en verde si pasan todas, en rojo si falla alguna                  |
 
 Cómo se configuran y qué comprueban está en las guías de _Validación contra el schema_ y _Tests, aserciones y extracción_.
 
@@ -214,11 +214,11 @@ Qué muestra:
 - Si cambió el status: `Status: 200 → 500`.
 - Una línea por cambio, con su ruta:
 
-| Símbolo | Significado       | Ejemplo                        |
-| ------- | ----------------- | ------------------------------ |
-| `+`     | Campo agregado    | `+ user.phone "555-0100"`      |
-| `−`     | Campo eliminado   | `− user.nickname` (tachado)    |
-| `~`     | Valor modificado  | `~ user.age 29 → 30`           |
+| Símbolo | Significado      | Ejemplo                     |
+| ------- | ---------------- | --------------------------- |
+| `+`     | Campo agregado   | `+ user.phone "555-0100"`   |
+| `−`     | Campo eliminado  | `− user.nickname` (tachado) |
+| `~`     | Valor modificado | `~ user.age 29 → 30`        |
 
 La pestaña muestra una marca: `✓` si no hay cambios o el **número** de cambios.
 
@@ -239,19 +239,19 @@ Sonda revisa **cada respuesta exitosa** en busca de problemas evidentes de segur
 
 Cada hallazgo tiene una etiqueta de severidad (**Alto**, **Medio** o **Bajo**), un título y una explicación.
 
-| Qué revisa                                                              | Severidad            |
-| ----------------------------------------------------------------------- | -------------------- |
-| La petición va por **HTTP sin cifrar**                                  | Alto                 |
-| CORS con `*` junto con **credenciales**                                 | Alto                 |
-| El body **filtra un error interno** (stack trace de Node.js, Java, Python o .NET, o un error de SQL) | Alto |
-| El JSON incluye un campo tipo **contraseña, token o secreto** con valor | Alto                 |
-| **Cookies** sin `HttpOnly` o sin `Secure`                               | Medio si parece de sesión o sensible; Bajo si no |
-| Falta `Strict-Transport-Security` (HSTS)                                | Bajo                 |
-| CORS abierto a cualquier origen                                         | Bajo                 |
-| Expone la tecnología (`X-Powered-By`) o la versión del servidor (`Server`) | Bajo              |
-| Falta `X-Content-Type-Options: nosniff`                                 | Bajo                 |
-| Página HTML sin `Content-Security-Policy` ni `X-Frame-Options`          | Bajo                 |
-| **Cookies** sin `SameSite`                                              | Bajo                 |
+| Qué revisa                                                                                           | Severidad                                        |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| La petición va por **HTTP sin cifrar**                                                               | Alto                                             |
+| CORS con `*` junto con **credenciales**                                                              | Alto                                             |
+| El body **filtra un error interno** (stack trace de Node.js, Java, Python o .NET, o un error de SQL) | Alto                                             |
+| El JSON incluye un campo tipo **contraseña, token o secreto** con valor                              | Alto                                             |
+| **Cookies** sin `HttpOnly` o sin `Secure`                                                            | Medio si parece de sesión o sensible; Bajo si no |
+| Falta `Strict-Transport-Security` (HSTS)                                                             | Bajo                                             |
+| CORS abierto a cualquier origen                                                                      | Bajo                                             |
+| Expone la tecnología (`X-Powered-By`) o la versión del servidor (`Server`)                           | Bajo                                             |
+| Falta `X-Content-Type-Options: nosniff`                                                              | Bajo                                             |
+| Página HTML sin `Content-Security-Policy` ni `X-Frame-Options`                                       | Bajo                                             |
+| **Cookies** sin `SameSite`                                                                           | Bajo                                             |
 
 Si no hay nada que reportar, verás _"No se detectaron problemas de seguridad evidentes en esta respuesta"_.
 
@@ -277,11 +277,11 @@ Encima de las pestañas pueden aparecer franjas de información:
 
 El botón **Exportar** (icono de descarga) abre un menú:
 
-| Opción                              | Qué hace                                                                                         |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Body (.ext)**                     | Guarda el body con la extensión adecuada al tipo de contenido (`.json`, `.xml`, `.html`, `.txt`, o la del binario) |
-| **Respuesta completa (.json)**      | Guarda un JSON con la petición, el status, los headers, los tiempos y el body. El archivo termina en `-completa.json` |
-| **Copiar como tipos TypeScript**    | Copia al portapapeles interfaces TypeScript generadas a partir del JSON. Solo aparece si el body es un JSON objeto o lista |
+| Opción                           | Qué hace                                                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Body (.ext)**                  | Guarda el body con la extensión adecuada al tipo de contenido (`.json`, `.xml`, `.html`, `.txt`, o la del binario)         |
+| **Respuesta completa (.json)**   | Guarda un JSON con la petición, el status, los headers, los tiempos y el body. El archivo termina en `-completa.json`      |
+| **Copiar como tipos TypeScript** | Copia al portapapeles interfaces TypeScript generadas a partir del JSON. Solo aparece si el body es un JSON objeto o lista |
 
 Sonda propone un nombre de archivo a partir del método y la ruta de la URL.
 
@@ -291,26 +291,26 @@ Sonda propone un nombre de archivo a partir del método y la ruta de la URL.
 
 ## Límites de tamaño
 
-| Caso                                  | Límite    | Qué pasa al superarlo                                                              |
-| ------------------------------------- | --------- | ---------------------------------------------------------------------------------- |
-| Respuesta completa                    | 100 MB    | Se descarta con el error _"La respuesta supera los 100 MB y se descartó…"_         |
-| Respuesta binaria (para ver o bajar)  | 20 MB     | Se muestra el tipo y el tamaño, pero no se puede visualizar ni descargar           |
-| Stream SSE                            | 20 MB     | Se corta y se indica _"Se cortó al llegar al límite de 20 MB."_                    |
-| Comparación en **Cambios**            | 30 000 caracteres (lo que guarda el historial) | Se avisa que no se puede comparar         |
+| Caso                                 | Límite                                         | Qué pasa al superarlo                                                      |
+| ------------------------------------ | ---------------------------------------------- | -------------------------------------------------------------------------- |
+| Respuesta completa                   | 100 MB                                         | Se descarta con el error _"La respuesta supera los 100 MB y se descartó…"_ |
+| Respuesta binaria (para ver o bajar) | 20 MB                                          | Se muestra el tipo y el tamaño, pero no se puede visualizar ni descargar   |
+| Stream SSE                           | 20 MB                                          | Se corta y se indica _"Se cortó al llegar al límite de 20 MB."_            |
+| Comparación en **Cambios**           | 30 000 caracteres (lo que guarda el historial) | Se avisa que no se puede comparar                                          |
 
 ---
 
 ## Qué hacer cuando…
 
-| Situación                                                          | Qué hacer                                                                                  |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| Quiero ver solo un campo de un JSON enorme                         | Usa el **filtro** del Body (`data.items[*].id`)                                            |
-| Quiero la ruta de un campo para una aserción                       | Haz clic en su clave en el árbol y pega la ruta                                            |
-| Quiero saber si la API cambió desde ayer                           | Revisa la pestaña **Cambios**                                                              |
-| La respuesta tarda mucho                                           | Pasa el cursor sobre el tiempo: ¿es DNS, conexión o el servidor?                           |
-| Quiero llevarme la respuesta                                       | **Exportar → Body** o **Respuesta completa**                                               |
-| Necesito los tipos TypeScript de la respuesta                      | **Exportar → Copiar como tipos TypeScript**                                                |
-| La respuesta es HTML y quiero ver cómo se ve                       | Pulsa **Vista previa**                                                                     |
+| Situación                                     | Qué hacer                                                        |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| Quiero ver solo un campo de un JSON enorme    | Usa el **filtro** del Body (`data.items[*].id`)                  |
+| Quiero la ruta de un campo para una aserción  | Haz clic en su clave en el árbol y pega la ruta                  |
+| Quiero saber si la API cambió desde ayer      | Revisa la pestaña **Cambios**                                    |
+| La respuesta tarda mucho                      | Pasa el cursor sobre el tiempo: ¿es DNS, conexión o el servidor? |
+| Quiero llevarme la respuesta                  | **Exportar → Body** o **Respuesta completa**                     |
+| Necesito los tipos TypeScript de la respuesta | **Exportar → Copiar como tipos TypeScript**                      |
+| La respuesta es HTML y quiero ver cómo se ve  | Pulsa **Vista previa**                                           |
 
 ---
 

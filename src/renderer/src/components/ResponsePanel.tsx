@@ -749,12 +749,14 @@ export function ResponsePanel(): React.JSX.Element {
               {securityFindings.length === 0 ? '✓' : securityFindings.length}
             </span>
           </button>
-         <button className={tabClass('limits')} onClick={() => setTab('limits')}>
+          <button className={tabClass('limits')} onClick={() => setTab('limits')}>
             Límites
             {limitInsights.length > 0 && (
               <span
                 className={`ml-1 ${
-                  limitInsights.some((i) => i.level === 'warn') ? 'text-amber-400' : 'text-emerald-400'
+                  limitInsights.some((i) => i.level === 'warn')
+                    ? 'text-amber-400'
+                    : 'text-emerald-400'
                 }`}
               >
                 {limitInsights.some((i) => i.level === 'warn') ? '!' : '✓'}
@@ -1003,7 +1005,7 @@ export function ResponsePanel(): React.JSX.Element {
         {current === 'changes' && <ChangesReport diff={diff} />}
 
         {current === 'security' && <SecurityReport findings={securityFindings} />}
-        
+
         {current === 'limits' && <LimitsReport insights={limitInsights} />}
       </div>
     </div>
