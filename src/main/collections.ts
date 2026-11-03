@@ -51,10 +51,10 @@ interface CollectionMeta {
   order?: string[]
 }
 
-const getRoot = (): string => join(app.getPath('documents'), 'Sonda')
+export const getRoot = (): string => join(app.getPath('documents'), 'Sonda')
 
 /** Resuelve una ruta dentro del workspace y bloquea intentos de salirse (../) */
-function safePath(...segments: string[]): string {
+export function safePath(...segments: string[]): string {
   const root = getRoot()
   const target = resolve(root, ...segments)
   if (target === root || !target.startsWith(root + sep)) throw new Error('Ruta no permitida')
@@ -69,7 +69,7 @@ function safeRequestPath(relPath: string): string {
 
 const toRel = (file: string): string => relative(getRoot(), file).split(sep).join('/')
 
-const slug = (text: string): string =>
+export const slug = (text: string): string =>
   text
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -84,7 +84,7 @@ const exists = (p: string): Promise<boolean> =>
     () => false
   )
 
-async function uniquePath(dir: string, base: string, ext: string): Promise<string> {
+export async function uniquePath(dir: string, base: string, ext: string): Promise<string> {
   let candidate = join(dir, base + ext)
   let i = 2
   while (await exists(candidate)) {

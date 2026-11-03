@@ -94,3 +94,118 @@ export function prettyIfJson(text: string): { text: string; json: boolean } {
     return { text, json: false }
   }
 }
+
+/* ---------- Conexiones guardadas en las colecciones ---------- */
+
+/** Las conexiones guardadas son archivos `nombre.ws.json` dentro de la carpeta de la colección */
+export const WS_FILE_EXT = '.ws.json'
+
+export interface SavedWsMessage {
+  name: string
+  text: string
+  /** true = `text` son bytes en hexadecimal */
+  binary: boolean
+}
+
+/**
+ * Una conexión WebSocket guardada. No tiene campo `method`, así que el resto de la app
+ * (lista de peticiones, sincronizar con la spec, exportar a Postman) la ignora.
+ */
+export interface SavedWebSocket {
+  type: 'websocket'
+  name: string
+  url: string
+  /** "Nombre: valor", uno por línea, tal como se escribe en la ventana (con {{variables}}) */
+  headers: string
+  protocols: string
+  /** Mensaje que se envía apenas abre la conexión */
+  onOpen: string
+  autoReconnect: boolean
+  keepAlive: boolean
+  keepAliveSecs: number
+  keepAliveMsg: string
+  messages: SavedWsMessage[]
+}
+
+export interface SavedWebSocketItem {
+  /** Ruta relativa al workspace: "coleccion/archivo.ws.json" */
+  path: string
+  collectionId: string
+  collectionName: string
+  name: string
+  url: string
+}
+
+export type SaveWebSocketResult = { ok: true; path: string } | { ok: false; error: string }
+
+const MAX_SAVED_MESSAGES = 100
+
+/** Valida lo que viene de disco o de la ventana: lo inválido vuelve a su valor por defecto */
+export function normalizeSavedWebSocket(raw: unknown): SavedWebSocket {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback)
+  const secs =
+    typeof r.keepAliveSecs === 'number' && Number.isFinite(r.keepAliveSecs)
+      ? Math.min(3600, Math.max(1, Math.round(r.keepAliveSecs)))
+      : 30
+
+  const messages = Array.isArray(r.messages)
+    ? r.messages.flatMap((m: unknown): SavedWsMessage[] => {
+        if (!m || typeof m !== 'object') return []
+        const { name, text, binary } = m as Record<string, unknown>
+        if (typeof text !== 'string' || !text) return []
+        return [{ name: str(name) || text.slice(0, 28), text, binary: binary === true }]
+      })
+    : []
+
+  return {
+    type: 'websocket',
+    name: str(r.name).trim() || 'Sin nombre',
+    url: str(r.url),
+    headers: str(r.headers),
+    protocols: str(r.protocols),
+    onOpen: str(r.onOpen),
+    autoReconnect: r.autoReconnect === true,
+    keepAlive: r.keepAlive === true,
+    keepAliveSecs: secs,
+    keepAliveMsg: str(r.keepAliveMsg, '{"type":"ping"}'),
+    messages: messages.slice(0, MAX_SAVED_MESSAGES)
+  }
+}
+
+const SECRET_HEADER =
+  /^(authorization|proxy-authorization|cookie|x-api-key|api-key|x-auth-token|x-access-token|x-csrf-token|x-xsrf-token)$/i
+const SECRET_QUERY =
+  /[?&](access_token|refresh_token|id_token|token|api[-_]?key|apikey|secret|client_secret|password|pwd|signature)=([^&#]*)/gi
+const SECRET_JSON_FIELD =
+  /"(access_token|refresh_token|id_token|token|api[-_]?key|apikey|secret|client_secret|password|passwd|pwd|authorization)"\s*:\s*"([^"]+)"/gi
+
+/**
+ * Credenciales escritas a mano (y no como {{variable}}) en los headers, la URL o los mensajes.
+ * Un archivo de colección se versiona con Git: ahí solo deben ir {{variables}}.
+ */
+export function findLiteralSecrets(
+  conn: Pick<SavedWebSocket, 'url' | 'headers' | 'onOpen' | 'keepAliveMsg' | 'messages'>
+): string[] {
+  const found = new Set<string>()
+
+  for (const line of conn.headers.split(/\r?\n/)) {
+    const i = line.indexOf(':')
+    if (i <= 0) continue
+    const name = line.slice(0, i).trim()
+    const value = line.slice(i + 1).trim()
+    if (SECRET_HEADER.test(name) && value && !value.includes('{{')) found.add(`header ${name}`)
+  }
+
+  for (const m of conn.url.matchAll(SECRET_QUERY)) {
+    if (m[2] && !m[2].includes('{{')) found.add(`URL ?${m[1]}`)
+  }
+
+  const texts = [conn.onOpen, conn.keepAliveMsg, ...conn.messages.filter((m) => !m.binary).map((m) => m.text)]
+  for (const text of texts) {
+    for (const m of text.matchAll(SECRET_JSON_FIELD)) {
+      if (!m[2].includes('{{')) found.add(`mensaje "${m[1]}"`)
+    }
+  }
+  return [...found]
+}

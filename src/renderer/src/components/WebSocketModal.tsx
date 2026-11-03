@@ -7,10 +7,14 @@ import {
   parseProtocols,
   prettyIfJson,
   toWsUrl,
+  type SavedWebSocket,
+  type SavedWebSocketItem,
+  type SavedWsMessage,
   type WsConnectInput,
   type WsEvent
 } from '../../../shared/websocket'
 import { downloadText } from '../lib/download'
+import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Icon } from './Icon'
 import { Modal } from './Modal'
@@ -60,6 +64,20 @@ let lastForm = {
 
 /** Mensajes enviados antes, del más viejo al más nuevo */
 let messageHistory: string[] = []
+
+
+/** La conexión guardada que está abierta en el formulario (guardar la sobrescribe) */
+interface OpenSaved {
+  path: string
+  collectionId: string
+  name: string
+}
+
+/** Lo abierto y sus mensajes guardados, para no perderlos al reabrir la ventana */
+let lastSaved: { open: OpenSaved | null; messages: SavedWsMessage[] } = {
+  open: null,
+  messages: []
+}
 
 const field =
   'rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500 disabled:opacity-50'
@@ -169,6 +187,28 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
   const [binaryMode, setBinaryMode] = useState(false)
   /** En modo binario: bytes del borrador (null si no es hex válido o aún tiene {{variables}}) */
   const draftBytes = binaryMode && !draft.includes('{{') ? hexToBytes(draft) : null
+
+
+  const collections = useCollectionsStore((s) => s.collections)
+  const [saved, setSaved] = useState<SavedWebSocketItem[]>([])
+  const [openSaved, setOpenSaved] = useState<OpenSaved | null>(lastSaved.open)
+  const [messages, setMessages] = useState<SavedWsMessage[]>(lastSaved.messages)
+  const [savePanel, setSavePanel] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [saveCollection, setSaveCollection] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const refreshSaved = useCallback((): void => {
+    window.api.listSavedWebSockets().then(setSaved, () => setSaved([]))
+  }, [])
+
+  useEffect(() => {
+    refreshSaved()
+  }, [refreshSaved])
+
+  useEffect(() => {
+    lastSaved = { open: openSaved, messages }
+  }, [openSaved, messages])
 
   /** Id de la conexión vigente: los eventos de cualquier otra se descartan */
   const idRef = useRef<string | null>(null)
@@ -477,6 +517,109 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
     }
   }, [draft])
 
+    const openSavedConnection = async (path: string): Promise<void> => {
+    setConfirmDelete(false)
+    setSavePanel(false)
+    if (!path) {
+      setOpenSaved(null)
+      return
+    }
+    setError('')
+    try {
+      const c = await window.api.readSavedWebSocket(path)
+      setUrl(c.url)
+      setHeadersText(c.headers)
+      setProtocolsText(c.protocols)
+      setOnOpenText(c.onOpen)
+      setAutoReconnect(c.autoReconnect)
+      setKeepAlive(c.keepAlive)
+      setKeepAliveSecs(String(c.keepAliveSecs))
+      setKeepAliveMsg(c.keepAliveMsg)
+      setMessages(c.messages)
+      setOpenSaved({ path, collectionId: path.split('/')[0], name: c.name })
+    } catch {
+      setError('No se pudo abrir la conexión guardada (¿se borró el archivo?)')
+      refreshSaved()
+    }
+  }
+
+  const startSave = (): void => {
+    setError('')
+    setConfirmDelete(false)
+    setSaveName(openSaved?.name ?? '')
+    setSaveCollection(
+      openSaved && collections.some((c) => c.id === openSaved.collectionId)
+        ? openSaved.collectionId
+        : (collections[0]?.id ?? '')
+    )
+    setSavePanel(true)
+  }
+
+  const saveConnection = async (): Promise<void> => {
+    const name = saveName.trim()
+    if (!name) {
+      setError('Ponle un nombre a la conexión')
+      return
+    }
+    if (!saveCollection) {
+      setError('Elige la colección donde guardarla')
+      return
+    }
+    setError('')
+    const data: SavedWebSocket = {
+      type: 'websocket',
+      name,
+      url,
+      headers: headersText,
+      protocols: protocolsText,
+      onOpen: onOpenText,
+      autoReconnect,
+      keepAlive,
+      keepAliveSecs: Math.max(1, Number(keepAliveSecs) || 30),
+      keepAliveMsg,
+      messages
+    }
+    // Mismo nombre y misma colección que la abierta: se actualiza ese archivo; si no, se crea otro
+    const overwrite =
+      openSaved && openSaved.collectionId === saveCollection && openSaved.name === name
+        ? openSaved.path
+        : undefined
+    const result = await window.api.saveWebSocket(saveCollection, data, overwrite)
+    if (!result.ok) {
+      setError(result.error)
+      return
+    }
+    setOpenSaved({ path: result.path, collectionId: saveCollection, name })
+    setSavePanel(false)
+    refreshSaved()
+    const where = collections.find((c) => c.id === saveCollection)?.name ?? saveCollection
+    add('info', `Conexión guardada en la colección «${where}»`)
+  }
+
+  const deleteSavedConnection = async (): Promise<void> => {
+    if (!openSaved) return
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    await window.api.deleteSavedWebSocket(openSaved.path)
+    setConfirmDelete(false)
+    setOpenSaved(null)
+    refreshSaved()
+  }
+
+  const addSavedMessage = (): void => {
+    if (!draft.trim() || messages.some((m) => m.text === draft && m.binary === binaryMode)) return
+    const name = draft.replace(/\s+/g, ' ').trim().slice(0, 28)
+    setMessages((l) => [...l, { name, text: draft, binary: binaryMode }].slice(-100))
+  }
+
+  const loadSavedMessage = (m: SavedWsMessage): void => {
+    historyIdx.current = -1
+    setBinaryMode(m.binary)
+    setDraft(m.text)
+  }
+
   const live = status === 'connecting' || status === 'open'
 
   return (
@@ -488,6 +631,113 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         <code className="text-zinc-400">https://</code> (se convierten a ws y wss). Al cerrar esta
         ventana se cierra la conexión.
       </p>
+
+
+      <div className="mb-3 rounded-md border border-zinc-800 bg-zinc-900/60 p-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-medium text-zinc-400">Guardadas</span>
+          <select
+            value={openSaved?.path ?? ''}
+            disabled={live}
+            onChange={(e) => void openSavedConnection(e.target.value)}
+            className={`${field} min-w-0 flex-1 py-1`}
+          >
+            <option value="">
+              {saved.length === 0
+                ? 'Aún no hay conexiones guardadas'
+                : 'Abrir una conexión guardada…'}
+            </option>
+            {[...new Set(saved.map((s) => s.collectionId))].map((cid) => (
+              <optgroup
+                key={cid}
+                label={saved.find((s) => s.collectionId === cid)?.collectionName ?? cid}
+              >
+                {saved
+                  .filter((s) => s.collectionId === cid)
+                  .map((s) => (
+                    <option key={s.path} value={s.path}>
+                      {s.name}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+          <button
+            onClick={startSave}
+            className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700"
+          >
+            <Icon name="save" size={12} />
+            Guardar…
+          </button>
+          {openSaved && (
+            <button
+              onClick={() => void deleteSavedConnection()}
+              className={`rounded px-2 py-1 ${
+                confirmDelete
+                  ? 'bg-red-600 text-white hover:bg-red-500'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
+            >
+              {confirmDelete ? '¿Seguro? Borra el archivo' : 'Eliminar'}
+            </button>
+          )}
+        </div>
+
+        {savePanel &&
+          (collections.length === 0 ? (
+            <p className="mt-2 text-xs text-amber-300">
+              Crea o importa una colección primero: la conexión se guarda dentro de una.
+            </p>
+          ) : (
+            <div className="mt-2 flex flex-wrap items-end gap-2 text-xs">
+              <label className="min-w-0 flex-1">
+                <span className={label}>Nombre</span>
+                <input
+                  className={`${field} w-full py-1`}
+                  value={saveName}
+                  placeholder="Chat en vivo"
+                  autoFocus
+                  onChange={(e) => setSaveName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void saveConnection()
+                  }}
+                />
+              </label>
+              <label>
+                <span className={label}>Colección</span>
+                <select
+                  className={`${field} py-1`}
+                  value={saveCollection}
+                  onChange={(e) => setSaveCollection(e.target.value)}
+                >
+                  {collections.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                onClick={() => void saveConnection()}
+                className="rounded bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-500"
+              >
+                Guardar
+              </button>
+              <button
+                onClick={() => setSavePanel(false)}
+                className="rounded bg-zinc-800 px-3 py-1.5 text-zinc-300 hover:bg-zinc-700"
+              >
+                Cancelar
+              </button>
+            </div>
+          ))}
+
+        <p className="mt-1.5 text-[10px] text-zinc-600">
+          Se guarda como un archivo <code>.ws.json</code> dentro de la colección. Usa{' '}
+          <code>{'{{variables}}'}</code> en vez de tokens: las credenciales escritas a mano no se
+          guardan.
+        </p>
+      </div>
 
       <div className="flex items-end gap-2">
         <label className="min-w-0 flex-1">
@@ -723,6 +973,41 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         >
           <Icon name="send" size={13} />
           Enviar
+        </button>
+      </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+        <span className="text-zinc-500" title="Se guardan junto con la conexión">
+          Mensajes guardados
+        </span>
+        {messages.map((m, i) => (
+          <span
+            key={`${i}-${m.name}`}
+            className="flex items-center overflow-hidden rounded border border-zinc-700 bg-zinc-800"
+          >
+            <button
+              onClick={() => loadSavedMessage(m)}
+              title={m.text}
+              className="max-w-[160px] truncate px-1.5 py-0.5 text-zinc-300 hover:bg-zinc-700"
+            >
+              {m.binary && <span className="mr-1 text-amber-300">bin</span>}
+              {m.name}
+            </button>
+            <button
+              onClick={() => setMessages((l) => l.filter((_, j) => j !== i))}
+              title="Quitar"
+              className="px-1 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-200"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <button
+          onClick={addSavedMessage}
+          disabled={!draft.trim()}
+          className="rounded border border-dashed border-zinc-700 px-1.5 py-0.5 text-zinc-400 hover:text-zinc-200 disabled:opacity-40"
+        >
+          + Guardar el del editor
         </button>
       </div>
 

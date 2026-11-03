@@ -1,4 +1,11 @@
-import type { WsConnectInput, WsConnectResult, WsEvent } from './websocket'
+import type {
+  SavedWebSocket,
+  SavedWebSocketItem,
+  SaveWebSocketResult,
+  WsConnectInput,
+  WsConnectResult,
+  WsEvent
+} from './websocket'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
@@ -351,6 +358,16 @@ export interface SondaApi {
   wsClose: (id: string) => Promise<void>
   /** Escucha los eventos de la conexión. Devuelve la función para dejar de escuchar */
   onWsEvent: (listener: (event: WsEvent) => void) => () => void
+  /** Conexiones WebSocket guardadas en las colecciones (archivos *.ws.json) */
+  listSavedWebSockets: () => Promise<SavedWebSocketItem[]>
+  readSavedWebSocket: (path: string) => Promise<SavedWebSocket>
+  /** Guarda una conexión en una colección. Con `path` sobrescribe esa; sin él crea un archivo nuevo */
+  saveWebSocket: (
+    collectionId: string,
+    data: SavedWebSocket,
+    path?: string
+  ) => Promise<SaveWebSocketResult>
+  deleteSavedWebSocket: (path: string) => Promise<void>
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'

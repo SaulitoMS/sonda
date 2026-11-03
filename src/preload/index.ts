@@ -55,6 +55,11 @@ const api: SondaApi = {
   wsConnect: (input) => ipcRenderer.invoke('ws:connect', input),
   wsSend: (id, data, binary) => ipcRenderer.invoke('ws:send', id, data, binary),
   wsClose: (id) => ipcRenderer.invoke('ws:close', id),
+  listSavedWebSockets: () => ipcRenderer.invoke('wsSaved:list'),
+  readSavedWebSocket: (path) => ipcRenderer.invoke('wsSaved:read', path),
+  saveWebSocket: (collectionId, data, path) =>
+    ipcRenderer.invoke('wsSaved:save', collectionId, data, path),
+  deleteSavedWebSocket: (path) => ipcRenderer.invoke('wsSaved:delete', path),
   onWsEvent: (listener) => {
     const handler = (_event: IpcRendererEvent, msg: WsEvent): void => listener(msg)
     ipcRenderer.on('ws:event', handler)
