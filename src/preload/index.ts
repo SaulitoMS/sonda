@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { SondaApi, StreamChunk } from '../shared/types'
+import type { WsEvent } from '../shared/websocket'
 import { electronAPI } from '@electron-toolkit/preload'
 
 
@@ -50,7 +51,17 @@ const api: SondaApi = {
   startMock: (collectionId, port) => ipcRenderer.invoke('mock:start', collectionId, port),
   stopMock: () => ipcRenderer.invoke('mock:stop'),
   getMockStatus: () => ipcRenderer.invoke('mock:status'),
-  runScript: (input) => ipcRenderer.invoke('script:run', input)
+  runScript: (input) => ipcRenderer.invoke('script:run', input),
+  wsConnect: (input) => ipcRenderer.invoke('ws:connect', input),
+  wsSend: (id, data) => ipcRenderer.invoke('ws:send', id, data),
+  wsClose: (id) => ipcRenderer.invoke('ws:close', id),
+  onWsEvent: (listener) => {
+    const handler = (_event: IpcRendererEvent, msg: WsEvent): void => listener(msg)
+    ipcRenderer.on('ws:event', handler)
+    return () => {
+      ipcRenderer.removeListener('ws:event', handler)
+    }
+  }
 }
 
 if (process.contextIsolated) {

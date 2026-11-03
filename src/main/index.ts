@@ -8,6 +8,7 @@ import { registerEnvironmentHandlers } from './environments'
 import { registerCookieHandlers, loadCookies, persistCookies } from './cookieJar'
 import { registerSettingsHandlers } from './settings'
 import { registerMockHandlers } from './mockServer'
+import { registerWebSocketHandlers } from './websocket'
 import { runScript } from './scriptEngine'
 import type { ScriptInput } from '../shared/types'
 
@@ -16,6 +17,7 @@ registerCollectionHandlers()
 registerCookieHandlers()
 registerSettingsHandlers()
 registerMockHandlers()
+registerWebSocketHandlers()
 
 ipcMain.handle('script:run', (_e, input: ScriptInput) => runScript(input))
 

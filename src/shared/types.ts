@@ -1,3 +1,5 @@
+import type { WsConnectInput, WsConnectResult, WsEvent } from './websocket'
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
 export interface SendRequestInput {
@@ -342,6 +344,13 @@ export interface SondaApi {
   getMockStatus: () => Promise<MockStatus>
   /** Ejecuta un script de usuario en un contexto aislado (máximo 2 s) */
   runScript: (input: ScriptInput) => Promise<ScriptOutput>
+  /** Abre una conexión WebSocket (solo una a la vez). Lo que llega se recibe con onWsEvent */
+  wsConnect: (input: WsConnectInput) => Promise<WsConnectResult>
+  /** Envía un mensaje de texto. Devuelve el error, o null si salió bien */
+  wsSend: (id: string, data: string) => Promise<string | null>
+  wsClose: (id: string) => Promise<void>
+  /** Escucha los eventos de la conexión. Devuelve la función para dejar de escuchar */
+  onWsEvent: (listener: (event: WsEvent) => void) => () => void
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'

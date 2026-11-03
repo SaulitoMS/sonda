@@ -33,6 +33,7 @@ import { toggleTheme } from './lib/theme'
 import { useMediaQuery } from './lib/useMediaQuery'
 import { DEFAULT_LAYOUT } from '../../shared/layout'
 import { CoverageModal } from './components/CoverageModal'
+import { WebSocketModal } from './components/WebSocketModal'
 
 type ModalType =
   | 'import'
@@ -50,6 +51,8 @@ type ModalType =
   | 'snapshot'
   | 'monitor'
   | 'mock'
+  | 'websocket'
+  | 'coverage'
   | 'coverage'
   | null
 
@@ -204,6 +207,13 @@ function App(): React.JSX.Element {
       label: 'Mock',
       description: 'Servidor local con respuestas de ejemplo de una colección',
       onSelect: () => setModal('mock')
+    },
+    {
+      id: 'websocket',
+      icon: 'zap',
+      label: 'WebSocket',
+      description: 'Conectarse, enviar mensajes y ver lo que llega en tiempo real',
+      onSelect: () => setModal('websocket')
     },
     {
       id: 'curl',
@@ -458,6 +468,7 @@ function App(): React.JSX.Element {
       {modal === 'snapshot' && <SnapshotModal onClose={() => setModal(null)} />}
       {modal === 'monitor' && <MonitorModal onClose={() => setModal(null)} />}
       {modal === 'mock' && <MockModal onClose={() => setModal(null)} />}
+      {modal === 'websocket' && <WebSocketModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
