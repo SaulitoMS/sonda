@@ -5,14 +5,18 @@ import {
   parseProtocols,
   prettyIfJson,
   toWsUrl,
+  type WsConnectInput,
   type WsEvent
 } from '../../../shared/websocket'
+import { downloadText } from '../lib/download'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Icon } from './Icon'
 import { Modal } from './Modal'
 
 type Status = 'idle' | 'connecting' | 'open' | 'closed'
 type Dir = 'in' | 'out' | 'info' | 'error'
+type DirFilter = 'all' | 'in' | 'out'
+type ConnParams = Omit<WsConnectInput, 'id'>
 
 interface LogItem {
   n: number
@@ -22,13 +26,38 @@ interface LogItem {
   binary?: boolean
   size?: number
   truncated?: boolean
+  /** Lo envió Sonda solo (mensaje al conectar o keep-alive) */
+  auto?: boolean
 }
 
 /** Se muestran como máximo los últimos mensajes; más allá se descartan los más viejos */
 const MAX_LOG = 1000
+/** Mensajes enviados que se recuerdan para volver a usarlos con Ctrl/⌘ + ↑ */
+const MAX_HISTORY = 50
+/** Reconexión automática: espera 1 s, 2 s, 4 s… hasta un tope */
+const RECONNECT_BASE_MS = 1000
+const RECONNECT_MAX_MS = 30_000
+
+const DIR_FILTER_LABEL: Record<DirFilter, string> = {
+  all: 'Todos',
+  in: '↓ Recibidos',
+  out: '↑ Enviados'
+}
 
 /** Lo último que se escribió, para no volver a teclearlo al reabrir la ventana */
-let lastForm = { url: '', headers: '', protocols: '' }
+let lastForm = {
+  url: '',
+  headers: '',
+  protocols: '',
+  onOpen: '',
+  autoReconnect: false,
+  keepAlive: false,
+  keepAliveSecs: '30',
+  keepAliveMsg: '{"type":"ping"}'
+}
+
+/** Mensajes enviados antes, del más viejo al más nuevo */
+let messageHistory: string[] = []
 
 const field =
   'rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500 disabled:opacity-50'
@@ -56,7 +85,13 @@ const formatTime = (at: number): string => {
   return `${time}.${String(at % 1000).padStart(3, '0')}`
 }
 
-const LogRow = memo(function LogRow({ item }: { item: LogItem }): React.JSX.Element {
+const LogRow = memo(function LogRow({
+  item,
+  onReuse
+}: {
+  item: LogItem
+  onReuse: (text: string) => void
+}): React.JSX.Element {
   const row = ROW[item.dir]
   const isMessage = item.dir === 'in' || item.dir === 'out'
   const shown = useMemo(
@@ -71,6 +106,7 @@ const LogRow = memo(function LogRow({ item }: { item: LogItem }): React.JSX.Elem
         <div className="flex flex-wrap gap-x-2 text-[10px] text-zinc-500">
           <span>{formatTime(item.at)}</span>
           {item.size !== undefined && <span>{formatSize(item.size)}</span>}
+          {item.auto && <span className="rounded bg-zinc-800 px-1 text-sky-300">auto</span>}
           {item.binary && <span className="rounded bg-zinc-800 px-1 text-amber-300">binario</span>}
           {item.truncated && <span className="text-amber-300">recortado para mostrarlo</span>}
         </div>
@@ -87,13 +123,24 @@ const LogRow = memo(function LogRow({ item }: { item: LogItem }): React.JSX.Elem
         </pre>
       </div>
       {isMessage && (
-        <button
-          onClick={() => void navigator.clipboard.writeText(item.text)}
-          title="Copiar mensaje"
-          className="h-fit shrink-0 rounded p-1 text-zinc-600 opacity-0 transition hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100"
-        >
-          <Icon name="copy" size={12} />
-        </button>
+        <div className="flex h-fit shrink-0 gap-0.5 opacity-0 transition group-hover:opacity-100">
+          {!item.binary && (
+            <button
+              onClick={() => onReuse(item.text)}
+              title="Pasar al editor para editarlo y reenviarlo"
+              className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-zinc-200"
+            >
+              <Icon name="upload" size={12} />
+            </button>
+          )}
+          <button
+            onClick={() => void navigator.clipboard.writeText(item.text)}
+            title="Copiar mensaje"
+            className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-zinc-200"
+          >
+            <Icon name="copy" size={12} />
+          </button>
+        </div>
       )}
     </li>
   )
@@ -103,65 +150,53 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
   const [url, setUrl] = useState(lastForm.url)
   const [headersText, setHeadersText] = useState(lastForm.headers)
   const [protocolsText, setProtocolsText] = useState(lastForm.protocols)
+  const [onOpenText, setOnOpenText] = useState(lastForm.onOpen)
+  const [autoReconnect, setAutoReconnect] = useState(lastForm.autoReconnect)
+  const [keepAlive, setKeepAlive] = useState(lastForm.keepAlive)
+  const [keepAliveSecs, setKeepAliveSecs] = useState(lastForm.keepAliveSecs)
+  const [keepAliveMsg, setKeepAliveMsg] = useState(lastForm.keepAliveMsg)
   const [status, setStatus] = useState<Status>('idle')
+  const [retrying, setRetrying] = useState(false)
   const [log, setLog] = useState<LogItem[]>([])
+  const [stats, setStats] = useState({ inMsgs: 0, outMsgs: 0, inBytes: 0, outBytes: 0 })
   const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('')
+  const [dirFilter, setDirFilter] = useState<DirFilter>('all')
   const [follow, setFollow] = useState(true)
 
   /** Id de la conexión vigente: los eventos de cualquier otra se descartan */
   const idRef = useRef<string | null>(null)
   const counter = useRef(0)
   const listRef = useRef<HTMLDivElement>(null)
+  /** Datos ya resueltos de la última conexión, para poder reconectar igual */
+  const paramsRef = useRef<ConnParams | null>(null)
+  /** La conexión llegó a abrirse (distingue un handshake fallido de una caída) */
+  const openedRef = useRef(false)
+  /** El usuario desconectó o cerró la ventana: no se reconecta */
+  const userClosedRef = useRef(false)
+  const attemptRef = useRef(0)
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const openSocketRef = useRef<((p: ConnParams, label: string) => Promise<void>) | null>(null)
+  const optsRef = useRef({ autoReconnect, onOpen: onOpenText })
+  const historyIdx = useRef(-1)
+  const stash = useRef('')
 
   const add = useCallback((dir: Dir, text: string, extra: Partial<LogItem> = {}): void => {
     const item: LogItem = { n: ++counter.current, at: Date.now(), dir, text, ...extra }
     setLog((l) => [...l, item].slice(-MAX_LOG))
-  }, [])
-
-  useEffect(() => {
-    lastForm = { url, headers: headersText, protocols: protocolsText }
-  }, [url, headersText, protocolsText])
-
-  // Eventos que llegan del proceso principal
-  useEffect(() => {
-    return window.api.onWsEvent((ev: WsEvent) => {
-      if (ev.id !== idRef.current) return
-      switch (ev.kind) {
-        case 'open':
-          setStatus('open')
-          add('info', `Conectado${ev.protocol ? ` · subprotocolo: ${ev.protocol}` : ''}`)
-          break
-        case 'message':
-          add('in', ev.text, { binary: ev.binary, size: ev.size, truncated: ev.truncated })
-          break
-        case 'error':
-          add('error', ev.message)
-          setStatus((s) => (s === 'connecting' ? 'closed' : s))
-          break
-        case 'close':
-          setStatus('closed')
-          add('info', `Conexión cerrada · código ${ev.code}${ev.reason ? ` · ${ev.reason}` : ''}`)
-          break
-      }
-    })
-  }, [add])
-
-  // Al cerrar la ventana no se deja una conexión abierta en segundo plano
-  useEffect(() => {
-    return () => {
-      if (idRef.current) void window.api.wsClose(idRef.current)
+    if (dir === 'in' || dir === 'out') {
+      const bytes = extra.size ?? 0
+      setStats((s) =>
+        dir === 'in'
+          ? { ...s, inMsgs: s.inMsgs + 1, inBytes: s.inBytes + bytes }
+          : { ...s, outMsgs: s.outMsgs + 1, outBytes: s.outBytes + bytes }
+      )
     }
   }, [])
 
-  useEffect(() => {
-    const el = listRef.current
-    if (follow && el) el.scrollTop = el.scrollHeight
-  }, [log, follow])
-
   /** Reemplaza {{variables}} con el entorno activo. null si falta alguna (y avisa) */
-  const resolve = (text: string): string | null => {
+  const resolve = useCallback((text: string): string | null => {
     const vars = buildVarMap(useEnvironmentStore.getState().getActive())
     const { text: out, missing } = interpolate(text, vars)
     if (missing.length > 0) {
@@ -169,7 +204,150 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
       return null
     }
     return out
-  }
+  }, [])
+
+  /** Manda un texto por la conexión vigente y lo anota en el registro */
+  const sendRaw = useCallback(
+    async (text: string, auto = false): Promise<boolean> => {
+      const id = idRef.current
+      if (!id) return false
+      const failure = await window.api.wsSend(id, text)
+      if (failure) {
+        setError(failure)
+        return false
+      }
+      add('out', text, { size: new TextEncoder().encode(text).length, auto })
+      return true
+    },
+    [add]
+  )
+
+  const clearRetryTimer = useCallback((): void => {
+    if (retryTimer.current) clearTimeout(retryTimer.current)
+    retryTimer.current = null
+    setRetrying(false)
+  }, [])
+
+  const openSocket = useCallback(
+    async (params: ConnParams, label: string): Promise<void> => {
+      const id = crypto.randomUUID()
+      idRef.current = id
+      openedRef.current = false
+      setStatus('connecting')
+      add('info', label)
+      const result = await window.api.wsConnect({ id, ...params })
+      if (!result.ok && idRef.current === id) {
+        setStatus('closed')
+        add('error', result.error)
+      }
+    },
+    [add]
+  )
+
+  /** Programa un reintento con espera creciente, salvo que el usuario haya desconectado */
+  const scheduleReconnect = useCallback((): void => {
+    if (!optsRef.current.autoReconnect || userClosedRef.current) return
+    if (!paramsRef.current || retryTimer.current) return
+    const attempt = attemptRef.current++
+    const delay = Math.min(RECONNECT_BASE_MS * 2 ** attempt, RECONNECT_MAX_MS)
+    setRetrying(true)
+    add('info', `Reintentando en ${Math.round(delay / 1000)} s (intento ${attempt + 1})…`)
+    retryTimer.current = setTimeout(() => {
+      retryTimer.current = null
+      setRetrying(false)
+      const params = paramsRef.current
+      if (params && !userClosedRef.current) {
+        void openSocketRef.current?.(params, `Reconectando (intento ${attempt + 1})…`)
+      }
+    }, delay)
+  }, [add])
+
+  useEffect(() => {
+    openSocketRef.current = openSocket
+  }, [openSocket])
+
+  useEffect(() => {
+    lastForm = {
+      url,
+      headers: headersText,
+      protocols: protocolsText,
+      onOpen: onOpenText,
+      autoReconnect,
+      keepAlive,
+      keepAliveSecs,
+      keepAliveMsg
+    }
+    optsRef.current = { autoReconnect, onOpen: onOpenText }
+  }, [
+    url,
+    headersText,
+    protocolsText,
+    onOpenText,
+    autoReconnect,
+    keepAlive,
+    keepAliveSecs,
+    keepAliveMsg
+  ])
+
+  // Eventos que llegan del proceso principal
+  useEffect(() => {
+    return window.api.onWsEvent((ev: WsEvent) => {
+      if (ev.id !== idRef.current) return
+      switch (ev.kind) {
+        case 'open': {
+          openedRef.current = true
+          attemptRef.current = 0
+          setStatus('open')
+          add('info', `Conectado${ev.protocol ? ` · subprotocolo: ${ev.protocol}` : ''}`)
+          const first = optsRef.current.onOpen.trim()
+          if (first) {
+            const text = resolve(first)
+            if (text !== null) void sendRaw(text, true)
+          }
+          break
+        }
+        case 'message':
+          add('in', ev.text, { binary: ev.binary, size: ev.size, truncated: ev.truncated })
+          break
+        case 'error':
+          add('error', ev.message)
+          setStatus((s) => (s === 'connecting' ? 'closed' : s))
+          // Si el handshake falla no llega un 'close': se reintenta desde aquí
+          if (!openedRef.current) scheduleReconnect()
+          break
+        case 'close':
+          setStatus('closed')
+          add('info', `Conexión cerrada · código ${ev.code}${ev.reason ? ` · ${ev.reason}` : ''}`)
+          scheduleReconnect()
+          break
+      }
+    })
+  }, [add, resolve, sendRaw, scheduleReconnect])
+
+  // Al cerrar la ventana no se deja una conexión abierta (ni un reintento pendiente)
+  useEffect(() => {
+    return () => {
+      userClosedRef.current = true
+      if (retryTimer.current) clearTimeout(retryTimer.current)
+      if (idRef.current) void window.api.wsClose(idRef.current)
+    }
+  }, [])
+
+  // Keep-alive: manda un mensaje cada cierto tiempo mientras la conexión esté abierta
+  useEffect(() => {
+    if (status !== 'open' || !keepAlive || !keepAliveMsg.trim()) return
+    const secs = Math.max(1, Number(keepAliveSecs) || 30)
+    const timer = setInterval(() => {
+      const text = resolve(keepAliveMsg)
+      if (text !== null) void sendRaw(text, true)
+    }, secs * 1000)
+    return () => clearInterval(timer)
+  }, [status, keepAlive, keepAliveSecs, keepAliveMsg, resolve, sendRaw])
+
+  useEffect(() => {
+    const el = listRef.current
+    if (follow && el) el.scrollTop = el.scrollHeight
+  }, [log, follow])
 
   const connect = async (): Promise<void> => {
     setError('')
@@ -188,27 +366,25 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
       return
     }
 
-    const id = crypto.randomUUID()
-    idRef.current = id
-    setStatus('connecting')
-    add('info', `Conectando a ${toWsUrl(url)}…`)
-    if (ignored.length > 0) {
-      add('info', `Se ignoraron headers que pone el handshake solo: ${ignored.join(', ')}`)
-    }
-
-    const result = await window.api.wsConnect({
-      id,
+    clearRetryTimer()
+    userClosedRef.current = false
+    attemptRef.current = 0
+    const params: ConnParams = {
       url: toWsUrl(rawUrl),
       headers,
       protocols: parseProtocols(rawProtocols)
-    })
-    if (!result.ok && idRef.current === id) {
-      setStatus('closed')
-      add('error', result.error)
     }
+    paramsRef.current = params
+    if (ignored.length > 0) {
+      add('info', `Se ignoraron headers que pone el handshake solo: ${ignored.join(', ')}`)
+    }
+    await openSocket(params, `Conectando a ${toWsUrl(url)}…`)
   }
 
   const disconnect = (): void => {
+    userClosedRef.current = true
+    attemptRef.current = 0
+    clearRetryTimer()
     const id = idRef.current
     if (!id) return
     idRef.current = null
@@ -217,23 +393,78 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
     add('info', 'Desconectado')
   }
 
+  const rememberMessage = (text: string): void => {
+    if (messageHistory[messageHistory.length - 1] !== text) {
+      messageHistory = [...messageHistory, text].slice(-MAX_HISTORY)
+    }
+    historyIdx.current = -1
+  }
+
+  /** Ctrl/⌘ + ↑ recorre los mensajes enviados antes; Ctrl/⌘ + ↓ vuelve al borrador */
+  const browseHistory = (step: -1 | 1): void => {
+    const list = messageHistory
+    if (list.length === 0) return
+    let idx = historyIdx.current
+    if (step === -1) {
+      if (idx === -1) {
+        stash.current = draft
+        idx = list.length - 1
+      } else {
+        idx = Math.max(0, idx - 1)
+      }
+    } else {
+      if (idx === -1) return
+      idx += 1
+      if (idx >= list.length) idx = -1
+    }
+    historyIdx.current = idx
+    setDraft(idx === -1 ? stash.current : list[idx])
+  }
+
   const sendMessage = async (): Promise<void> => {
     if (status !== 'open' || !draft || !idRef.current) return
     setError('')
     const text = resolve(draft)
     if (text === null) return
-    const failure = await window.api.wsSend(idRef.current, text)
-    if (failure) {
-      setError(failure)
-      return
-    }
-    add('out', text, { size: new TextEncoder().encode(text).length })
+    if (await sendRaw(text)) rememberMessage(draft)
+  }
+
+  const exportLog = (): void => {
+    const data = log.map((i) => ({
+      time: new Date(i.at).toISOString(),
+      dir: i.dir,
+      text: i.text,
+      ...(i.size !== undefined && { size: i.size }),
+      ...(i.binary && { binary: true }),
+      ...(i.auto && { auto: true })
+    }))
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    downloadText(`websocket-${stamp}.json`, JSON.stringify(data, null, 2), 'application/json')
+  }
+
+  const clearLog = (): void => {
+    setLog([])
+    setStats({ inMsgs: 0, outMsgs: 0, inBytes: 0, outBytes: 0 })
   }
 
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase()
-    return q ? log.filter((i) => i.text.toLowerCase().includes(q)) : log
-  }, [log, filter])
+    return log.filter(
+      (i) => (dirFilter === 'all' || i.dir === dirFilter) && (!q || i.text.toLowerCase().includes(q))
+    )
+  }, [log, filter, dirFilter])
+
+  /** Si el borrador parece JSON: ¿es válido? (las {{variables}} cuentan como un valor cualquiera) */
+  const draftJson = useMemo((): 'ok' | 'bad' | null => {
+    const t = draft.trim()
+    if (!(t.startsWith('{') || t.startsWith('['))) return null
+    try {
+      JSON.parse(t.replace(/\{\{[^}]+\}\}/g, '0'))
+      return 'ok'
+    } catch {
+      return 'bad'
+    }
+  }, [draft])
 
   const live = status === 'connecting' || status === 'open'
 
@@ -263,12 +494,12 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
             }}
           />
         </label>
-        {live ? (
+        {live || retrying ? (
           <button
             onClick={disconnect}
             className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500"
           >
-            Desconectar
+            {live ? 'Desconectar' : 'Cancelar reintento'}
           </button>
         ) : (
           <button
@@ -280,9 +511,21 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         )}
       </div>
 
-      <div className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
-        <span className={`h-2 w-2 rounded-full ${STATUS[status].dot}`} />
-        {STATUS[status].text}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
+        <span className="flex items-center gap-2">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              retrying ? 'animate-pulse bg-amber-400' : STATUS[status].dot
+            }`}
+          />
+          {retrying ? 'Reintentando…' : STATUS[status].text}
+        </span>
+        {(stats.inMsgs > 0 || stats.outMsgs > 0) && (
+          <span className="text-zinc-500">
+            ↓ {stats.inMsgs} ({formatSize(stats.inBytes)}) · ↑ {stats.outMsgs} (
+            {formatSize(stats.outBytes)})
+          </span>
+        )}
       </div>
 
       <details className="mt-2" open={!!(headersText || protocolsText)}>
@@ -315,26 +558,100 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         </div>
       </details>
 
+      <details className="mt-2" open={!!(onOpenText || autoReconnect || keepAlive)}>
+        <summary className="cursor-pointer text-xs font-medium text-zinc-400 hover:text-zinc-200">
+          Automatización
+        </summary>
+        <div className="mt-2 grid gap-3">
+          <label className="flex items-center gap-2 text-xs text-zinc-300">
+            <input
+              type="checkbox"
+              checked={autoReconnect}
+              onChange={(e) => setAutoReconnect(e.target.checked)}
+            />
+            Reconectar solo si se cae la conexión (espera 1, 2, 4… hasta 30 s)
+          </label>
+
+          <label>
+            <span className={label}>Mensaje al conectar (se envía apenas abre la conexión)</span>
+            <textarea
+              className={`${field} h-14 w-full resize-none font-mono`}
+              value={onOpenText}
+              placeholder={'{"type":"connection_init"}'}
+              spellCheck={false}
+              onChange={(e) => setOnOpenText(e.target.value)}
+            />
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-300">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={keepAlive}
+                onChange={(e) => setKeepAlive(e.target.checked)}
+              />
+              Keep-alive cada
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={keepAliveSecs}
+              onChange={(e) => setKeepAliveSecs(e.target.value)}
+              className={`${field} w-16 py-1`}
+            />
+            <span>s enviando</span>
+            <input
+              value={keepAliveMsg}
+              spellCheck={false}
+              onChange={(e) => setKeepAliveMsg(e.target.value)}
+              className={`${field} min-w-0 flex-1 py-1 font-mono`}
+            />
+          </div>
+        </div>
+      </details>
+
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
 
-      <div className="mb-1 mt-4 flex items-center gap-2 text-xs">
+      <div className="mb-1 mt-4 flex flex-wrap items-center gap-2 text-xs">
         <span className="font-medium text-zinc-400">Mensajes</span>
         <span className="text-zinc-600">
-          {filter.trim() ? `${visible.length} de ${log.length}` : log.length}
+          {filter.trim() || dirFilter !== 'all' ? `${visible.length} de ${log.length}` : log.length}
         </span>
+        <div className="ml-auto flex overflow-hidden rounded border border-zinc-700">
+          {(['all', 'in', 'out'] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDirFilter(d)}
+              className={`px-2 py-1 ${
+                dirFilter === d ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800'
+              }`}
+            >
+              {DIR_FILTER_LABEL[d]}
+            </button>
+          ))}
+        </div>
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filtrar…"
           spellCheck={false}
-          className={`${field} ml-auto w-40 py-1`}
+          className={`${field} w-36 py-1`}
         />
         <label className="flex items-center gap-1 text-zinc-400">
           <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} />
           Seguir
         </label>
         <button
-          onClick={() => setLog([])}
+          onClick={exportLog}
+          disabled={log.length === 0}
+          title="Guardar el registro como JSON"
+          className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+        >
+          <Icon name="download" size={12} />
+          Exportar
+        </button>
+        <button
+          onClick={clearLog}
           disabled={log.length === 0}
           className="rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
         >
@@ -353,7 +670,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         ) : (
           <ul>
             {visible.map((item) => (
-              <LogRow key={item.n} item={item} />
+              <LogRow key={item.n} item={item} onReuse={setDraft} />
             ))}
           </ul>
         )}
@@ -365,11 +682,21 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
           value={draft}
           placeholder={'Mensaje a enviar, por ejemplo {"type":"ping"}'}
           spellCheck={false}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            historyIdx.current = -1
+            setDraft(e.target.value)
+          }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            if (!(e.metaKey || e.ctrlKey)) return
+            if (e.key === 'Enter') {
               e.preventDefault()
               void sendMessage()
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              browseHistory(-1)
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              browseHistory(1)
             }
           }}
         />
@@ -382,6 +709,19 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
           <Icon name="send" size={13} />
           Enviar
         </button>
+      </div>
+
+      <div className="mt-1 flex items-center gap-3 text-[10px] text-zinc-500">
+        {draftJson === 'ok' && <span className="text-emerald-400">JSON válido</span>}
+        {draftJson === 'bad' && <span className="text-amber-300">JSON con errores</span>}
+        <button
+          onClick={() => setDraft(prettyIfJson(draft).text)}
+          disabled={draftJson !== 'ok'}
+          className="rounded px-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-40"
+        >
+          Formatear
+        </button>
+        <span className="ml-auto">Ctrl/⌘ + ↑ ↓ para recorrer mensajes anteriores</span>
       </div>
     </Modal>
   )
