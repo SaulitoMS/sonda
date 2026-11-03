@@ -32,6 +32,7 @@ import {
   scriptEnvResults,
   scriptLogWarnings
 } from '../../../shared/scriptApply'
+import { buildDigestAuthorization, findDigestChallenge } from '../../../shared/digest'
 
 export interface RequestDraft {
   method: HttpMethod
@@ -173,6 +174,11 @@ export async function executeRequest(
         }
       : null
 
+  const digest =
+    auth?.type === 'digest'
+      ? { username: resolve(auth.username), password: resolve(auth.password) }
+      : null
+
   if (missing.size > 0) {
     const names = [...missing].map((n) => `{{${n}}}`).join(', ')
     const hint = env
@@ -247,6 +253,39 @@ export async function executeRequest(
     warnings.push(
       `Se reintentó ${retried} ${retried === 1 ? 'vez' : 'veces'} antes de obtener esta respuesta.`
     )
+  }
+
+  // Digest: el servidor responde 401 con un desafío y la petición se reenvía firmada
+  if (
+    digest &&
+    response.ok &&
+    response.status === 401 &&
+    !headers.some((h) => h.key.toLowerCase() === 'authorization') &&
+    !(options.requestId && isCancelled(options.requestId))
+  ) {
+    const challenge = findDigestChallenge(response.headers)
+    if (!challenge) {
+      warnings.push(
+        'Auth Digest: el servidor respondió 401 sin un desafío Digest compatible (MD5 o SHA-256 con qop=auth).'
+      )
+    } else {
+      try {
+        const u = new URL(finalUrl)
+        const authorization = await buildDigestAuthorization({
+          challenge,
+          username: digest.username,
+          password: digest.password,
+          method: draft.method,
+          uri: u.pathname + u.search
+        })
+        response = await window.api.sendRequest({
+          ...sendInput,
+          headers: [...headers, { key: 'Authorization', value: authorization }]
+        })
+      } catch {
+        warnings.push('Auth Digest: no se pudo firmar la petición (revisa la URL).')
+      }
+    }
   }
 
   // Un 401 con un token reutilizado suele ser un token caducado: se descarta para que el próximo envío pida otro

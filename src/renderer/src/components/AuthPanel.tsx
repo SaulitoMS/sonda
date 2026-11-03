@@ -9,6 +9,7 @@ const TYPES: { value: AuthType; label: string }[] = [
   { value: 'none', label: 'Sin autenticación' },
   { value: 'bearer', label: 'Bearer Token' },
   { value: 'basic', label: 'Basic Auth' },
+  { value: 'digest', label: 'Digest Auth' },
   { value: 'apikey', label: 'API Key' },
   { value: 'oauth2', label: 'OAuth 2.0' }
 ]
@@ -80,7 +81,7 @@ export function AuthForm({
         </>
       )}
 
-      {auth.type === 'basic' && (
+      {(auth.type === 'basic' || auth.type === 'digest') && (
         <>
           <Field label="Usuario">
             <VariableInput

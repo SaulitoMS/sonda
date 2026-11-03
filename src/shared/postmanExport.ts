@@ -22,6 +22,12 @@ function exportAuth(auth: AuthConfig | undefined): Json | undefined {
         type: 'basic',
         basic: [entry('username', auth.username), entry('password', auth.password)]
       }
+
+    case 'digest':
+      return {
+        type: 'digest',
+        digest: [entry('username', auth.username), entry('password', auth.password)]
+      }
     case 'apikey':
       return {
         type: 'apikey',

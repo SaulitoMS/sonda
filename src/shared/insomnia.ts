@@ -23,8 +23,7 @@ export function looksLikeInsomnia(data: unknown): boolean {
 }
 
 /** Insomnia escribe {{ _.baseUrl }}; Sonda usa {{baseUrl}} */
-const convertVars = (text: string): string =>
-  text.replace(/\{\{\s*_\.([\w.-]+)\s*\}\}/g, '{{$1}}')
+const convertVars = (text: string): string => text.replace(/\{\{\s*_\.([\w.-]+)\s*\}\}/g, '{{$1}}')
 
 const sortKey = (r: Json): number => (typeof r.metaSortKey === 'number' ? r.metaSortKey : 0)
 

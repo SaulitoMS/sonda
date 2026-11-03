@@ -143,7 +143,7 @@ export interface SavedRequest {
 
 // ---------- Autenticación ----------
 
-export type AuthType = 'inherit' | 'none' | 'bearer' | 'basic' | 'apikey' | 'oauth2'
+export type AuthType = 'inherit' | 'none' | 'bearer' | 'basic' | 'digest' | 'apikey' | 'oauth2'
 
 /** Todos los campos viven juntos para no perder lo escrito al cambiar de tipo */
 export interface AuthConfig {
