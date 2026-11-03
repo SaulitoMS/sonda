@@ -5,7 +5,7 @@ Guías paso a paso de cada funcionalidad, con el detalle de cómo usarla y qué 
 | #   | Funcionalidad                                    | Qué cubre                                                                                           |
 | --- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
 | 01  | [Peticiones HTTP](./01-peticiones-http.md)       | Métodos, params, headers, body, GraphQL, SSE, cancelación, reintentos, redirecciones y cookies      |
-| 02  | Autenticación                                    | _Próximamente_                                                                                      |
+| 02  | [Autenticación](./02-autenticacion.md)           | Bearer, Basic, Digest, API Key, OAuth 2.0, inspector de JWT y herencia por carpeta y colección      |                                                                               |
 | 03  | Respuestas                                       | _Próximamente_                                                                                      |
 | 04  | Colecciones y organización                       | _Próximamente_                                                                                      |
 | 05  | Importar y exportar                              | _Próximamente_                                                                                      |
