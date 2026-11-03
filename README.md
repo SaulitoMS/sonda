@@ -58,17 +58,17 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API respond
 
 ## Resumen de funciones
 
-| Área                | Qué incluye                                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Peticiones          | Todos los métodos HTTP, body JSON, `x-www-form-urlencoded` y `multipart` con archivos, GraphQL, Server-Sent Events |
-| Autenticación       | Bearer, Basic, API Key y OAuth 2.0, con herencia desde la colección o la carpeta e inspector de JWT                |
-| Respuestas          | JSON en árbol, XML formateado, vista previa HTML, binarios, comparación con la respuesta anterior, exportación     |
-| Colecciones         | Carpetas, drag and drop, duplicar, renombrar, headers y autenticación heredados, búsqueda                          |
-| Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, HAR, cURL; exportación a Postman y a código                              |
-| Validación          | Respuesta y body contra el schema de la spec, con sincronización posterior de la colección                         |
-| Automatización      | Aserciones, extracción de variables, runner con datos CSV/JSON, reportes JSON, HTML y JUnit, monitor programado    |
-| Herramientas        | Rendimiento, fuzz, snapshot, mock server, historial, cookies                                                       |
-| Interfaz            | Pestañas con sesión restaurable, paleta de comandos, tema claro y oscuro, diseño responsive, layout configurable   |
+| Área                | Qué incluye                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Peticiones          | Todos los métodos HTTP, body JSON, `x-www-form-urlencoded` y `multipart` con archivos, GraphQL, Server-Sent Events                          |
+| Autenticación       | Bearer, Basic, Digest, API Key y OAuth 2.0 (client credentials y password), con herencia desde la colección o la carpeta e inspector de JWT |
+| Respuestas          | JSON en árbol, XML formateado, vista previa HTML, binarios, comparación con la respuesta anterior, exportación                              |
+| Colecciones         | Carpetas, drag and drop, duplicar, renombrar, headers y autenticación heredados, búsqueda                                                   |
+| Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, Insomnia, HAR, cURL; exportación a Postman y a código                                             |
+| Validación          | Respuesta y body contra el schema de la spec, con sincronización posterior de la colección                                                  |
+| Automatización      | Aserciones, extracción de variables, runner con datos CSV/JSON, reportes JSON, HTML y JUnit, monitor programado                             |
+| Herramientas        | Rendimiento, fuzz, snapshot, mock server, historial, cookies                                                                                |
+| Interfaz            | Pestañas con sesión restaurable, paleta de comandos, tema claro y oscuro, diseño responsive, layout configurable                            |
 
 ---
 
@@ -124,7 +124,9 @@ Los instaladores quedan en la carpeta `dist/`.
 
 ### Autenticación
 
-- Pestaña **Auth** con **Bearer**, **Basic**, **API Key** y **OAuth 2.0** (flujo `client_credentials`, con el token en caché en memoria hasta que caduca).
+- Pestaña **Auth** con **Bearer**, **Basic**, **Digest**, **API Key** y **OAuth 2.0**.
+- **OAuth 2.0** con los flujos `client_credentials` y `password`, con el token en caché en memoria hasta que caduca.
+- **Digest Auth:** Sonda envía la petición, lee el desafío `401` (`WWW-Authenticate`), firma la respuesta y reintenta sola. Soporta MD5, MD5-sess, SHA-256 y SHA-256-sess con `qop=auth`. Usa el mismo usuario y contraseña que Basic.
 - **Herencia:** la autenticación se puede definir en la colección o en una carpeta, y las peticiones la heredan. Cada petición puede sobrescribirla o desactivarla.
 - **Inspector de JWT** bajo el token Bearer, con algoritmo, claims y expiración en vivo (decodifica el token, no verifica la firma).
 - Aviso cuando la autenticación queda vacía y por eso no se envía.
@@ -152,13 +154,14 @@ Los instaladores quedan en la carpeta `dist/`.
 
 ### Importar y exportar
 
-| Origen o destino      | Detalle                                                                                                                                                     |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Swagger / OpenAPI** | Swagger 2.0 y OpenAPI 3.x, por **URL** o desde un **archivo local** `.json`, `.yaml` o `.yml`                                                               |
-| **Postman**           | Importa colecciones `.json` y exporta tus colecciones al formato de Postman                                                                                 |
-| **HAR**               | Importa capturas del navegador. Se queda solo con las llamadas a APIs (XHR y fetch), junta las repetidas y usa `{{baseUrl}}` si todas van al mismo servidor |
-| **cURL**              | Pega un comando en la barra de URL y se importa. Entiende el formato de Chrome (`$'...'`). El modal permite exportar la petición como comando               |
-| **Código**            | Genera la petición en cURL, JavaScript (`fetch`), JavaScript (`axios`) y Python (`requests`)                                                                |
+| Origen o destino      | Detalle                                                                                                                                                                                                                        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Swagger / OpenAPI** | Swagger 2.0 y OpenAPI 3.x, por **URL** o desde un **archivo local** `.json`, `.yaml` o `.yml`                                                                                                                                  |
+| **Postman**           | Importa colecciones `.json` y exporta tus colecciones al formato de Postman                                                                                                                                                    |
+| **Insomnia**          | Importa exports JSON v4: carpetas, orden, query params activos, headers, body (JSON, texto, urlencoded y multipart), auth heredada (Bearer, Basic y API Key) y el entorno base. Convierte `{{ _.variable }}` en `{{variable}}` |
+| **HAR**               | Importa capturas del navegador. Se queda solo con las llamadas a APIs (XHR y fetch), junta las repetidas y usa `{{baseUrl}}` si todas van al mismo servidor                                                                    |
+| **cURL**              | Pega un comando en la barra de URL y se importa. Entiende el formato de Chrome (`$'...'`). El modal permite exportar la petición como comando                                                                                  |
+| **Código**            | Genera la petición en cURL, JavaScript (`fetch`), JavaScript (`axios`) y Python (`requests`)                                                                                                                                   |
 
 Al importar un Swagger:
 
@@ -166,6 +169,8 @@ Al importar un Swagger:
 - Genera una petición por endpoint, con ejemplos para parámetros de path, query, headers y body JSON.
 - Agrupa las peticiones en carpetas según los _tags_ de la spec.
 - Crea y activa un entorno con la `baseUrl` del servidor, y las peticiones la usan como `{{baseUrl}}`.
+
+Al importar desde Postman o Insomnia, Sonda avisa de lo que no puede traer: scripts, auths no soportadas, archivos binarios, sub-entornos y etiquetas de plantilla de Insomnia (`{% … %}`).
 
 ### Entornos y variables
 
@@ -296,9 +301,9 @@ Disponibles desde el menú **Herramientas** de la cabecera y desde la paleta de 
 
 Copia el comando desde la documentación de una API o desde las DevTools del navegador y pégalo en la barra de URL. Sonda rellena método, URL, headers y body.
 
-### Migrar desde Postman o desde el navegador
+### Migrar desde Postman, Insomnia o el navegador
 
-Usa **Postman** en la barra lateral para importar una colección `.json` de Postman o una captura `.har` exportada desde la pestaña Red del navegador.
+Usa **Postman** en la barra lateral para importar una colección `.json` de Postman, un export `.json` de Insomnia (v4) o una captura `.har` exportada desde la pestaña Red del navegador. Sonda detecta el formato por su cuenta.
 
 ---
 
@@ -397,6 +402,8 @@ src/
     ├── dynamicVariables.ts   #   Variables dinámicas ({{$uuid}}, …)
     ├── curl.ts / codegen.ts  #   cURL y generación de código
     ├── postman.ts / har.ts   #   Importadores de Postman y HAR
+    ├── insomnia.ts           #   Importador de Insomnia (v4)
+    ├── digest.ts             #   Digest Auth (MD5 y SHA-256)
     ├── specSync.ts           #   Sincronización con la spec
     ├── report.ts             #   Reportes JSON, HTML y JUnit
     ├── fuzz.ts / mock.ts     #   Fuzzing y respuestas mock
@@ -438,7 +445,7 @@ src/
 
 ## Tests y CI
 
-La lógica de `src/shared` está cubierta con Vitest, con más de 350 casos repartidos en 28 archivos. Incluye el parser y exportador de cURL, la interpolación de variables, el validador de schemas, las aserciones, los importadores de Postman y HAR, la sincronización con la spec, los reportes, el fuzzing, los snapshots, el monitor y el generador de código, entre otros.
+La lógica de `src/shared` está cubierta con Vitest, con más de 400 casos repartidos en 31 archivos. Incluye el parser y exportador de cURL, la interpolación de variables, el validador de schemas, las aserciones, los importadores de Postman, HAR e Insomnia, Digest Auth, la sincronización con la spec, los reportes, el fuzzing, los snapshots, el monitor y el generador de código, entre otros.
 
 ```bash
 npm test
@@ -452,9 +459,11 @@ Los reportes JUnit del runner permiten, además, usar Sonda como paso de verific
 
 ## Limitaciones conocidas
 
-- OAuth 2.0 soporta por ahora solo el flujo `client_credentials`; no hay flujos que requieran abrir un navegador.
+- OAuth 2.0 soporta los flujos `client_credentials` y `password`; no hay flujos que requieran abrir un navegador (como `authorization_code`).
 - La validación de schemas cubre el subconjunto de JSON Schema que usa OpenAPI; todavía no interpreta `discriminator`.
-- Las cookies viven solo en memoria y se descartan al cerrar la app.
+- Las cookies con fecha de caducidad se guardan cifradas con el keychain del sistema; las cookies de sesión se descartan al cerrar la app.
+- Digest Auth no soporta `qop=auth-int`, y el CLI y la exportación a cURL todavía no lo aplican.
+- El importador de Insomnia solo lee el formato JSON v4 (no el YAML de las versiones nuevas) y no importa los sub-entornos.
 - Los instaladores de macOS aún no están firmados ni notarizados.
 
 ---
