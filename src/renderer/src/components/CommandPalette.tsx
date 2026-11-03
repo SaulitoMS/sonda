@@ -3,6 +3,7 @@ import type { RequestItem } from '../../../shared/types'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useTabsStore } from '../store/useTabsStore'
+import { useQuickAccess } from '../lib/quickAccess'
 
 /** Una acción que se puede lanzar desde la paleta (abrir un modal, cambiar de tema…) */
 export interface Command {
@@ -19,6 +20,8 @@ interface RequestEntry {
   item: RequestItem
   /** "Colección / carpeta" */
   where: string
+  /** Por qué aparece arriba cuando no hay texto de búsqueda */
+  tag?: 'pinned' | 'recent'
 }
 
 type Row = { kind: 'command'; command: Command } | { kind: 'request'; entry: RequestEntry }
@@ -46,6 +49,7 @@ function fuzzyScore(text: string, query: string): number {
 
 export function CommandPalette({ onClose, commands }: Props): React.JSX.Element {
   const collections = useCollectionsStore((s) => s.collections)
+  const quick = useQuickAccess()
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
@@ -73,12 +77,25 @@ export function CommandPalette({ onClose, commands }: Props): React.JSX.Element 
       }))
       .filter((r) => r.score > 0)
 
-    // Sin texto: acciones primero y luego las peticiones, en su orden natural
+    // Sin texto: fijadas y recientes, luego acciones y luego el resto de peticiones
     if (!text.trim()) {
-      const reqs: Row[] = commandsOnly
-        ? []
-        : entries.slice(0, 30).map((entry) => ({ kind: 'request', entry }))
-      return [...cmds.map((r): Row => ({ kind: 'command', command: r.command })), ...reqs]
+      const cmdRows = cmds.map((r): Row => ({ kind: 'command', command: r.command }))
+      if (commandsOnly) return cmdRows
+
+      const byPath = new Map(entries.map((e) => [e.item.path, e]))
+      const pinned = quick.pinned.flatMap((p) => byPath.get(p) ?? [])
+      const recent = quick.recent
+        .filter((p) => !quick.pinned.includes(p))
+        .flatMap((p) => byPath.get(p) ?? [])
+      const shown = new Set([...pinned, ...recent].map((e) => e.item.path))
+      const rest = entries.filter((e) => !shown.has(e.item.path)).slice(0, 30)
+
+      return [
+        ...pinned.map((entry): Row => ({ kind: 'request', entry: { ...entry, tag: 'pinned' } })),
+        ...recent.map((entry): Row => ({ kind: 'request', entry: { ...entry, tag: 'recent' } })),
+        ...cmdRows,
+        ...rest.map((entry): Row => ({ kind: 'request', entry }))
+      ]
     }
 
     const reqs = commandsOnly
@@ -100,7 +117,7 @@ export function CommandPalette({ onClose, commands }: Props): React.JSX.Element 
       .sort((a, b) => b.score - a.score)
       .slice(0, 50)
       .map((r) => r.row)
-  }, [commands, entries, text, commandsOnly])
+  }, [commands, entries, text, commandsOnly, quick])
 
   // Mantiene visible la fila seleccionada
   useEffect(() => {
@@ -185,7 +202,10 @@ export function CommandPalette({ onClose, commands }: Props): React.JSX.Element 
                     {row.entry.item.method === 'PATCH' ? 'PAT' : row.entry.item.method.slice(0, 4)}
                   </span>
                   <span className="truncate">{row.entry.item.name}</span>
-                  <span className="ml-auto shrink-0 truncate text-zinc-500">{row.entry.where}</span>
+                  <span className="ml-auto shrink-0 truncate text-zinc-500">
+                    {row.entry.tag === 'pinned' ? '★ ' : row.entry.tag === 'recent' ? '⏱ ' : ''}
+                    {row.entry.where}
+                  </span>
                 </>
               )}
             </div>

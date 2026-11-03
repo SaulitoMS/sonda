@@ -34,6 +34,7 @@ import { useMediaQuery } from './lib/useMediaQuery'
 import { DEFAULT_LAYOUT } from '../../shared/layout'
 import { CoverageModal } from './components/CoverageModal'
 import { WebSocketModal } from './components/WebSocketModal'
+import { togglePin, useQuickAccess } from './lib/quickAccess'
 
 type ModalType =
   | 'import'
@@ -53,7 +54,6 @@ type ModalType =
   | 'mock'
   | 'websocket'
   | 'coverage'
-  | 'coverage'
   | null
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -66,6 +66,7 @@ function App(): React.JSX.Element {
   const monitorActive = useMonitorStore((s) => s.active)
   const monitorFailing = useMonitorStore((s) => (s.runs[0]?.fail ?? 0) > 0)
   const layout = useLayout()
+  const quick = useQuickAccess()
 
   // Por debajo de 900px la barra lateral pasa a ser un cajón que se superpone
   const isNarrow = useMediaQuery('(max-width: 899px)')
@@ -237,6 +238,23 @@ function App(): React.JSX.Element {
     { id: 'save', label: 'Guardar', hint: `${MOD}S`, run: () => void save() },
     ...(currentFile
       ? [{ id: 'save-as', label: 'Guardar como…', run: () => setModal('save') }]
+      : []),
+    ...(currentFile
+      ? [
+          {
+            id: 'pin',
+            label: quick.pinned.includes(currentFile)
+              ? 'Quitar petición de fijadas'
+              : 'Fijar petición actual',
+            keywords: 'favorita estrella pin',
+            run: () => {
+              togglePin(currentFile)
+              showFlash(
+                quick.pinned.includes(currentFile) ? 'Quitada de fijadas ✓' : 'Petición fijada ✓'
+              )
+            }
+          }
+        ]
       : []),
     { id: 'envs', label: 'Gestionar entornos', run: () => setModal('envs') },
     { id: 'import', label: 'Importar Swagger / OpenAPI', run: () => setModal('import') },

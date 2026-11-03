@@ -29,6 +29,7 @@ import { useTabsStore } from '../store/useTabsStore'
 import { Icon } from './Icon'
 import { checkSecurity, type SecurityFinding } from '../../../shared/securityCheck'
 import { describeTiming } from '../../../shared/timing'
+import { jsonToTypeScript } from '../../../shared/jsonToTypes'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security'
 
@@ -532,6 +533,14 @@ export function ResponsePanel(): React.JSX.Element {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const copyTypes = async (): Promise<void> => {
+    if (!parsed.ok) return
+    await navigator.clipboard.writeText(jsonToTypeScript(parsed.value))
+    setMenuOpen(false)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
   const bodyExt = !response?.ok
     ? 'txt'
     : response.binary
@@ -734,6 +743,14 @@ export function ResponsePanel(): React.JSX.Element {
                   >
                     Respuesta completa (.json)
                   </button>
+                  {parsed.ok && typeof parsed.value === 'object' && parsed.value !== null && (
+                    <button
+                      onClick={() => void copyTypes()}
+                      className="block w-full rounded-md px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                    >
+                      Copiar como tipos TypeScript
+                    </button>
+                  )}
                 </div>
               </>
             )}

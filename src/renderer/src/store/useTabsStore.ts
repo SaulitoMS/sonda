@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { isDirtyState } from '../../../shared/dirty'
 import { nextActiveAfterClose } from '../../../shared/tabs'
 import type { SavedRequest } from '../../../shared/types'
+import { pushRecent } from '../lib/quickAccess'
 import {
   blankSnapshot,
   captureSnapshot,
@@ -96,6 +97,7 @@ export const useTabsStore = create<TabsState>((set, get) => {
     },
 
     openSaved: (saved, path) => {
+      pushRecent(path)
       const { tabs, activeId } = get()
       const live = useRequestStore.getState()
 
