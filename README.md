@@ -72,6 +72,10 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API respond
 
 ---
 
+## Documentación por funcionalidad
+
+Cada funcionalidad tiene su propia guía paso a paso en la carpeta [`funcionalidadesRD`](./funcionalidadesRD/README.md).
+
 ## Primeros pasos
 
 ### Requisitos
