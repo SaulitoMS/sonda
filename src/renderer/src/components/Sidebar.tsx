@@ -519,6 +519,17 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
     alert(`Se documentaron ${result.count} peticiones en:\n${result.path}`)
   }
 
+  const exportOpenApi = async (id: string): Promise<void> => {
+    const result = await window.api.exportOpenApi(id)
+    if (!result) return
+    if (!result.ok) {
+      alert(result.error)
+      return
+    }
+    const notes = result.warnings?.length ? `\n\nAvisos:\n${result.warnings.join('\n')}` : ''
+    alert(`Se exportaron ${result.count} peticiones a:\n${result.path}${notes}`)
+  }
+
   /* ---------- Arrastrar y soltar ---------- */
 
   const failed = (err: unknown): void =>
@@ -1015,6 +1026,12 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                   <ExportButton
                     onClick={() => exportDocs(c.id)}
                     title="Exportar documentación (Markdown)"
+                  />
+                )}
+                {total > 0 && (
+                  <ExportButton
+                    onClick={() => exportOpenApi(c.id)}
+                    title="Exportar a OpenAPI (JSON)"
                   />
                 )}
 

@@ -116,7 +116,7 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
     setVars([...selected.variables.filter((v) => v.key || v.value), ...missing, newVar()])
   }
 
-    // Resuelve una diferencia concreta. Los valores secretos nunca se copian: solo la clave.
+  // Resuelve una diferencia concreta. Los valores secretos nunca se copian: solo la clave.
   const applyRow = (r: EnvDiffRow): void => {
     if (!selected || !other) return
     if (r.status === 'different' && !r.secret) {

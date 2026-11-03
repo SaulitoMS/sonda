@@ -46,7 +46,10 @@ export function makeMatcher(
   if (!opts.find) return { ok: false, error: '' }
   let re: RegExp
   try {
-    re = new RegExp(opts.useRegex ? opts.find : escapeRe(opts.find), opts.caseSensitive ? 'g' : 'gi')
+    re = new RegExp(
+      opts.useRegex ? opts.find : escapeRe(opts.find),
+      opts.caseSensitive ? 'g' : 'gi'
+    )
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Expresión regular no válida' }
   }

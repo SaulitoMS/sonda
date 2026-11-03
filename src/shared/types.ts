@@ -277,7 +277,8 @@ export type ImportResult =
   | { ok: true; collectionId: string; name: string; count: number; warnings?: string[] }
   | { ok: false; error: string }
 
-export type ExportResult = { ok: true; path: string; count: number } | { ok: false; error: string }
+export type ExportResult =
+  { ok: true; path: string; count: number; warnings?: string[] } | { ok: false; error: string }
 
 export interface CookieInfo {
   id: string
@@ -335,6 +336,8 @@ export interface SondaApi {
   exportPostman: (collectionId: string) => Promise<ExportResult | null>
   /** Exporta la documentación de una colección en Markdown. null = el usuario canceló */
   exportDocs: (collectionId: string) => Promise<ExportResult | null>
+  /** Exporta una colección como spec OpenAPI 3.0 (JSON). null = el usuario canceló */
+  exportOpenApi: (collectionId: string) => Promise<ExportResult | null>
   loadEnvironments: () => Promise<EnvironmentsData>
   saveEnvironments: (data: EnvironmentsData) => Promise<void>
   previewSync: (collectionId: string) => Promise<SyncPreviewResult>

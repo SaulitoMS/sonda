@@ -252,9 +252,7 @@ export function FindReplaceModal({ onClose }: { onClose: () => void }): React.JS
                         {row.item.method === 'PATCH' ? 'PAT' : row.item.method.slice(0, 4)}
                       </span>
                       <span className="truncate text-zinc-200">{row.item.name}</span>
-                      {row.group && (
-                        <span className="truncate text-zinc-500">{row.group}</span>
-                      )}
+                      {row.group && <span className="truncate text-zinc-500">{row.group}</span>}
                       <span className="ml-auto shrink-0 rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] text-blue-400">
                         {result.count}
                       </span>
