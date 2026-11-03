@@ -17,7 +17,7 @@ import {
 } from '../../../shared/exportResponse'
 import { downloadBase64, downloadText } from '../lib/download'
 import { BinaryView } from './BinaryView'
-import { getByPath, parsePath } from '../../../shared/assertions'
+import { queryJson } from '../../../shared/jsonQuery'
 import { JsonTree } from './JsonTree'
 import { Highlight } from './Highlight'
 import { MAX_MATCHES, buildTreeSearch, countMatches } from '../lib/search'
@@ -446,13 +446,11 @@ export function ResponsePanel(): React.JSX.Element {
     }
   }, [response])
 
-  // Con filtro, muestra solo lo que hay en esa ruta (ej: data.items[0].name)
+  // Con filtro, muestra solo lo que cumple la consulta (ej: data.items[?(@.price > 10)].name)
   const filtered = useMemo<{ found: boolean; value?: unknown; invalid?: boolean }>(() => {
     if (!parsed.ok || !filter.trim())
       return { found: true, value: parsed.ok ? parsed.value : undefined }
-    const tokens = parsePath(filter)
-    if (!tokens) return { found: false, invalid: true }
-    return getByPath(parsed.value, tokens)
+    return queryJson(parsed.value, filter)
   }, [parsed, filter])
 
   // ── Búsqueda dentro del body (Ctrl/Cmd+F) ──
@@ -815,7 +813,7 @@ export function ResponsePanel(): React.JSX.Element {
                 <input
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  placeholder="Filtrar por ruta: data.items[0].name"
+                  placeholder="Filtrar: data.items[?(@.price > 10)].name · items[*].id · ..email"
                   spellCheck={false}
                   className="flex-1 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 font-mono outline-none placeholder:text-zinc-500 focus:border-blue-500"
                 />
@@ -882,7 +880,9 @@ export function ResponsePanel(): React.JSX.Element {
                 />
               ) : (
                 <p className="text-xs text-amber-400">
-                  {filtered.invalid ? 'Ruta mal escrita' : `No existe "${filter}" en la respuesta`}
+                  {filtered.invalid
+                    ? 'Consulta mal escrita. Ejemplos: items[*].id · items[?(@.price > 10)] · ..email'
+                    : `No existe "${filter}" en la respuesta`}
                 </p>
               )
             ) : (
