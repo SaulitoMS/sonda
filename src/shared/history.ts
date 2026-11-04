@@ -35,7 +35,7 @@ export function truncateResponse(
 }
 
 /** Headers cuyo valor casi siempre es una credencial */
-const SENSITIVE_HEADERS = new Set([
+export const SENSITIVE_HEADERS = new Set([
   'authorization',
   'proxy-authorization',
   'cookie',
@@ -49,7 +49,7 @@ const SENSITIVE_HEADERS = new Set([
 ])
 
 /** Parámetros de query que suelen llevar credenciales */
-const SENSITIVE_QUERY =
+export const SENSITIVE_QUERY =
   /([?&](?:access_token|refresh_token|id_token|token|api[-_]?key|apikey|secret|client_secret|password|pwd|signature)=)([^&#]*)/gi
 
 /** Una {{variable}} no es un secreto: su valor vive en el entorno (y los secretos, cifrados) */
@@ -67,13 +67,13 @@ const JSON_SECRET = new RegExp(
 )
 const FORM_SECRET = new RegExp(`((?:^|&)(?:${SECRET_FIELD})=)([^&]*)`, 'gi')
 const SECRET_KEY = new RegExp(`^(?:${SECRET_FIELD})$`, 'i')
-const isSecretField = (key: string): boolean => SECRET_KEY.test(key.trim())
+export const isSecretField = (key: string): boolean => SECRET_KEY.test(key.trim())
 
 /**
  * Oculta los valores de campos sensibles en un body JSON o urlencoded, sin reformatearlo
  * (funciona aunque el texto esté recortado). `mask` es lo que queda en su lugar.
  */
-const redactBodyText = (text: string, mask: string): string =>
+export const redactBodyText = (text: string, mask: string): string =>
   text
     .replace(JSON_SECRET, (match, prefix: string, value: string) =>
       value.startsWith('{{') ? match : `${prefix}"${mask}"`

@@ -6,7 +6,8 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { Modal } from './Modal'
-import { parseCurl, type ParsedCurl } from '../../../shared/curl'
+import { parseCurl, type CurlRequest, type ParsedCurl } from '../../../shared/curl'
+import { redactRequest } from '../../../shared/redactRequest'
 import { CODE_LANGS, generateCode, type CodeLang } from '../../../shared/codegen'
 import { formDataParts, urlencodedBody } from '../../../shared/bodyForm'
 import { buildAuth, emptyAuth } from '../../../shared/auth'
@@ -172,6 +173,8 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
   const bodyForm = useRequestStore((s) => s.bodyForm)
 
   const [resolve, setResolve] = useState(true)
+  // Activado por defecto: lo que se copia suele terminar en un chat, un ticket o un repo
+  const [redact, setRedact] = useState(true)
   const [lang, setLang] = useState<CodeLang>('curl')
   const [copied, setCopied] = useState(false)
 
@@ -220,15 +223,16 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       }
     }
 
-    return generateCode(lang, {
+    const request: CurlRequest = {
       method,
       url: appendQuery(r(url.trim()), authParts.query),
       headers: finalHeaders,
       body: finalBody,
       formData,
       user: basicUser === ':' ? undefined : basicUser
-    })
-  }, [method, url, headers, body, bodyForm, auth, resolve, activeEnv, lang])
+    }
+    return generateCode(lang, redact ? redactRequest(request) : request)
+  }, [method, url, headers, body, bodyForm, auth, resolve, activeEnv, lang, redact])
 
   const hasPlaceholders = /\{\{\s*\$?[\w.-]+\s*\}\}/.test(output)
 
@@ -255,7 +259,7 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
         </select>
       </div>
 
-      <label className="mb-3 flex items-center gap-2 text-xs text-zinc-300">
+      <label className="mb-2 flex items-center gap-2 text-xs text-zinc-300">
         <input
           type="checkbox"
           checked={resolve}
@@ -263,6 +267,16 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
           className="accent-blue-500"
         />
         Resolver variables con el entorno {activeEnv ? `"${activeEnv.name}"` : 'activo'}
+      </label>
+
+      <label className="mb-3 flex items-center gap-2 text-xs text-zinc-300">
+        <input
+          type="checkbox"
+          checked={redact}
+          onChange={(e) => setRedact(e.target.checked)}
+          className="accent-blue-500"
+        />
+        Ocultar credenciales (tokens, contraseñas, cookies, API keys)
       </label>
 
       <pre className="selectable max-h-72 min-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md border border-zinc-800 bg-zinc-950/60 p-3 font-mono text-xs text-zinc-200">
@@ -273,6 +287,13 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
         <p className="mt-2 text-[11px] text-amber-400">
           ⚠ Quedan variables como {'{{nombre}}'}: son secretos, no están definidas o desactivaste la
           resolución. Reemplázalas antes de ejecutarlo.
+        </p>
+      )}
+
+      {redact && output.includes('<oculto>') && (
+        <p className="mt-2 text-[11px] text-zinc-500">
+          Las credenciales aparecen como {'<oculto>'}. Desactiva la opción si vas a ejecutar el
+          código tal cual.
         </p>
       )}
 
