@@ -33,6 +33,9 @@ import { analyzeHeaders, type HeaderInsight } from '../../../shared/headerInsigh
 import { describeTiming } from '../../../shared/timing'
 import { jsonToTypeScript } from '../../../shared/jsonToTypes'
 import { describeStatus } from '../../../shared/httpStatus'
+import { timeTrend } from '../../../shared/responseTrend'
+import { useHistoryStore } from '../store/useHistoryStore'
+import { TimeTrendChart } from './TimeTrendChart'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -452,6 +455,11 @@ export function ResponsePanel(): React.JSX.Element {
   const method = useRequestStore((s) => s.method)
   const url = useRequestStore((s) => s.url)
   const diff = usePreviousDiff(response, method, url)
+  const historyEntries = useHistoryStore((s) => s.entries)
+  const trend = useMemo(
+    () => (response?.ok ? timeTrend(historyEntries, method, url) : null),
+    [historyEntries, response, method, url]
+  )
   const activeTabId = useTabsStore((s) => s.activeId)
   const live = useStreamStore((s) => s.live[activeTabId])
   const [tab, setTab] = useState<Tab>('body')
@@ -794,6 +802,7 @@ export function ResponsePanel(): React.JSX.Element {
               </span>
             )}
           </span>
+          {trend && <TimeTrendChart trend={trend} />}
           <span className="text-zinc-400">{formatSize(response.sizeBytes)}</span>
 
           <div className="relative">

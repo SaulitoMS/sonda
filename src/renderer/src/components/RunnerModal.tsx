@@ -83,6 +83,7 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
   const collection = useCollectionsStore((s) => s.collections.find((c) => c.id === collectionId))
 
   const [includeWrites, setIncludeWrites] = useState(false)
+  const [folderFilter, setFolderFilter] = useState<string | null>(null)
   const [stopOnFail, setStopOnFail] = useState(false)
   const [retries, setRetries] = useState(0)
   const [delayMs, setDelayMs] = useState(0)
@@ -110,11 +111,12 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
 
   const all = useMemo<Entry[]>(() => {
     if (!collection) return []
-    return [
+    const entries: Entry[] = [
       ...collection.folders.flatMap((f) => f.requests.map((item) => ({ item, group: f.name }))),
       ...collection.requests.map((item) => ({ item, group: '' }))
     ]
-  }, [collection])
+    return folderFilter === null ? entries : entries.filter((e) => e.group === folderFilter)
+  }, [collection, folderFilter])
 
   const planned = includeWrites ? all : all.filter((e) => SAFE_METHODS.includes(e.item.method))
 
@@ -266,7 +268,9 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
 
   const exportReport = (format: 'json' | 'html' | 'xml'): void => {
     const report = buildReport({
-      collection: collection?.name ?? '',
+      collection:
+        (collection?.name ?? '') +
+        (folderFilter === null ? '' : ` / ${folderFilter || '(sin carpeta)'}`),
       environment: runEnvName.current,
       rows: rows.map((r) => ({
         group: r.entry.group,
@@ -303,6 +307,28 @@ export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element
               : ` de ${all.length} peticiones`}{' '}
             usando el entorno activo y se validará cada respuesta contra su schema y sus aserciones.
           </p>
+          {collection && collection.folders.length > 0 && (
+            <label className="flex items-center justify-between gap-3">
+              <span>Qué ejecutar</span>
+              <select
+                value={folderFilter ?? '__all__'}
+                onChange={(e) =>
+                  setFolderFilter(e.target.value === '__all__' ? null : e.target.value)
+                }
+                className="max-w-[60%] rounded border border-zinc-700 bg-zinc-950 px-2 py-1"
+              >
+                <option value="__all__">Toda la colección</option>
+                {collection.folders.map((f) => (
+                  <option key={f.name} value={f.name}>
+                    Carpeta: {f.name} ({f.requests.length})
+                  </option>
+                ))}
+                {collection.requests.length > 0 && (
+                  <option value="">Peticiones sin carpeta ({collection.requests.length})</option>
+                )}
+              </select>
+            </label>
+          )}
           <div className="rounded-md border border-zinc-700 p-2.5">
             <div className="flex items-center justify-between gap-3">
               <span>
