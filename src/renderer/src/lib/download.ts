@@ -19,3 +19,8 @@ export function downloadBase64(fileName: string, base64: string, mime: string): 
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
   saveBlob(fileName, new Blob([bytes], { type: mime }))
 }
+
+/** Descarga bytes (por ejemplo un .xlsx recién generado) */
+export function downloadBytes(fileName: string, bytes: Uint8Array, mime: string): void {
+  saveBlob(fileName, new Blob([new Uint8Array(bytes)], { type: mime }))
+}
