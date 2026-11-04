@@ -40,6 +40,7 @@ import { togglePin, useQuickAccess } from './lib/quickAccess'
 import { VariablesAuditModal } from './components/VariablesAuditModal'
 import { FindReplaceModal } from './components/FindReplaceModal'
 import { ToolboxModal } from './components/ToolboxModal'
+import { cancelInFlight } from './lib/inFlight'
 
 type ModalType =
   | 'import'
@@ -66,8 +67,18 @@ type ModalType =
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 
+/** JSON formateado si el texto lo es; si no, el texto tal cual */
+function prettyText(text: string): string {
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2)
+  } catch {
+    return text
+  }
+}
+
 function App(): React.JSX.Element {
   const send = useRequestStore((s) => s.send)
+  const loading = useRequestStore((s) => s.loading)
   const currentFile = useRequestStore((s) => s.currentFile)
   const newTab = useTabsStore((s) => s.newTab)
   const reopenClosed = useTabsStore((s) => s.reopenClosed)
@@ -341,6 +352,36 @@ function App(): React.JSX.Element {
       label: 'Cerrar las demás pestañas',
       keywords: 'cerrar otras',
       run: () => closeOtherTabs(activeTabId)
+    },
+    {
+      id: 'send',
+      label: 'Enviar petición',
+      hint: `${MOD}↵`,
+      keywords: 'ejecutar correr lanzar',
+      run: () => void send()
+    },
+    ...(loading
+      ? [
+          {
+            id: 'cancel',
+            label: 'Cancelar petición en curso',
+            keywords: 'detener abortar parar',
+            run: () => cancelInFlight(activeTabId)
+          }
+        ]
+      : []),
+    {
+      id: 'copy-response',
+      label: 'Copiar body de la respuesta',
+      keywords: 'portapapeles copiar respuesta',
+      run: () => {
+        const r = useRequestStore.getState().response
+        if (!r?.ok || !r.body) {
+          showFlash('No hay body para copiar')
+          return
+        }
+        void navigator.clipboard.writeText(prettyText(r.body)).then(() => showFlash('Body copiado ✓'))
+      }
     },
     { id: 'save', label: 'Guardar', hint: `${MOD}S`, run: () => void save() },
     ...(currentFile
