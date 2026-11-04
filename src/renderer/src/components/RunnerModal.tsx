@@ -27,6 +27,7 @@ import { Modal } from './Modal'
 import { timingStats } from '../../../shared/timing'
 import { parseDataSet, withDataVars, type DataSet } from '../../../shared/csvData'
 import { confirmRunMessage, isWriteMethod } from '../../../shared/writeGuard'
+import { createFolderSkipper, shouldRetryRow } from '../../../shared/runFlow'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -97,6 +98,9 @@ export function RunnerModal({
   const [running, setRunning] = useState(false)
   const [finished, setFinished] = useState(false)
   const [stoppedEarly, setStoppedEarly] = useState(false)
+  const [retryAny, setRetryAny] = useState(false)
+  const [skipFolderOnFail, setSkipFolderOnFail] = useState(false)
+  const [skipped, setSkipped] = useState<string[]>([])
   const [total, setTotal] = useState(0)
   const [rows, setRows] = useState<Row[]>([])
   const [dataset, setDataset] = useState<DataSet | null>(null)
@@ -216,11 +220,23 @@ export function RunnerModal({
     setRows([])
     setFinished(false)
     setStoppedEarly(false)
+    setSkipped([])
     setTotal(queue.length)
     setRunning(true)
 
+    const folders = createFolderSkipper(skipFolderOnFail)
+    const skippedNow: string[] = []
+
     for (const [index, job] of queue.entries()) {
       if (runId.current !== myRun) return
+
+      // Una petición anterior de su carpeta falló: esta ni se envía
+      if (folders.shouldSkip(job.entry.group, job.iteration)) {
+        skippedNow.push(job.entry.item.name)
+        setSkipped([...skippedNow])
+        setTotal(queue.length - skippedNow.length)
+        continue
+      }
 
       // Pausa opcional entre peticiones (útil con APIs que limitan por ritmo)
       if (index > 0 && delayMs > 0) {
@@ -230,13 +246,12 @@ export function RunnerModal({
 
       let row = await runOne(job)
 
-      // Reintenta solo fallos pasajeros; un 404 o una aserción fallida no mejoran por insistir
+      // Por defecto reintenta solo fallos pasajeros; con "reintentar cualquier fallo", todos
       let attempt = 1
       while (
         attempt <= retries &&
-        row.status === 'fail' &&
         row.response &&
-        isTransient(row.response)
+        shouldRetryRow(row.status, isTransient(row.response), retryAny)
       ) {
         if (runId.current !== myRun) return
         await sleep(Math.max(delayMs, 500))
@@ -248,6 +263,8 @@ export function RunnerModal({
 
       if (runId.current !== myRun) return
       setRows((r) => [...r, row])
+
+      if (row.status === 'fail') folders.markFailed(job.entry.group, job.iteration)
 
       if (stopOnFail && row.status === 'fail') {
         setStoppedEarly(true)
@@ -405,16 +422,37 @@ export function RunnerModal({
             />
             <span>Detener al primer fallo</span>
           </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={skipFolderOnFail}
+              onChange={(e) => setSkipFolderOnFail(e.target.checked)}
+            />
+            <span>Si una petición falla, saltar el resto de su carpeta</span>
+          </label>
           <label className="flex items-center justify-between gap-3">
-            <span>Reintentos ante error de red, 429 o 5xx (0 a 3)</span>
+            <span>Reintentos (0 a 10)</span>
             <input
               type="number"
               min={0}
-              max={3}
+              max={10}
               value={retries}
-              onChange={(e) => setRetries(clampInt(Number(e.target.value), 0, 3))}
+              onChange={(e) => setRetries(clampInt(Number(e.target.value), 0, 10))}
               className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-right"
             />
+          </label>
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="checkbox"
+              checked={retryAny}
+              onChange={(e) => setRetryAny(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Reintentar cualquier fallo (aserciones, 404…), no solo red, 429 y 5xx. Sirve para
+              esperar a que algo termine. Cuidado con POST: un reintento puede duplicar datos. La
+              pausa entre reintentos es la de abajo (mínimo 500 ms).
+            </span>
           </label>
           <label className="flex items-center justify-between gap-3">
             <span>Pausa entre peticiones (ms, 0 a 10000)</span>
@@ -498,6 +536,12 @@ export function RunnerModal({
             <p className="mt-2 text-xs text-amber-300">
               Ejecución detenida en el primer fallo ({total - rows.length}{' '}
               {total - rows.length === 1 ? 'petición sin ejecutar' : 'peticiones sin ejecutar'}).
+            </p>
+          )}
+          {skipped.length > 0 && (
+            <p className="mt-2 text-xs text-amber-300">
+              Se saltaron {skipped.length} {skipped.length === 1 ? 'petición' : 'peticiones'} por un
+              fallo previo en su carpeta: {skipped.join(', ')}.
             </p>
           )}
         </>

@@ -1,10 +1,5 @@
 import type { CurlRequest } from './curl'
-import {
-  SENSITIVE_HEADERS,
-  SENSITIVE_QUERY,
-  isSecretField,
-  redactBodyText
-} from './history'
+import { SENSITIVE_HEADERS, SENSITIVE_QUERY, isSecretField, redactBodyText } from './history'
 
 /** Lo que queda en lugar de una credencial */
 export const REDACTED = '<oculto>'

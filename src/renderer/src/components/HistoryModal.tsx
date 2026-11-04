@@ -96,9 +96,7 @@ function ComparisonView({ a, b }: { a: HistoryEntry; b: HistoryEntry }): React.J
           </div>
 
           <p
-            className={`font-semibold ${
-              result.identical ? 'text-emerald-400' : 'text-amber-400'
-            }`}
+            className={`font-semibold ${result.identical ? 'text-emerald-400' : 'text-amber-400'}`}
           >
             {result.changes.length > 0
               ? plural(result.changes.length, 'cambio', 'cambios')

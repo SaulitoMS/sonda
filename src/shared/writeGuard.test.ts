@@ -43,9 +43,7 @@ describe('confirmSendMessage', () => {
 
   it('no pregunta si el entorno no está protegido, no existe o no tiene la marca', () => {
     expect(confirmSendMessage(env({ protected: false }), 'POST', 'https://api.test')).toBeNull()
-    expect(
-      confirmSendMessage(env({ protected: undefined }), 'POST', 'https://api.test')
-    ).toBeNull()
+    expect(confirmSendMessage(env({ protected: undefined }), 'POST', 'https://api.test')).toBeNull()
     expect(confirmSendMessage(null, 'POST', 'https://api.test')).toBeNull()
   })
 })
