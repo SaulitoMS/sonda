@@ -6,6 +6,7 @@ import type {
   WsConnectResult,
   WsEvent
 } from './websocket'
+import type { MockChaos } from './mockChaos'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
@@ -378,7 +379,7 @@ export interface SondaApi {
   loadSettings: () => Promise<AppSettings>
   saveSettings: (settings: AppSettings) => Promise<AppSettings>
   /** Levanta un servidor local que responde con datos de ejemplo según los schemas de la colección */
-  startMock: (collectionId: string, port: number) => Promise<MockStartResult>
+  startMock: (collectionId: string, port: number, chaos?: MockChaos) => Promise<MockStartResult>
   stopMock: () => Promise<void>
   getMockStatus: () => Promise<MockStatus>
   /** Ejecuta un script de usuario en un contexto aislado (máximo 2 s) */
@@ -595,7 +596,13 @@ export interface MockRouteInfo {
 
 export type MockStatus =
   | { running: false }
-  | { running: true; collectionId: string; port: number; routes: MockRouteInfo[] }
+  | {
+      running: true
+      collectionId: string
+      port: number
+      routes: MockRouteInfo[]
+      chaos?: MockChaos
+    }
 
 export type MockStartResult =
   { ok: true; port: number; routes: MockRouteInfo[] } | { ok: false; error: string }

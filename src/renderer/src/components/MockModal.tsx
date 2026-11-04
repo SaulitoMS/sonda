@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CHAOS_STATUSES, MAX_CHAOS_DELAY_MS, type MockChaos } from '../../../shared/mockChaos'
 import type { MockStatus } from '../../../shared/types'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useCollectionsStore } from '../store/useCollectionsStore'
@@ -8,10 +9,25 @@ const field =
   'rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500 disabled:opacity-50'
 const label = 'mb-1 block text-xs font-medium text-zinc-400'
 
+/** Resumen legible del caos activo, o '' si no hay */
+function describeChaos(c: MockChaos | undefined): string {
+  if (!c) return ''
+  const parts: string[] = []
+  if (c.delayMs > 0 || c.jitterMs > 0) {
+    parts.push(`latencia ${c.delayMs} ms${c.jitterMs > 0 ? ` (+0–${c.jitterMs} ms)` : ''}`)
+  }
+  if (c.errorRate > 0) parts.push(`${c.errorRate} % de respuestas con ${c.errorStatus}`)
+  return parts.join(' · ')
+}
+
 export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Element {
   const collections = useCollectionsStore((s) => s.collections)
   const [pickedId, setPickedId] = useState('')
   const [port, setPort] = useState('4010')
+  const [delay, setDelay] = useState('0')
+  const [jitter, setJitter] = useState('0')
+  const [errorRate, setErrorRate] = useState('0')
+  const [errorStatus, setErrorStatus] = useState('500')
   const [status, setStatus] = useState<MockStatus | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -26,6 +42,12 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
       if (s.running) {
         setPickedId(s.collectionId)
         setPort(String(s.port))
+        if (s.chaos) {
+          setDelay(String(s.chaos.delayMs))
+          setJitter(String(s.chaos.jitterMs))
+          setErrorRate(String(s.chaos.errorRate))
+          setErrorStatus(String(s.chaos.errorStatus))
+        }
       }
     })
     return () => {
@@ -36,13 +58,21 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
   const collectionId = pickedId || collections[0]?.id || ''
   const live = status && status.running ? status : null
 
+  const currentChaos = (): MockChaos => ({
+    delayMs: Number(delay) || 0,
+    jitterMs: Number(jitter) || 0,
+    errorRate: Number(errorRate) || 0,
+    errorStatus: Number(errorStatus) || 500
+  })
+
   const start = async (): Promise<void> => {
     setBusy(true)
     setError('')
     try {
-      const result = await window.api.startMock(collectionId, Number(port))
+      const chaos = currentChaos()
+      const result = await window.api.startMock(collectionId, Number(port), chaos)
       if (result.ok) {
-        setStatus({ running: true, collectionId, port: result.port, routes: result.routes })
+        setStatus({ running: true, collectionId, port: result.port, routes: result.routes, chaos })
       } else {
         setError(result.error)
       }
@@ -66,6 +96,8 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
+
+  const chaosSummary = describeChaos(live?.chaos)
 
   return (
     <Modal title="Servidor mock" onClose={onClose} wide>
@@ -120,6 +152,63 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
         )}
       </div>
 
+      <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-950 p-3">
+        <p className="mb-2 text-xs font-medium text-zinc-300">Simular una API inestable</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <label>
+            <span className={label}>Latencia (ms)</span>
+            <input
+              className={`${field} w-full`}
+              inputMode="numeric"
+              value={delay}
+              disabled={!!live || busy}
+              onChange={(e) => setDelay(e.target.value)}
+              title={`Máximo ${MAX_CHAOS_DELAY_MS} ms`}
+            />
+          </label>
+          <label>
+            <span className={label}>Variación (ms)</span>
+            <input
+              className={`${field} w-full`}
+              inputMode="numeric"
+              value={jitter}
+              disabled={!!live || busy}
+              onChange={(e) => setJitter(e.target.value)}
+            />
+          </label>
+          <label>
+            <span className={label}>% con error</span>
+            <input
+              className={`${field} w-full`}
+              inputMode="numeric"
+              value={errorRate}
+              disabled={!!live || busy}
+              onChange={(e) => setErrorRate(e.target.value)}
+            />
+          </label>
+          <label>
+            <span className={label}>Status del error</span>
+            <select
+              className={`${field} w-full`}
+              value={errorStatus}
+              disabled={!!live || busy}
+              onChange={(e) => setErrorStatus(e.target.value)}
+            >
+              {CHAOS_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="mt-2 text-[11px] text-zinc-500">
+          Las respuestas con error llevan el header <code>x-sonda-chaos: error</code>. Un 429
+          incluye <code>Retry-After</code>. Para cambiar estos valores, detén y vuelve a iniciar el
+          mock.
+        </p>
+      </div>
+
       {collections.length === 0 && (
         <p className="mt-2 text-xs text-zinc-500">Aún no tienes colecciones. Importa una spec.</p>
       )}
@@ -140,6 +229,7 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
               {copied ? 'Copiado ✓' : 'Copiar'}
             </button>
           </div>
+          {chaosSummary && <p className="mb-1 text-xs text-amber-400">Simulando: {chaosSummary}</p>}
           <p className="mb-2 text-xs text-zinc-500">
             Pon esa URL en la variable <code>baseUrl</code> de tu entorno para probarlo desde Sonda.
           </p>

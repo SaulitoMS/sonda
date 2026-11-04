@@ -48,7 +48,8 @@ const api: SondaApi = {
   clearCookies: () => ipcRenderer.invoke('cookies:clear'),
   loadSettings: () => ipcRenderer.invoke('settings:load'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
-  startMock: (collectionId, port) => ipcRenderer.invoke('mock:start', collectionId, port),
+  startMock: (collectionId, port, chaos) =>
+    ipcRenderer.invoke('mock:start', collectionId, port, chaos),
   stopMock: () => ipcRenderer.invoke('mock:stop'),
   getMockStatus: () => ipcRenderer.invoke('mock:status'),
   runScript: (input) => ipcRenderer.invoke('script:run', input),

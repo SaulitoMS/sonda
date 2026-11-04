@@ -16,6 +16,7 @@ import {
   type CompiledRoute,
   type MockRoute
 } from '../shared/mock'
+import { chaosDelay, chaosShouldFail, normalizeChaos, type MockChaos } from '../shared/mockChaos'
 import type { EndpointStamp } from '../shared/specSync'
 import type { MockRouteInfo, MockStartResult, MockStatus, SavedRequest } from '../shared/types'
 
@@ -26,6 +27,7 @@ interface Running {
   collectionId: string
   port: number
   routes: MockRouteInfo[]
+  chaos: MockChaos
 }
 
 let running: Running | null = null
@@ -91,7 +93,7 @@ async function loadRoutes(
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void
 
-function makeHandler(routes: CompiledRoute[], basePath: string): Handler {
+function makeHandler(routes: CompiledRoute[], basePath: string, chaos: MockChaos): Handler {
   return (req, res) => {
     req.resume() // el mock ignora el body, pero hay que vaciarlo
 
@@ -133,13 +135,38 @@ function makeHandler(routes: CompiledRoute[], basePath: string): Handler {
       return
     }
 
-    res
-      .writeHead(route.status, {
-        ...cors,
-        'x-sonda-mock': 'true',
-        ...(route.body ? { 'content-type': 'application/json; charset=utf-8' } : {})
-      })
-      .end(route.body)
+    const hit = route
+    const respond = (): void => {
+      // Fallo simulado: un 429 incluye Retry-After para poder probar los reintentos
+      if (chaosShouldFail(chaos)) {
+        res
+          .writeHead(chaos.errorStatus, {
+            ...cors,
+            'content-type': 'application/json; charset=utf-8',
+            'x-sonda-mock': 'true',
+            'x-sonda-chaos': 'error',
+            ...(chaos.errorStatus === 429 ? { 'retry-after': '1' } : {})
+          })
+          .end(JSON.stringify({ error: 'Sonda mock: error simulado', status: chaos.errorStatus }))
+        return
+      }
+      res
+        .writeHead(hit.status, {
+          ...cors,
+          'x-sonda-mock': 'true',
+          ...(hit.body ? { 'content-type': 'application/json; charset=utf-8' } : {})
+        })
+        .end(hit.body)
+    }
+
+    const wait = chaosDelay(chaos)
+    if (wait <= 0) {
+      respond()
+      return
+    }
+    // Si el cliente cancela mientras espera, no se responde a una conexión cerrada
+    const timer = setTimeout(respond, wait)
+    res.on('close', () => clearTimeout(timer))
   }
 }
 
@@ -153,7 +180,11 @@ async function stopMock(): Promise<void> {
   })
 }
 
-async function startMock(collectionId: string, port: number): Promise<MockStartResult> {
+async function startMock(
+  collectionId: string,
+  port: number,
+  rawChaos?: unknown
+): Promise<MockStartResult> {
   if (!Number.isInteger(port) || port < 1024 || port > 65535) {
     return { ok: false, error: 'El puerto debe estar entre 1024 y 65535' }
   }
@@ -170,7 +201,10 @@ async function startMock(collectionId: string, port: number): Promise<MockStartR
   }
   if (loaded.routes.length === 0) return { ok: false, error: 'La colección no tiene peticiones' }
 
-  const server = createServer(makeHandler(compileRoutes(loaded.routes), loaded.basePath))
+  const chaos = normalizeChaos(rawChaos)
+  const server = createServer(
+    makeHandler(compileRoutes(loaded.routes), loaded.basePath, chaos)
+  )
   try {
     await new Promise<void>((resolve, reject) => {
       const onError = (err: Error): void => reject(err)
@@ -194,13 +228,13 @@ async function startMock(collectionId: string, port: number): Promise<MockStartR
     path,
     status
   }))
-  running = { server, collectionId, port, routes }
+  running = { server, collectionId, port, routes, chaos }
   return { ok: true, port, routes }
 }
 
 export function registerMockHandlers(): void {
-  ipcMain.handle('mock:start', (_e, collectionId: string, port: number) =>
-    startMock(String(collectionId), Number(port))
+  ipcMain.handle('mock:start', (_e, collectionId: string, port: number, chaos?: unknown) =>
+    startMock(String(collectionId), Number(port), chaos)
   )
   ipcMain.handle('mock:stop', () => stopMock())
   ipcMain.handle('mock:status', (): MockStatus =>
@@ -209,7 +243,8 @@ export function registerMockHandlers(): void {
           running: true,
           collectionId: running.collectionId,
           port: running.port,
-          routes: running.routes
+          routes: running.routes,
+          chaos: running.chaos
         }
       : { running: false }
   )
