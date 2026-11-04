@@ -56,6 +56,7 @@ export function RequestBar({ onCurlImported }: Props): React.JSX.Element {
       </div>
 
       <div
+        data-url-bar
         className="order-last flex min-w-0 basis-full sm:order-none sm:basis-0 sm:flex-1"
         onPaste={handlePaste}
       >

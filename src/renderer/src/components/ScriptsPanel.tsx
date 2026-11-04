@@ -79,10 +79,13 @@ export function ScriptsPanel(): React.JSX.Element {
             toBeNull / toBeType(&quot;string&quot;) / toHaveLength / toBeOneOf([...]) /
             toMatchObject(&#123;...&#125;) / toHaveProperty (con .not)
           </p>
-
           <p>
-            sonda.uuid() · sonda.now() · sonda.base64.encode(&quot;texto&quot;) / .decode(&quot;...&quot;) ·
-            sonda.jwt.decode(token) → &#123; header, payload &#125;
+            sonda.uuid() · sonda.now() · sonda.base64.encode(&quot;texto&quot;) /
+            .decode(&quot;...&quot;) · sonda.jwt.decode(token) → &#123; header, payload &#125;
+          </p>
+          <p>
+            sonda.crypto.sha256(texto, &quot;hex&quot; | &quot;base64&quot;) ·
+            sonda.crypto.hmacSha256(clave, texto, &quot;hex&quot; | &quot;base64&quot;)
           </p>
           <p>console.log(...) aparece como aviso en la respuesta</p>
         </div>

@@ -157,6 +157,12 @@ function App(): React.JSX.Element {
         e.preventDefault()
         setModal((m) => (m === 'palette' ? null : 'palette'))
       }
+      if (e.key === 'l') {
+        e.preventDefault()
+        const input = document.querySelector<HTMLInputElement>('[data-url-bar] input')
+        input?.focus()
+        input?.select()
+      }
       if (e.key === 'b') {
         e.preventDefault()
         toggleSidebar()

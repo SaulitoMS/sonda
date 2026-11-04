@@ -34,6 +34,7 @@ Opciones de "run":
   -w, --workspace <ruta>   Carpeta del workspace (por defecto $SONDA_WORKSPACE o ~/Documents/Sonda)
   -e, --env <nombre>       Entorno a usar (por defecto, el activo en la app)
       --var <clave=valor>  Define o pisa una variable. Se puede repetir
+      --env-file <archivo> Lee variables desde un archivo .env (--var las pisa)
   -f, --folder <nombre>    Ejecuta solo las peticiones de esa carpeta
   -d, --data <archivo>     CSV o JSON: la colección corre una vez por fila
       --include-writes     Incluye POST, PUT, PATCH y DELETE (por defecto solo GET, HEAD y OPTIONS)
@@ -69,14 +70,37 @@ function color(
   return { red: wrap('31'), green: wrap('32'), yellow: wrap('33'), dim: wrap('2'), bold: wrap('1') }
 }
 
-function parseVars(list: string[]): Record<string, string> {
+/** Lee un archivo .env: CLAVE=valor, comentarios con #, comillas simples o dobles y "export" opcional */
+function parseEnvFile(text: string): Record<string, string> {
   const out: Record<string, string> = {}
-  // Primero las del entorno del sistema, para que --var las pise
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const m = line.match(/^(?:export\s+)?([\w.-]+)\s*=\s*(.*)$/)
+    if (!m) continue
+    let value = m[2]
+    const quote = value[0]
+    const end = value.lastIndexOf(quote)
+    if ((quote === '"' || quote === "'") && end > 0) {
+      value = value.slice(1, end)
+      if (quote === '"') value = value.replace(/\\n/g, '\n')
+    } else {
+      value = value.replace(/\s+#.*$/, '')
+    }
+    out[m[1]] = value
+  }
+  return out
+}
+
+function parseVars(list: string[], fromFile: Record<string, string> = {}): Record<string, string> {
+  const out: Record<string, string> = {}
+  // Primero las del entorno del sistema, luego el archivo .env, y al final --var
   for (const [key, value] of Object.entries(process.env)) {
     if (key.startsWith('SONDA_VAR_') && key.length > 10 && value !== undefined) {
       out[key.slice(10)] = value
     }
   }
+  Object.assign(out, fromFile)
   for (const item of list) {
     const i = item.indexOf('=')
     if (i <= 0) throw new UsageError(`--var espera clave=valor, recibió "${item}"`)
@@ -110,6 +134,7 @@ async function main(argv: string[]): Promise<number> {
       workspace: { type: 'string', short: 'w' },
       env: { type: 'string', short: 'e' },
       var: { type: 'string', multiple: true },
+      'env-file': { type: 'string' },
       folder: { type: 'string', short: 'f' },
       data: { type: 'string', short: 'd' },
       'include-writes': { type: 'boolean' },
@@ -176,7 +201,17 @@ async function main(argv: string[]): Promise<number> {
   } else {
     env = envData.environments.find((e) => e.id === envData.activeId) ?? null
   }
-  const overrides = parseVars(values.var ?? [])
+  let fileVars: Record<string, string> = {}
+  if (values['env-file']) {
+    try {
+      fileVars = parseEnvFile(await fs.readFile(values['env-file'], 'utf-8'))
+    } catch (err) {
+      throw new UsageError(
+        `No se pudo leer ${values['env-file']}: ${err instanceof Error ? err.message : 'error'}`
+      )
+    }
+  }
+  const overrides = parseVars(values.var ?? [], fileVars)
 
   // Los secretos llegan vacíos: se avisa de los que nadie aportó
   const missingSecrets =
