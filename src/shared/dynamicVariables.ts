@@ -309,9 +309,10 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
       )
     }
   },
-    {
+  {
     name: '$randomRfc',
-    description: 'RFC de persona física aleatorio con formato válido (13 caracteres). No es una persona real',
+    description:
+      'RFC de persona física aleatorio con formato válido (13 caracteres). No es una persona real',
     generate: ({ random }) => {
       const letter = (): string => LETTERS[Math.floor(random() * LETTERS.length)]
       const year = 1950 + Math.floor(random() * 56)
@@ -321,13 +322,21 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
         ALNUM[Math.floor(random() * ALNUM.length)].toUpperCase()
       ).join('')
       return (
-        letter() + letter() + letter() + letter() + String(year).slice(2) + pad2(month) + pad2(day) + homoclave
+        letter() +
+        letter() +
+        letter() +
+        letter() +
+        String(year).slice(2) +
+        pad2(month) +
+        pad2(day) +
+        homoclave
       )
     }
   },
   {
     name: '$randomClabe',
-    description: 'CLABE interbancaria aleatoria con dígito verificador válido (18 dígitos). No es una cuenta real',
+    description:
+      'CLABE interbancaria aleatoria con dígito verificador válido (18 dígitos). No es una cuenta real',
     generate: ({ random }) => {
       const base = randomDigits(17, random)
       const weights = [3, 7, 1]

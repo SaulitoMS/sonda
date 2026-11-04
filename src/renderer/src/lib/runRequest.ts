@@ -171,7 +171,9 @@ export async function executeRequest(
           clientSecret: resolve(auth.oauthClientSecret ?? ''),
           scope: resolve(auth.oauthScope ?? ''),
           username: resolve((auth.oauthUsername ?? '').trim()),
-          password: resolve(auth.oauthPassword ?? '')
+          password: resolve(auth.oauthPassword ?? ''),
+          authUrl: resolve((auth.oauthAuthUrl ?? '').trim()),
+          redirectPort: Number(resolve((auth.oauthRedirectPort ?? '').trim())) || 0
         }
       : null
 

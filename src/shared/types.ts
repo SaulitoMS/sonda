@@ -158,8 +158,13 @@ export interface AuthConfig {
   keyValue: string
   keyIn: 'header' | 'query'
   /** OAuth 2.0. Opcionales: solo existen si el usuario eligió este tipo */
-  oauthGrant?: 'client_credentials' | 'password'
+  /** OAuth 2.0. Opcionales: solo existen si el usuario eligió este tipo */
+  oauthGrant?: 'client_credentials' | 'password' | 'authorization_code'
   oauthTokenUrl?: string
+  /** Solo para "authorization_code" */
+  oauthAuthUrl?: string
+  /** Solo para "authorization_code". Vacío o 0 = puerto automático */
+  oauthRedirectPort?: string
   oauthClientId?: string
   oauthClientSecret?: string
   oauthScope?: string
@@ -295,6 +300,17 @@ export interface CookieInfo {
   expiresAt: number | null
 }
 
+export interface OAuthAuthorizeInput {
+  authUrl: string
+  clientId: string
+  scope: string
+  /** 0 = que el sistema elija un puerto libre */
+  port: number
+}
+
+export type OAuthAuthorizeResult =
+  { ok: true; code: string; verifier: string; redirectUri: string } | { ok: false; error: string }
+
 /** Contrato de window.api (lo implementa preload, lo usa el renderer) */
 export interface SondaApi {
   sendRequest: (input: SendRequestInput) => Promise<SendRequestResult>
@@ -358,6 +374,7 @@ export interface SondaApi {
   getMockStatus: () => Promise<MockStatus>
   /** Ejecuta un script de usuario en un contexto aislado (máximo 2 s) */
   runScript: (input: ScriptInput) => Promise<ScriptOutput>
+  oauthAuthorize: (input: OAuthAuthorizeInput) => Promise<OAuthAuthorizeResult>
   /** Abre una conexión WebSocket (solo una a la vez). Lo que llega se recibe con onWsEvent */
   wsConnect: (input: WsConnectInput) => Promise<WsConnectResult>
   /** Envía un mensaje: texto, o bytes si `binary` es true (entonces `data` es hexadecimal). Devuelve el error, o null si salió bien */

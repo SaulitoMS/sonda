@@ -53,7 +53,7 @@ const oauthCache = new Map<string, { token: string; expiresAt: number }>()
 async function getOAuthToken(
   send: Send,
   p: {
-    grant: 'client_credentials' | 'password'
+    grant: 'client_credentials' | 'password' | 'authorization_code'
     tokenUrl: string
     clientId: string
     clientSecret: string
@@ -62,6 +62,14 @@ async function getOAuthToken(
     password: string
   }
 ): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+  if (p.grant === 'authorization_code') {
+    return {
+      ok: false,
+      error:
+        'OAuth 2.0 Authorization Code necesita un navegador y no está disponible en el CLI. ' +
+        'Usa client_credentials o pasa un token con --var.'
+    }
+  }
   if (!p.tokenUrl) return { ok: false, error: 'OAuth 2.0: falta la URL del token.' }
   if (!p.clientId) return { ok: false, error: 'OAuth 2.0: falta el Client ID.' }
   if (p.grant === 'password' && !p.username) {

@@ -380,7 +380,9 @@ function App(): React.JSX.Element {
           showFlash('No hay body para copiar')
           return
         }
-        void navigator.clipboard.writeText(prettyText(r.body)).then(() => showFlash('Body copiado ✓'))
+        void navigator.clipboard
+          .writeText(prettyText(r.body))
+          .then(() => showFlash('Body copiado ✓'))
       }
     },
     { id: 'save', label: 'Guardar', hint: `${MOD}S`, run: () => void save() },

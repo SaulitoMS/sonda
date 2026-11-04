@@ -139,8 +139,18 @@ export function AuthForm({
             >
               <option value="client_credentials">Client Credentials</option>
               <option value="password">Password</option>
+              <option value="authorization_code">Authorization Code (PKCE)</option>
             </select>
           </Field>
+          {auth.oauthGrant === 'authorization_code' && (
+            <Field label="URL de autorización">
+              <VariableInput
+                value={auth.oauthAuthUrl ?? ''}
+                onChange={(oauthAuthUrl) => patch({ oauthAuthUrl })}
+                placeholder="https://proveedor.com/oauth/authorize"
+              />
+            </Field>
+          )}
           <Field label="URL del token">
             <VariableInput
               value={auth.oauthTokenUrl ?? ''}
@@ -159,9 +169,22 @@ export function AuthForm({
             <VariableInput
               value={auth.oauthClientSecret ?? ''}
               onChange={(oauthClientSecret) => patch({ oauthClientSecret })}
-              placeholder="{{clientSecret}}"
+              placeholder={
+                auth.oauthGrant === 'authorization_code'
+                  ? '{{clientSecret}} (opcional con PKCE)'
+                  : '{{clientSecret}}'
+              }
             />
           </Field>
+          {auth.oauthGrant === 'authorization_code' && (
+            <Field label="Puerto callback">
+              <VariableInput
+                value={auth.oauthRedirectPort ?? ''}
+                onChange={(oauthRedirectPort) => patch({ oauthRedirectPort })}
+                placeholder="0 = automático"
+              />
+            </Field>
+          )}
           {auth.oauthGrant === 'password' && (
             <>
               <Field label="Usuario">
@@ -191,6 +214,16 @@ export function AuthForm({
             Sonda pide el token al enviar y lo reutiliza hasta que caduca (solo en memoria). Se
             envía como <span className="font-mono text-zinc-400">Authorization: Bearer …</span>.
           </p>
+          {auth.oauthGrant === 'authorization_code' && (
+            <p className="text-[11px] leading-relaxed text-zinc-500">
+              Se abrirá tu navegador para iniciar sesión. Registra en tu proveedor la redirección{' '}
+              <span className="font-mono text-zinc-400">
+                http://127.0.0.1:{auth.oauthRedirectPort || 'PUERTO'}/callback
+              </span>
+              . Si tu proveedor exige una URL exacta, fija un puerto (por ejemplo 8765); si no,
+              déjalo en 0.
+            </p>
+          )}
         </>
       )}
 
