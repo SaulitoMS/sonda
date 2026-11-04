@@ -1,5 +1,13 @@
 import { toBodyFormData } from './bodyForm'
-import type { Assertion, AuthConfig, BodyFormData, Extraction, HttpMethod } from './types'
+import { cleanOverrides, hasOverrides } from './requestOverrides'
+import type {
+  Assertion,
+  AuthConfig,
+  BodyFormData,
+  Extraction,
+  HttpMethod,
+  RequestOverrides
+} from './types'
 
 export interface SignatureInput {
   method: HttpMethod
@@ -15,11 +23,14 @@ export interface SignatureInput {
   /** Scripts de la petición */
   preScript?: string
   postScript?: string
+  /** Tiempo límite y redirecciones propios de la petición */
+  overrides?: RequestOverrides
 }
 
 export function requestSignature(r: SignatureInput): string {
   const bodyForm = r.bodyForm ? toBodyFormData(r.bodyForm) : undefined
   const description = r.description?.trim()
+  const overrides = cleanOverrides(r.overrides)
   return JSON.stringify({
     method: r.method,
     url: r.url.trim(),
@@ -34,7 +45,8 @@ export function requestSignature(r: SignatureInput): string {
     ...(bodyForm ? { bodyForm } : {}),
     ...(description ? { description } : {}),
     ...(r.preScript?.trim() ? { preScript: r.preScript } : {}),
-    ...(r.postScript?.trim() ? { postScript: r.postScript } : {})
+    ...(r.postScript?.trim() ? { postScript: r.postScript } : {}),
+    ...(hasOverrides(overrides) ? { overrides } : {})
   })
 }
 

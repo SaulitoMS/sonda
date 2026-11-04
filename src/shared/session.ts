@@ -1,4 +1,5 @@
 import { parseBodyFormData } from './bodyForm'
+import { cleanOverrides, hasOverrides } from './requestOverrides'
 import type {
   Assertion,
   AuthConfig,
@@ -6,6 +7,7 @@ import type {
   Extraction,
   HttpMethod,
   JsonSchema,
+  RequestOverrides,
   ResponseSchemas
 } from './types'
 
@@ -30,6 +32,8 @@ export interface PersistedRequest {
   /** Scripts de la petición. Si no existen, no hay script */
   preScript?: string
   postScript?: string
+  /** Tiempo límite y redirecciones propios de la petición */
+  overrides?: RequestOverrides
   requestSchema: JsonSchema | null
   responseSchemas: ResponseSchemas | null
   currentFile: string | null
@@ -75,6 +79,7 @@ function parseRequest(x: unknown): PersistedRequest | null {
     }))
 
   const bodyForm = parseBodyFormData(x.bodyForm)
+  const overrides = cleanOverrides(x.overrides)
 
   return {
     method: x.method as HttpMethod,
@@ -88,6 +93,7 @@ function parseRequest(x: unknown): PersistedRequest | null {
     ...(typeof x.description === 'string' && x.description ? { description: x.description } : {}),
     ...(typeof x.preScript === 'string' && x.preScript ? { preScript: x.preScript } : {}),
     ...(typeof x.postScript === 'string' && x.postScript ? { postScript: x.postScript } : {}),
+    ...(hasOverrides(overrides) ? { overrides } : {}),
     requestSchema: isObject(x.requestSchema) ? x.requestSchema : null,
     responseSchemas: isObject(x.responseSchemas) ? (x.responseSchemas as ResponseSchemas) : null,
     currentFile: typeof x.currentFile === 'string' ? x.currentFile : null,

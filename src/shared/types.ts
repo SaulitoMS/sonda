@@ -114,6 +114,13 @@ export interface KeyValueData {
   enabled: boolean
 }
 
+/** Ajustes propios de una petición. Lo que no esté definido usa los ajustes globales */
+export interface RequestOverrides {
+  /** Tiempo límite en segundos (1 a 600) */
+  timeoutSeconds?: number
+  followRedirects?: boolean
+}
+
 /** Lo que se guarda en cada archivo .json */
 export interface SavedRequest {
   name: string
@@ -139,6 +146,8 @@ export interface SavedRequest {
   preScript?: string
   /** Script que corre al recibir la respuesta. Si no existe, no hay script */
   postScript?: string
+  /** Tiempo límite y redirecciones propios de la petición. Si no existe, usa los ajustes globales */
+  overrides?: RequestOverrides
 }
 
 // ---------- Autenticación ----------

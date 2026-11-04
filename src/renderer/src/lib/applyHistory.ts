@@ -16,6 +16,7 @@ export function applyHistory(entry: HistoryEntry): void {
     extractions: [],
     preScript: '',
     postScript: '',
+    overrides: {},
     requestSchema: null,
     responseSchemas: null,
     validation: null,

@@ -11,6 +11,7 @@ import type {
   ExtractionResult,
   HttpMethod,
   JsonSchema,
+  RequestOverrides,
   ResponseSchemas,
   SavedRequest,
   SchemaValidation,
@@ -24,6 +25,7 @@ import { useStreamStore } from './useStreamStore' // ← NUEVO
 import { useTabsStore } from './useTabsStore'
 import { finishInFlight, startInFlight } from '../lib/inFlight'
 import { resolveAuthForPath } from '../lib/inheritedAuth'
+import { cleanOverrides, hasOverrides } from '../../../shared/requestOverrides'
 
 export interface KeyValue {
   id: string
@@ -57,6 +59,8 @@ export interface RequestState {
   postScript: string
   /** Notas o documentación de la petición (en las importadas de OpenAPI, la descripción de la spec) */
   description: string
+  /** Tiempo límite y redirecciones propios de la petición. Vacío = usa los ajustes globales */
+  overrides: RequestOverrides
   loading: boolean
   response: SendRequestResult | null
 
@@ -91,6 +95,7 @@ export interface RequestState {
   setPreScript: (s: string) => void
   setPostScript: (s: string) => void
   setDescription: (d: string) => void
+  setOverrides: (o: RequestOverrides) => void
   send: () => Promise<void>
 
   loadSaved: (saved: SavedRequest, path: string) => void
@@ -114,6 +119,7 @@ export type RequestSnapshot = Pick<
   | 'preScript'
   | 'postScript'
   | 'description'
+  | 'overrides'
   | 'loading'
   | 'response'
   | 'requestSchema'
@@ -143,6 +149,7 @@ export function blankSnapshot(): RequestSnapshot {
     preScript: '',
     postScript: '',
     description: '',
+    overrides: {} as RequestOverrides,
     loading: false,
     response: null,
     requestSchema: null,
@@ -170,7 +177,8 @@ export function snapshotFromSaved(saved: SavedRequest, path: string): LoadedStat
     extractions: saved.extractions ?? [],
     preScript: saved.preScript ?? '',
     postScript: saved.postScript ?? '',
-    description: saved.description ?? ''
+    description: saved.description ?? '',
+    overrides: cleanOverrides(saved.overrides)
   }
   return {
     ...fields,
@@ -202,6 +210,7 @@ export function captureSnapshot(): RequestSnapshot {
     preScript: s.preScript,
     postScript: s.postScript,
     description: s.description,
+    overrides: s.overrides,
     loading: s.loading,
     response: s.response,
     requestSchema: s.requestSchema,
@@ -237,6 +246,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
   setPreScript: (preScript) => set({ preScript }),
   setPostScript: (postScript) => set({ postScript }),
   setDescription: (description) => set({ description }),
+  setOverrides: (overrides) => set({ overrides }),
 
   send: async () => {
     const {
@@ -250,6 +260,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       extractions,
       preScript,
       postScript,
+      overrides,
       loading,
       requestSchema,
       responseSchemas,
@@ -280,6 +291,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         extractions,
         preScript,
         postScript,
+        overrides,
         requestSchema,
         responseSchemas
       },
@@ -330,6 +342,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       preScript,
       postScript,
       description,
+      overrides,
       requestSchema,
       responseSchemas
     } = get()
@@ -349,6 +362,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       ...(preScript.trim() ? { preScript } : {}),
       ...(postScript.trim() ? { postScript } : {}),
       ...(description.trim() ? { description } : {}),
+      ...(hasOverrides(overrides) ? { overrides } : {}),
       // Se conservan para no perderlos al volver a guardar una petición importada
       ...(requestSchema ? { requestSchema } : {}),
       ...(responseSchemas ? { responseSchemas } : {})

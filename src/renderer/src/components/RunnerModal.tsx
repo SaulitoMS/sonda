@@ -81,7 +81,11 @@ interface Props {
   onClose: () => void
 }
 
-export function RunnerModal({ collectionId, initialFolder = null, onClose }: Props): React.JSX.Element {
+export function RunnerModal({
+  collectionId,
+  initialFolder = null,
+  onClose
+}: Props): React.JSX.Element {
   const collection = useCollectionsStore((s) => s.collections.find((c) => c.id === collectionId))
 
   const [includeWrites, setIncludeWrites] = useState(false)

@@ -14,6 +14,7 @@ import {
   type RequestSnapshot
 } from '../store/useRequestStore'
 import { useTabsStore, type Tab } from '../store/useTabsStore'
+import { cleanOverrides, hasOverrides } from '../../../shared/requestOverrides'
 
 const KEY = 'sonda.session.v1'
 
@@ -31,6 +32,7 @@ function toPersisted(s: RequestSnapshot): PersistedRequest {
     description: s.description,
     ...(s.preScript ? { preScript: s.preScript } : {}),
     ...(s.postScript ? { postScript: s.postScript } : {}),
+    ...(hasOverrides(s.overrides) ? { overrides: s.overrides } : {}),
     requestSchema: s.requestSchema,
     responseSchemas: s.responseSchemas,
     currentFile: s.currentFile,
@@ -55,6 +57,7 @@ function toSnapshot(p: PersistedRequest): RequestSnapshot {
     description: p.description ?? '',
     preScript: p.preScript ?? '',
     postScript: p.postScript ?? '',
+    overrides: cleanOverrides(p.overrides),
     requestSchema: p.requestSchema,
     responseSchemas: p.responseSchemas,
     currentFile: p.currentFile,

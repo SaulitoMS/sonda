@@ -19,8 +19,11 @@ import { applyEdit } from '../lib/applyEdit'
 import { VariableTextarea } from './VariableTextarea'
 import { Icon } from './Icon'
 import { ScriptsPanel } from './ScriptsPanel'
+import { OverridesPanel } from './OverridesPanel'
+import { hasOverrides } from '../../../shared/requestOverrides'
 
-type Tab = 'params' | 'auth' | 'headers' | 'body' | 'tests' | 'scripts' | 'extract' | 'notes'
+type Tab =
+  'params' | 'auth' | 'headers' | 'body' | 'tests' | 'scripts' | 'extract' | 'notes' | 'config'
 
 export function RequestPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('params')
@@ -36,6 +39,7 @@ export function RequestPanel(): React.JSX.Element {
     preScript,
     postScript,
     description,
+    overrides,
     requestSchema,
     method,
     setUrl,
@@ -172,6 +176,10 @@ export function RequestPanel(): React.JSX.Element {
           Notas
           {description.trim() && <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />}
         </button>
+        <button className={tabClass('config')} onClick={() => setTab('config')}>
+          Ajustes
+          {hasOverrides(overrides) && <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />}
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
@@ -195,6 +203,8 @@ export function RequestPanel(): React.JSX.Element {
         {tab === 'extract' && <ExtractionsPanel />}
 
         {tab === 'notes' && <NotesPanel />}
+
+        {tab === 'config' && <OverridesPanel />}
 
         {tab === 'body' && (
           <div className="flex h-full flex-col gap-3">

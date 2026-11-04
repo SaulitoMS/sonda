@@ -15,6 +15,7 @@ import type {
   ExtractionResult,
   HttpMethod,
   JsonSchema,
+  RequestOverrides,
   ResponseSchemas,
   SchemaValidation,
   SendRequestResult
@@ -53,6 +54,8 @@ export interface RequestDraft {
   preScript?: string | null
   /** Script que corre con la respuesta ya recibida */
   postScript?: string | null
+  /** Tiempo límite y redirecciones propios de la petición (si faltan, valen los ajustes globales) */
+  overrides?: RequestOverrides | null
 }
 
 export interface ExecuteResult {
@@ -239,7 +242,9 @@ export async function executeRequest(
     body: finalBody,
     formData: formParts,
     requestId: options.requestId,
-    live: options.live
+    live: options.live,
+    timeoutMs: draft.overrides?.timeoutSeconds ? draft.overrides.timeoutSeconds * 1000 : undefined,
+    followRedirects: draft.overrides?.followRedirects
   }
 
   let response = await window.api.sendRequest(sendInput)
