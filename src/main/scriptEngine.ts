@@ -74,6 +74,64 @@ const RUNNER = `
     return api
   }
 
+    const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+  const utf8Bytes = (s) => {
+    const enc = encodeURIComponent(s)
+    const out = []
+    for (let i = 0; i < enc.length; i++) {
+      if (enc[i] === '%') { out.push(parseInt(enc.slice(i + 1, i + 3), 16)); i += 2 } else out.push(enc.charCodeAt(i))
+    }
+    return out
+  }
+
+  const b64encode = (s) => {
+    const b = utf8Bytes(String(s))
+    let out = ''
+    for (let i = 0; i < b.length; i += 3) {
+      const n = (b[i] << 16) | ((b[i + 1] || 0) << 8) | (b[i + 2] || 0)
+      out += B64[(n >> 18) & 63] + B64[(n >> 12) & 63]
+      out += i + 1 < b.length ? B64[(n >> 6) & 63] : '='
+      out += i + 2 < b.length ? B64[n & 63] : '='
+    }
+    return out
+  }
+
+  const b64decode = (s) => {
+    const clean = String(s).replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '')
+    const bytes = []
+    let buf = 0
+    let bits = 0
+    for (const ch of clean) {
+      const v = B64.indexOf(ch)
+      if (v < 0) fail('base64 inválido')
+      buf = ((buf << 6) | v) & 0xffff
+      bits += 6
+      if (bits >= 8) { bits -= 8; bytes.push((buf >> bits) & 255) }
+    }
+    try {
+      return decodeURIComponent(bytes.map((b) => '%' + b.toString(16).padStart(2, '0')).join(''))
+    } catch {
+      return bytes.map((b) => String.fromCharCode(b)).join('')
+    }
+  }
+
+  const jwtDecode = (token) => {
+    const parts = String(token).replace(/^Bearer /i, '').split('.')
+    if (parts.length < 2) fail('no es un JWT')
+    try {
+      return { header: JSON.parse(b64decode(parts[0])), payload: JSON.parse(b64decode(parts[1])) }
+    } catch {
+      fail('el JWT es ilegible')
+    }
+  }
+
+  const uuid = () =>
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.floor(Math.random() * 16)
+      return (c === 'x' ? r : (r & 3) | 8).toString(16)
+    })
+
   const sonda = {
     env: {
       get: (k) => (has(vars, String(k)) ? vars[String(k)] : undefined),
@@ -93,7 +151,11 @@ const RUNNER = `
       }
     },
     assert: (cond, msg) => { if (!cond) fail(msg ? String(msg) : 'la condición no se cumple') },
-    expect
+    expect,
+    uuid,
+    now: () => Date.now(),
+    base64: { encode: b64encode, decode: b64decode },
+    jwt: { decode: jwtDecode }
   }
 
   if (input.phase === 'pre') {
