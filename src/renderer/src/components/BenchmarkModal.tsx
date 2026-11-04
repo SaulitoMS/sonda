@@ -8,6 +8,7 @@ import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { Modal } from './Modal'
+import { confirmBulkMessage } from '../../../shared/writeGuard'
 
 const MAX_RUNS = 200
 const MAX_CONCURRENCY = 10
@@ -68,6 +69,10 @@ export function BenchmarkModal({ onClose }: Props): React.JSX.Element {
       auth: s.auth
     }
     const env = useEnvironmentStore.getState().getActive()
+
+    // Entorno protegido: repetir un POST/PUT/PATCH/DELETE muchas veces pide confirmación
+    const guard = confirmBulkMessage(env, s.method, s.url, runsTotal, 'La prueba de rendimiento')
+    if (guard && !confirm(guard)) return
 
     stopRef.current = false
     setError('')

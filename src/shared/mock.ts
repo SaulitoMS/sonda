@@ -121,7 +121,9 @@ export function parseForcedStatus(raw: string | string[] | undefined): ForcedSta
   const value = (Array.isArray(raw) ? raw[0] : raw)?.trim()
   if (!value) return { kind: 'none' }
   const n = Number(value)
-  return Number.isInteger(n) && n >= 100 && n <= 599 ? { kind: 'ok', status: n } : { kind: 'invalid' }
+  return Number.isInteger(n) && n >= 100 && n <= 599
+    ? { kind: 'ok', status: n }
+    : { kind: 'invalid' }
 }
 
 /**
@@ -143,7 +145,10 @@ export function resolveMockResponse(
   // 1xx, 204 y 304 no llevan body
   const noBody = wanted < 200 || wanted === 204 || wanted === 304
   if (key === undefined) {
-    const body = JSON.stringify({ error: 'Sonda mock: status no documentado en la spec', status: wanted })
+    const body = JSON.stringify({
+      error: 'Sonda mock: status no documentado en la spec',
+      status: wanted
+    })
     return { status: wanted, body: noBody ? '' : body, documented: false }
   }
   return { status: wanted, body: noBody ? '' : responses[key], documented: true }

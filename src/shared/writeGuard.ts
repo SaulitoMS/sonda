@@ -20,3 +20,15 @@ export function confirmRunMessage(env: Environment | null, writeCount: number): 
   if (!env?.protected || writeCount === 0) return null
   return `Entorno protegido: "${env.name}"\n\nEl Runner va a enviar ${writeCount} petición(es) que modifican datos (POST/PUT/PATCH/DELETE). ¿Continuar?`
 }
+
+/** Mensaje de confirmación para herramientas que repiten una petición muchas veces (benchmark, fuzzing) */
+export function confirmBulkMessage(
+  env: Environment | null,
+  method: HttpMethod,
+  url: string,
+  count: number,
+  what: string
+): string | null {
+  if (!env?.protected || !isWriteMethod(method)) return null
+  return `Entorno protegido: "${env.name}"\n\n${what} enviará ${count} peticiones ${method} a:\n${url}\n\n¿Continuar?`
+}

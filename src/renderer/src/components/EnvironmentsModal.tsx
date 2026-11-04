@@ -1,10 +1,6 @@
 import { useRef, useState } from 'react'
 import type { EnvVariable, Environment, EnvironmentsData } from '../../../shared/types'
-import {
-  exportDotenv,
-  exportEnvironment,
-  parseEnvironmentFile
-} from '../../../shared/envTransfer'
+import { exportDotenv, exportEnvironment, parseEnvironmentFile } from '../../../shared/envTransfer'
 import { downloadText } from '../lib/download'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'

@@ -21,7 +21,9 @@ export function EnvironmentSelector({ onManage }: { onManage: () => void }): Rea
               ? 'border-red-500/70 text-red-300 focus:border-red-400'
               : 'border-zinc-700 text-zinc-200 hover:border-zinc-600 focus:border-blue-500'
           }`}
-          title={guarded ? 'Entorno protegido: pide confirmación al modificar datos' : 'Entorno activo'}
+          title={
+            guarded ? 'Entorno protegido: pide confirmación al modificar datos' : 'Entorno activo'
+          }
         >
           <option value="">Sin entorno</option>
           {data.environments.map((env) => (

@@ -10,6 +10,7 @@ import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { Modal } from './Modal'
+import { confirmBulkMessage } from '../../../shared/writeGuard'
 
 interface Row {
   fuzz: FuzzCase
@@ -74,6 +75,11 @@ export function FuzzModal({ onClose }: Props): React.JSX.Element {
   const start = async (): Promise<void> => {
     const s = useRequestStore.getState()
     const env = useEnvironmentStore.getState().getActive()
+
+    // Entorno protegido: el fuzzing envía muchos bodies inválidos a un método que modifica datos
+    const guard = confirmBulkMessage(env, s.method, s.url, plan.cases.length, 'El fuzzing')
+    if (guard && !confirm(guard)) return
+
     const hasContentType = s.headers.some(
       (h) => h.enabled && h.key.trim().toLowerCase() === 'content-type'
     )

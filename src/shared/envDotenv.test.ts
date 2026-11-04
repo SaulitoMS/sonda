@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  envNameFromFile,
-  exportDotenv,
-  parseDotenv,
-  parseEnvironmentFile
-} from './envTransfer'
+import { envNameFromFile, exportDotenv, parseDotenv, parseEnvironmentFile } from './envTransfer'
 import type { Environment } from './types'
 
 const vars = (text: string): Record<string, string> => {

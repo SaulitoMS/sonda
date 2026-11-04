@@ -441,6 +441,8 @@ export interface Environment {
   id: string
   name: string
   variables: EnvVariable[]
+  /** Pide confirmación antes de enviar peticiones que modifican datos (POST/PUT/PATCH/DELETE) */
+  protected?: boolean
 }
 
 export interface EnvironmentsData {
