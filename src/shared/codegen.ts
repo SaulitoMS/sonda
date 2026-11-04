@@ -2,7 +2,7 @@ import { toCurl, type CurlRequest } from './curl'
 import type { FormPart } from './types'
 
 export type CodeLang =
-  'curl' | 'fetch' | 'axios' | 'python' | 'go' | 'php' | 'csharp' | 'powershell'
+  'curl' | 'fetch' | 'axios' | 'python' | 'go' | 'php' | 'csharp' | 'powershell' | 'ruby'
 
 export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'curl', label: 'cURL' },
@@ -12,7 +12,8 @@ export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'go', label: 'Go (net/http)' },
   { id: 'php', label: 'PHP (cURL)' },
   { id: 'csharp', label: 'C# (HttpClient)' },
-  { id: 'powershell', label: 'PowerShell (Invoke-WebRequest)' }
+  { id: 'powershell', label: 'PowerShell (Invoke-WebRequest)' },
+  { id: 'ruby', label: 'Ruby (Net::HTTP)' }
 ]
 
 // JSON.stringify produce literales de string válidos tanto en JavaScript como en Python
@@ -369,6 +370,52 @@ function toPowerShell(r: CurlRequest): string {
   return lines.join('\n')
 }
 
+// En Ruby, "..." interpreta #{...}: se escapa el # para que los valores salgan literales
+const rbStr = (s: string): string => str(s).replace(/#/g, '\\#')
+
+function toRuby(r: CurlRequest): string {
+  const parts = formParts(r)
+  const lines = [
+    "require 'net/http'",
+    "require 'uri'",
+    '',
+    `uri = URI(${rbStr(r.url)})`,
+    `request = Net::HTTP::${r.method[0] + r.method.slice(1).toLowerCase()}.new(uri)`
+  ]
+
+  for (const h of r.headers) {
+    // set_form pone su propio Content-Type con el boundary
+    if (parts.length && isContentType(h)) continue
+    lines.push(`request[${rbStr(h.key)}] = ${rbStr(h.value)}`)
+  }
+  if (r.user) {
+    const [username, password] = splitUser(r.user)
+    lines.push(`request.basic_auth(${rbStr(username)}, ${rbStr(password)})`)
+  }
+
+  if (parts.length) {
+    const rows = parts.map((p) =>
+      p.kind === 'file'
+        ? `  [${rbStr(p.key)}, File.open(${rbStr(p.value)}), { filename: ${rbStr(fileName(p.value))} }],`
+        : `  [${rbStr(p.key)}, ${rbStr(p.value)}],`
+    )
+    lines.push('request.set_form([', ...rows, '], "multipart/form-data")')
+  } else if (hasBody(r)) {
+    lines.push(`request.body = ${rbStr(r.body)}`)
+  }
+
+  lines.push(
+    '',
+    'response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|',
+    '  http.request(request)',
+    'end',
+    '',
+    'puts response.code',
+    'puts response.body'
+  )
+  return lines.join('\n')
+}
+
 export function generateCode(lang: CodeLang, request: CurlRequest): string {
   switch (lang) {
     case 'curl':
@@ -387,5 +434,7 @@ export function generateCode(lang: CodeLang, request: CurlRequest): string {
       return toCSharp(request)
     case 'powershell':
       return toPowerShell(request)
+    case 'ruby':
+      return toRuby(request)
   }
 }

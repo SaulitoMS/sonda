@@ -767,7 +767,6 @@ export function ResponsePanel(): React.JSX.Element {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 py-1 pr-2 text-xs">
-
           <span
             title={describeStatus(response.status)}
             className={`flex cursor-help items-center gap-1.5 rounded-md px-2 py-1 font-bold ${statusColor(response.status)}`}
