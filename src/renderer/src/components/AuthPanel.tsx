@@ -11,7 +11,8 @@ const TYPES: { value: AuthType; label: string }[] = [
   { value: 'basic', label: 'Basic Auth' },
   { value: 'digest', label: 'Digest Auth' },
   { value: 'apikey', label: 'API Key' },
-  { value: 'oauth2', label: 'OAuth 2.0' }
+  { value: 'oauth2', label: 'OAuth 2.0' },
+  { value: 'awsv4', label: 'AWS Signature V4' }
 ]
 
 function Field({
@@ -126,6 +127,52 @@ export function AuthForm({
               <option value="query">Query param</option>
             </select>
           </Field>
+        </>
+      )}
+
+      {auth.type === 'awsv4' && (
+        <>
+          <Field label="Access Key">
+            <VariableInput
+              value={auth.username}
+              onChange={(username) => patch({ username })}
+              placeholder="{{awsAccessKey}}"
+            />
+          </Field>
+          <Field label="Secret Key">
+            <VariableInput
+              value={auth.password}
+              onChange={(password) => patch({ password })}
+              placeholder="{{awsSecretKey}}"
+            />
+          </Field>
+          <Field label="Session Token">
+            <VariableInput
+              value={auth.token}
+              onChange={(token) => patch({ token })}
+              placeholder="{{awsSessionToken}} (opcional)"
+            />
+          </Field>
+          <Field label="Región">
+            <VariableInput
+              value={auth.awsRegion ?? ''}
+              onChange={(awsRegion) => patch({ awsRegion })}
+              placeholder="us-east-1"
+            />
+          </Field>
+          <Field label="Servicio">
+            <VariableInput
+              value={auth.awsService ?? ''}
+              onChange={(awsService) => patch({ awsService })}
+              placeholder="execute-api, s3, dynamodb…"
+            />
+          </Field>
+          <p className="text-[11px] leading-relaxed text-zinc-500">
+            Sonda firma la petición al enviarla y agrega los headers{' '}
+            <span className="font-mono text-zinc-400">Authorization</span> y{' '}
+            <span className="font-mono text-zinc-400">X-Amz-Date</span>. No se puede firmar un body
+            form-data.
+          </p>
         </>
       )}
 

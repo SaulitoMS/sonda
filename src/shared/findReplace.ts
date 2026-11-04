@@ -84,7 +84,9 @@ const AUTH_FIELDS: (keyof AuthConfig)[] = [
   'oauthClientSecret',
   'oauthScope',
   'oauthUsername',
-  'oauthPassword'
+  'oauthPassword',
+  'awsRegion',
+  'awsService'
 ]
 
 /** Aplica la búsqueda y el reemplazo a una petición (no modifica la original) */

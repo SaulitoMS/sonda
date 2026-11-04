@@ -35,6 +35,7 @@ import {
   scriptLogWarnings
 } from '../../../shared/scriptApply'
 import { buildDigestAuthorization, findDigestChallenge } from '../../../shared/digest'
+import { signAwsV4 } from '../../../shared/awsSigV4'
 
 export interface RequestDraft {
   method: HttpMethod
@@ -185,6 +186,17 @@ export async function executeRequest(
       ? { username: resolve(auth.username), password: resolve(auth.password) }
       : null
 
+  const aws =
+    auth?.type === 'awsv4'
+      ? {
+          accessKey: resolve(auth.username).trim(),
+          secretKey: resolve(auth.password),
+          sessionToken: resolve(auth.token).trim(),
+          region: resolve(auth.awsRegion ?? '').trim(),
+          service: resolve(auth.awsService ?? '').trim()
+        }
+      : null
+
   if (missing.size > 0) {
     const names = [...missing].map((n) => `{{${n}}}`).join(', ')
     const hint = env
@@ -216,6 +228,38 @@ export async function executeRequest(
       headers.push({ key: 'Content-Type', value: 'application/json' })
     } else if (mode === 'raw' && looksLikeXml(finalBody)) {
       headers.push({ key: 'Content-Type', value: 'application/xml' })
+    }
+  }
+
+  // AWS Signature V4: se firma al final, cuando URL, headers y body ya son los definitivos
+  if (aws) {
+    if (!aws.accessKey || !aws.secretKey || !aws.region || !aws.service) {
+      warnings.push(
+        'Auth AWS: faltan Access Key, Secret Key, región o servicio, no se firmó la petición.'
+      )
+    } else if (formParts) {
+      warnings.push('Auth AWS: no se puede firmar un body form-data, no se firmó la petición.')
+    } else {
+      try {
+        const signedHeaders = await signAwsV4({
+          method: draft.method,
+          url: finalUrl,
+          headers,
+          body: finalBody ?? '',
+          accessKey: aws.accessKey,
+          secretKey: aws.secretKey,
+          sessionToken: aws.sessionToken || undefined,
+          region: aws.region,
+          service: aws.service
+        })
+        for (const h of signedHeaders) {
+          const i = headers.findIndex((x) => x.key.toLowerCase() === h.key.toLowerCase())
+          if (i >= 0) headers.splice(i, 1)
+          headers.push(h)
+        }
+      } catch {
+        warnings.push('Auth AWS: no se pudo firmar la petición (revisa la URL).')
+      }
     }
   }
 

@@ -153,7 +153,8 @@ export interface SavedRequest {
 
 // ---------- Autenticación ----------
 
-export type AuthType = 'inherit' | 'none' | 'bearer' | 'basic' | 'digest' | 'apikey' | 'oauth2'
+export type AuthType =
+  'inherit' | 'none' | 'bearer' | 'basic' | 'digest' | 'apikey' | 'oauth2' | 'awsv4'
 
 /** Todos los campos viven juntos para no perder lo escrito al cambiar de tipo */
 export interface AuthConfig {
@@ -181,6 +182,9 @@ export interface AuthConfig {
   /** Solo para el grant "password" */
   oauthUsername?: string
   oauthPassword?: string
+  /** AWS Signature V4. Usa username = Access Key, password = Secret Key y token = Session Token (opcional) */
+  awsRegion?: string
+  awsService?: string
 }
 
 // ---------- Aserciones ----------

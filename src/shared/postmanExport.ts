@@ -44,6 +44,17 @@ function exportAuth(auth: AuthConfig | undefined): Json | undefined {
           entry('scope', auth.oauthScope ?? '')
         ]
       }
+    case 'awsv4':
+      return {
+        type: 'awsv4',
+        awsv4: [
+          entry('accessKey', auth.username),
+          entry('secretKey', auth.password),
+          entry('sessionToken', auth.token),
+          entry('region', auth.awsRegion ?? ''),
+          entry('service', auth.awsService ?? '')
+        ]
+      }
   }
 }
 
