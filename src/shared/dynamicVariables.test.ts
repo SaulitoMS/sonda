@@ -77,3 +77,17 @@ describe('variables de registro aleatorio', () => {
     expect(resolveDynamic('$randomFutureDate', lowest)! > '2026-10-29').toBe(true)
   })
 })
+
+describe('$randomRfc y $randomClabe', () => {
+  it('$randomRfc tiene 13 caracteres con fecha válida', () => {
+    expect(resolveDynamic('$randomRfc', lowest)).toBe('AAAA500101AAA')
+    expect(resolveDynamic('$randomRfc', highest)).toBe('ZZZZ051228999')
+    expect(resolveDynamic('$randomRfc')).toMatch(/^[A-Z]{4}\d{6}[A-Z0-9]{3}$/)
+  })
+
+  it('$randomClabe tiene 18 dígitos y un verificador correcto', () => {
+    expect(resolveDynamic('$randomClabe', lowest)).toBe('000000000000000000')
+    expect(resolveDynamic('$randomClabe', highest)).toBe('999999999999999995')
+    expect(resolveDynamic('$randomClabe')).toMatch(/^\d{18}$/)
+  })
+})
