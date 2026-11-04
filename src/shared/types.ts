@@ -190,7 +190,7 @@ export interface AuthConfig {
 // ---------- Aserciones ----------
 
 /** Qué parte de la respuesta se revisa */
-export type AssertionKind = 'status' | 'time' | 'header' | 'body'
+export type AssertionKind = 'status' | 'time' | 'size' | 'header' | 'body'
 
 export type AssertionOp =
   | 'eq'

@@ -11,6 +11,7 @@ type OkResponse = Extract<SendRequestResult, { ok: true }>
 export const KIND_LABELS: Record<AssertionKind, string> = {
   status: 'Status',
   time: 'Tiempo (ms)',
+  size: 'Tamaño (bytes)',
   header: 'Header',
   body: 'Body (JSON)'
 }
@@ -43,7 +44,7 @@ const BODY_OPS: AssertionOp[] = [...TEXT_OPS, 'lt', 'lte', 'gt', 'gte']
 
 /** Operadores que tienen sentido para cada tipo de aserción */
 export function opsForKind(kind: AssertionKind): AssertionOp[] {
-  if (kind === 'status' || kind === 'time') return NUMERIC_OPS
+  if (kind === 'status' || kind === 'time' || kind === 'size') return NUMERIC_OPS
   if (kind === 'header') return TEXT_OPS
   return BODY_OPS
 }
@@ -56,6 +57,7 @@ export function emptyAssertion(kind: AssertionKind = 'status'): Assertion {
   const defaults: Record<AssertionKind, Pick<Assertion, 'op' | 'expected'>> = {
     status: { op: 'eq', expected: '200' },
     time: { op: 'lt', expected: '500' },
+    size: { op: 'lt', expected: '1000000' },
     header: { op: 'exists', expected: '' },
     body: { op: 'exists', expected: '' }
   }
@@ -75,6 +77,8 @@ export function describeAssertion(a: Assertion): string {
       return `Status ${op}${value}`
     case 'time':
       return `Tiempo ${op}${value} ms`
+    case 'size':
+      return `Tamaño ${op}${value} bytes`
     case 'header':
       return `Header "${a.target.trim()}" ${op}${value}`
     case 'body':
@@ -259,6 +263,8 @@ export function evaluateAssertions(
           return done(check(a.op, { found: true, value: response.status }, a.expected.trim()))
         case 'time':
           return done(check(a.op, { found: true, value: response.timeMs }, a.expected.trim()))
+        case 'size':
+          return done(check(a.op, { found: true, value: response.sizeBytes }, a.expected.trim()))
         case 'header': {
           const name = a.target.trim().toLowerCase()
           if (!name) return fail('falta el nombre del header')
