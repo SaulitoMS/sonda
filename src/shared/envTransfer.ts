@@ -92,3 +92,149 @@ export function parseEnvironments(
   }
   return { environments, warnings }
 }
+
+/* ---------- Archivos .env ---------- */
+
+const DOTENV_KEY = /^[A-Za-z_][A-Za-z0-9_.-]*$/
+/** Nombres que casi siempre guardan credenciales: se importan como secreto (cifrados en el keychain) */
+const SECRET_KEY = /(secret|token|passw(or)?d|pwd|api[_-]?key|private|credential|auth)/i
+
+const UNESCAPES: Record<string, string> = { n: '\n', r: '\r', t: '\t', '"': '"', '\\': '\\' }
+
+/** "staging.env" → "staging", ".env.production" → "production", ".env" → "env", "x.json" → "x" */
+export function envNameFromFile(fileName: string): string {
+  const base = fileName.replace(/^.*[\\/]/, '')
+  const name = /^\.env(\.|$)/i.test(base)
+    ? base.replace(/^\.env\.?/i, '')
+    : base.replace(/\.[^.]+$/, '')
+  return name || 'env'
+}
+
+/** Posición de la comilla de cierre dentro de `text` (en comillas dobles se respeta \"), o -1 */
+function findClosingQuote(text: string, quote: string): number {
+  for (let i = 0; i < text.length; i++) {
+    if (quote === '"' && text[i] === '\\') {
+      i++
+      continue
+    }
+    if (text[i] === quote) return i
+  }
+  return -1
+}
+
+/**
+ * Lee un archivo .env: `CLAVE=valor`, `export CLAVE=valor`, comentarios con #, valores con
+ * comillas dobles (con \n, \" y \\) o simples (literales), y valores entre comillas en varias líneas.
+ * Las claves que parecen credenciales (token, password, api key…) se importan como secreto.
+ */
+export function parseDotenv(
+  text: string,
+  fallbackName: string
+): { environments: Environment[]; warnings: string[] } {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/)
+  const warnings: string[] = []
+  const seen = new Set<string>()
+  const variables: EnvVariable[] = []
+  let interpolated = false
+
+  for (let i = 0; i < lines.length; i++) {
+    const start = i
+    const line = lines[i].trim()
+    if (!line || line.startsWith('#')) continue
+
+    const match = /^(?:export\s+)?([^=\s]+)\s*=\s*(.*)$/.exec(line)
+    if (!match) {
+      warnings.push(`Línea ${start + 1} ignorada: no tiene el formato CLAVE=valor`)
+      continue
+    }
+    const key = match[1]
+    const rest = match[2]
+
+    let value: string
+    let literal = false
+    const quote = rest[0]
+    if (quote === '"' || quote === "'") {
+      let buffer = rest.slice(1)
+      let closed = findClosingQuote(buffer, quote)
+      let last = i
+      while (closed === -1 && last + 1 < lines.length) {
+        last++
+        buffer += '\n' + lines[last]
+        closed = findClosingQuote(buffer, quote)
+      }
+      i = last
+      if (closed === -1) {
+        warnings.push(`Línea ${start + 1}: comillas sin cerrar en "${key}"`)
+        continue
+      }
+      const inner = buffer.slice(0, closed)
+      literal = quote === "'"
+      value = literal ? inner : inner.replace(/\\(n|r|t|"|\\)/g, (_m, c: string) => UNESCAPES[c])
+    } else {
+      value = rest.replace(/\s+#.*$/, '').trim()
+    }
+
+    if (!DOTENV_KEY.test(key)) {
+      warnings.push(`Línea ${start + 1}: "${key}" no es un nombre de variable válido`)
+      continue
+    }
+    if (seen.has(key)) {
+      warnings.push(`"${key}" estaba repetida, se conservó la primera`)
+      continue
+    }
+    seen.add(key)
+    if (!literal && /\$\{[^}]+\}/.test(value)) interpolated = true
+    variables.push({
+      id: crypto.randomUUID(),
+      key,
+      value,
+      secret: SECRET_KEY.test(key),
+      enabled: true
+    })
+  }
+
+  if (variables.length === 0) {
+    throw new Error('No se encontraron variables CLAVE=valor en el archivo')
+  }
+  if (interpolated) {
+    warnings.push('Algunos valores usan ${VAR}: Sonda no los expande, cámbialos por {{VAR}}')
+  }
+  return { environments: [{ id: crypto.randomUUID(), name: fallbackName, variables }], warnings }
+}
+
+const quoteDotenv = (value: string): string =>
+  value === '' || /^[^\s"'#\\$`]+$/.test(value)
+    ? value
+    : `"${value
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')}"`
+
+/** Serializa un entorno como .env. Los secretos salen vacíos salvo que se pida lo contrario */
+export function exportDotenv(env: Environment, includeSecrets: boolean): string {
+  const lines = [`# Entorno: ${env.name.replace(/\s+/g, ' ')}`]
+  for (const v of env.variables) {
+    const key = v.key.trim()
+    if (!key) continue
+    if (!DOTENV_KEY.test(key)) {
+      lines.push(`# (omitida: "${key}" no es un nombre válido para .env)`)
+      continue
+    }
+    const value = v.secret && !includeSecrets ? '' : v.value
+    lines.push(`${v.enabled ? '' : '# '}${key}=${quoteDotenv(value)}`)
+  }
+  return lines.join('\n') + '\n'
+}
+
+/** Lee un archivo de entornos según su contenido: JSON (Sonda o Postman) o .env */
+export function parseEnvironmentFile(
+  text: string,
+  fileName: string
+): { environments: Environment[]; warnings: string[] } {
+  const name = envNameFromFile(fileName)
+  const head = text.replace(/^\uFEFF/, '').trimStart()
+  return head.startsWith('{') || head.startsWith('[')
+    ? parseEnvironments(text, name)
+    : parseDotenv(text, name)
+}

@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react'
 import type { EnvVariable, Environment, EnvironmentsData } from '../../../shared/types'
-import { exportEnvironment, parseEnvironments } from '../../../shared/envTransfer'
+import {
+  exportDotenv,
+  exportEnvironment,
+  parseEnvironmentFile
+} from '../../../shared/envTransfer'
 import { downloadText } from '../lib/download'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'
@@ -146,7 +150,7 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
     }
   }
 
-  const exportEnv = (): void => {
+  const exportEnv = (format: 'json' | 'env' = 'json'): void => {
     if (!selected) return
     const hasSecrets = selected.variables.some((v) => v.secret && v.value)
     const includeSecrets =
@@ -155,6 +159,10 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
         'Este entorno tiene variables secretas.\n\nAceptar: incluir sus valores en el archivo.\nCancelar: exportarlas vacías.'
       )
     const fileName = selected.name.trim().replace(/[^\w.-]+/g, '-') || 'entorno'
+    if (format === 'env') {
+      downloadText(`${fileName}.env`, exportDotenv(selected, includeSecrets), 'text/plain')
+      return
+    }
     downloadText(
       `${fileName}.sonda-env.json`,
       exportEnvironment(selected, includeSecrets),
@@ -167,10 +175,7 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
     e.target.value = '' // permite volver a elegir el mismo archivo
     if (!file) return
     try {
-      const { environments, warnings } = parseEnvironments(
-        await file.text(),
-        file.name.replace(/\.[^.]+$/, '')
-      )
+      const { environments, warnings } = parseEnvironmentFile(await file.text(), file.name)
       const taken = new Set(draft.environments.map((x) => x.name))
       const added = environments.map((env) => {
         let name = env.name
@@ -266,26 +271,28 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
               <button
                 onClick={() => fileRef.current?.click()}
                 className="flex-1 rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
-                title="Importar desde Sonda o Postman (.json)"
+                title="Importar desde Sonda, Postman (.json) o un archivo .env"
               >
                 Importar
               </button>
               <button
-                onClick={exportEnv}
+                onClick={() => exportEnv('json')}
                 disabled={!selected}
                 className="flex-1 rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
-                title="Exportar el entorno seleccionado"
+                title="Exportar el entorno seleccionado (.json)"
               >
                 Exportar
               </button>
+              <button
+                onClick={() => exportEnv('env')}
+                disabled={!selected}
+                className="rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+                title="Exportar el entorno seleccionado como archivo .env"
+              >
+                .env
+              </button>
             </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".json,application/json"
-              onChange={importEnv}
-              className="hidden"
-            />
+            <input ref={fileRef} type="file" onChange={importEnv} className="hidden" />
           </div>
         </div>
 
