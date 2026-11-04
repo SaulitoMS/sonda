@@ -3,9 +3,10 @@ import { randomUUID } from 'crypto'
 import { promises as fs } from 'fs'
 import { dirname, join } from 'path'
 import type { Environment, EnvironmentsData } from '../shared/types'
+import { getWorkspacePath } from './settings'
 
 // Valores públicos: dentro del workspace (versionable)
-const envFile = (): string => join(app.getPath('documents'), 'Sonda', '.sonda', 'environments.json')
+const envFile = (): string => join(getWorkspacePath(), '.sonda', 'environments.json')
 
 // Secretos cifrados: fuera del workspace, en los datos de la app
 const secretsFile = (): string => join(app.getPath('userData'), 'secrets.json')

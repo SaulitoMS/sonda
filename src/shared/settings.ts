@@ -16,7 +16,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   retryDelayMs: 500,
   clientCertPath: '',
   clientKeyPath: '',
-  clientCertHost: ''
+  clientCertHost: '',
+  workspacePath: ''
 }
 
 const toInt = (value: unknown, fallback: number, min: number, max: number): number => {
@@ -53,7 +54,8 @@ export function normalizeSettings(raw: unknown): AppSettings {
     ),
     clientCertPath: toText(r.clientCertPath),
     clientKeyPath: toText(r.clientKeyPath),
-    clientCertHost: toText(r.clientCertHost).toLowerCase()
+    clientCertHost: toText(r.clientCertHost).toLowerCase(),
+    workspacePath: toText(r.workspacePath)
   }
 }
 

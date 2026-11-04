@@ -28,6 +28,7 @@ import {
   type ExistingFile
 } from '../shared/specSync'
 import { importFromUrl } from './swagger'
+import { getWorkspacePath } from './settings'
 import { parsePostmanCollection } from '../shared/postman'
 import { buildPostmanCollection } from '../shared/postmanExport'
 import { buildMarkdownDocs } from '../shared/docsExport'
@@ -57,7 +58,7 @@ interface CollectionMeta {
   order?: string[]
 }
 
-export const getRoot = (): string => join(app.getPath('documents'), 'Sonda')
+export const getRoot = (): string => getWorkspacePath()
 
 /** Resuelve una ruta dentro del workspace y bloquea intentos de salirse (../) */
 export function safePath(...segments: string[]): string {

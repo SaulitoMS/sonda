@@ -6,7 +6,7 @@ import { registerHttpHandlers } from './http'
 import { registerCollectionHandlers } from './collections'
 import { registerEnvironmentHandlers } from './environments'
 import { registerCookieHandlers, loadCookies, persistCookies } from './cookieJar'
-import { registerSettingsHandlers } from './settings'
+import { registerSettingsHandlers, loadSettings } from './settings'
 import { registerMockHandlers } from './mockServer'
 import { registerWebSocketHandlers } from './websocket'
 import { registerSavedWebSocketHandlers } from './savedWebSockets'
@@ -60,6 +60,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  await loadSettings() // el workspace debe conocerse antes de leer colecciones o entornos
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 

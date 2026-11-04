@@ -14,6 +14,7 @@ const api: SondaApi = {
     }
   },
   pickFile: () => ipcRenderer.invoke('files:pick'),
+  pickFolder: () => ipcRenderer.invoke('files:pickFolder'),
   listCollections: () => ipcRenderer.invoke('collections:list'),
   createCollection: (name) => ipcRenderer.invoke('collections:create', name),
   deleteCollection: (id) => ipcRenderer.invoke('collections:delete', id),

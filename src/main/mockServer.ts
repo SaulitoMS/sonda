@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { promises as fs } from 'fs'
 import {
   createServer,
@@ -39,6 +39,7 @@ import {
   type MockOverride,
   type MockOverrides
 } from '../shared/mockOverrides'
+import { getWorkspacePath } from './settings'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -59,7 +60,7 @@ let running: Running | null = null
 /** Carpeta de la colección dentro del workspace (~/Documents/Sonda/<id>) */
 function collectionDir(id: string): string {
   if (!id || id.startsWith('.') || /[\\/]/.test(id)) throw new Error('Colección no válida')
-  return join(app.getPath('documents'), 'Sonda', id)
+  return join(getWorkspacePath(), id)
 }
 
 const overridesFile = (collectionId: string): string =>

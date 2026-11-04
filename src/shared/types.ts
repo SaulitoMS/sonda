@@ -396,6 +396,8 @@ export interface SondaApi {
   previewSync: (collectionId: string) => Promise<SyncPreviewResult>
   applySync: (collectionId: string, options: SyncOptions) => Promise<SyncResult>
   pickFile: () => Promise<string | null>
+  /** Abre el selector de carpetas. null = el usuario canceló */
+  pickFolder: () => Promise<string | null>
   listCookies: () => Promise<CookieInfo[]>
   deleteCookie: (id: string) => Promise<void>
   clearCookies: () => Promise<void>
@@ -454,6 +456,8 @@ export interface AppSettings {
   clientKeyPath: string
   /** Si se indica, el certificado solo se envía a ese host (ej: api.banco.com). Vacío = a todos los https */
   clientCertHost: string
+  /** Carpeta donde viven las colecciones y los entornos. Vacío = Documentos/Sonda */
+  workspacePath: string
 }
 
 // ---------- Entornos ----------

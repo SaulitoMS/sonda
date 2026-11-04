@@ -22,13 +22,16 @@ interface Props {
 
 export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
   const [draft, setDraft] = useState<AppSettings | null>(null)
+  const [initialWorkspace, setInitialWorkspace] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     let alive = true
     window.api.loadSettings().then((s) => {
-      if (alive) setDraft(s)
+      if (!alive) return
+      setDraft(s)
+      setInitialWorkspace(s.workspacePath)
     })
     return () => {
       alive = false
@@ -44,6 +47,17 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
     setError('')
     try {
       await window.api.saveSettings(draft)
+      if (draft.workspacePath !== initialWorkspace) {
+        // Otra carpeta = otras colecciones: se descarta la sesión de pestañas y se recarga
+        try {
+          localStorage.removeItem('sonda.session.v1')
+          localStorage.removeItem('sonda.quickAccess')
+        } catch {
+          /* sin almacenamiento */
+        }
+        window.location.reload()
+        return
+      }
       onSaved()
       onClose()
     } catch (err) {
@@ -59,6 +73,33 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
         <p className="text-xs text-zinc-500">Cargando…</p>
       ) : (
         <div className="space-y-4">
+          <div>
+            <label className={label}>Carpeta de trabajo (workspace)</label>
+            <div className="flex gap-2">
+              <input
+                value={draft.workspacePath}
+                onChange={(e) => set('workspacePath', e.target.value)}
+                placeholder="Vacío = Documentos/Sonda"
+                spellCheck={false}
+                className={field}
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  const path = await window.api.pickFolder()
+                  if (path) set('workspacePath', path)
+                }}
+                className="shrink-0 rounded bg-zinc-800 px-3 text-xs text-zinc-300 hover:bg-zinc-700"
+              >
+                Elegir
+              </button>
+            </div>
+            <p className={hint}>
+              Aquí se guardan colecciones y entornos. Al cambiarla, Sonda se recarga y cierra las
+              pestañas abiertas. Los archivos de la carpeta anterior no se mueven. La CLI la usa con
+              la variable SONDA_WORKSPACE.
+            </p>
+          </div>
           <div>
             <label className={label}>Tiempo límite (segundos)</label>
             <input
