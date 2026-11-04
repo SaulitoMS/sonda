@@ -60,6 +60,10 @@ export function generateAssertions(response: OkResponse): Assertion[] {
   const limit = Math.max(500, Math.ceil((response.timeMs * 3) / 500) * 500)
   rules.push(make('time', { op: 'lt', expected: String(limit) }))
 
+  // Margen de 3x redondeado a los 10 KB siguientes, para no fallar por una lista un poco más larga
+  const sizeLimit = Math.max(10_000, Math.ceil((response.sizeBytes * 3) / 10_000) * 10_000)
+  rules.push(make('size', { op: 'lt', expected: String(sizeLimit) }))
+
   const contentType = Object.entries(response.headers).find(
     ([k]) => k.toLowerCase() === 'content-type'
   )?.[1]
@@ -75,7 +79,7 @@ export function generateAssertions(response: OkResponse): Assertion[] {
       collectBodyRules(parsed, '', 0, bodyRules)
       rules.push(...bodyRules)
     } catch {
-      // No es JSON: solo se verifican status, tiempo y content-type
+      // No es JSON: solo se verifican status, tiempo, tamaño y content-type
     }
   }
 
