@@ -19,6 +19,7 @@ import { downloadBase64, downloadText } from '../lib/download'
 import { BinaryView } from './BinaryView'
 import { queryJson } from '../../../shared/jsonQuery'
 import { JsonTree } from './JsonTree'
+import { JsonTable } from './JsonTable'
 import { Highlight } from './Highlight'
 import { MAX_MATCHES, buildTreeSearch, countMatches } from '../lib/search'
 import { usePreviousDiff, type PreviousDiff } from '../lib/usePreviousDiff'
@@ -461,7 +462,7 @@ export function ResponsePanel(): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const [view, setView] = useState<'tree' | 'raw'>('tree')
+  const [view, setView] = useState<'tree' | 'raw' | 'table'>('tree')
   const [htmlView, setHtmlView] = useState<'preview' | 'code'>('code')
   const [sseView, setSseView] = useState<'events' | 'text'>('events')
   const [filter, setFilter] = useState('')
@@ -532,10 +533,16 @@ export function ResponsePanel(): React.JSX.Element {
     [isSse, response]
   )
   const showEvents = isSse && sseView === 'events' && current === 'body'
+  const showTable = parsed.ok && view === 'table' && current === 'body'
 
-  // La vista previa y la lista de eventos no son texto plano: Ctrl+F no puede buscar en ellas
+  // La vista previa, la lista de eventos y la tabla no son texto plano: Ctrl+F no puede buscar en ellas
   const canSearch =
-    !!response?.ok && !response.binary && current === 'body' && !showPreview && !showEvents
+    !!response?.ok &&
+    !response.binary &&
+    current === 'body' &&
+    !showPreview &&
+    !showEvents &&
+    !showTable
   const searchQuery = searchOpen && canSearch ? query : ''
   const treeView = parsed.ok && view === 'tree'
 
@@ -893,12 +900,19 @@ export function ResponsePanel(): React.JSX.Element {
           <>
             {parsed.ok && (
               <div className="mb-2 flex items-center gap-2 pr-16 text-xs">
-                <button
-                  onClick={() => setView(view === 'tree' ? 'raw' : 'tree')}
-                  className="rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700"
-                >
-                  {view === 'tree' ? 'Ver texto' : 'Ver árbol'}
-                </button>
+                <div className="flex overflow-hidden rounded bg-zinc-800">
+                  {(['tree', 'table', 'raw'] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setView(v)}
+                      className={`px-2 py-1 ${
+                        view === v ? 'bg-blue-600 text-white' : 'text-zinc-300 hover:bg-zinc-700'
+                      }`}
+                    >
+                      {v === 'tree' ? 'Árbol' : v === 'table' ? 'Tabla' : 'Texto'}
+                    </button>
+                  ))}
+                </div>
                 <input
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
@@ -957,16 +971,20 @@ export function ResponsePanel(): React.JSX.Element {
               />
             ) : showEvents ? (
               <SseEvents events={sseEvents} />
-            ) : treeView ? (
+            ) : treeView || showTable ? (
               filtered.found ? (
-                <JsonTree
-                  value={filtered.value}
-                  search={
-                    treeSearch
-                      ? { query: searchQuery, active: activeIdx, tree: treeSearch }
-                      : undefined
-                  }
-                />
+                showTable ? (
+                  <JsonTable value={filtered.value} />
+                ) : (
+                  <JsonTree
+                    value={filtered.value}
+                    search={
+                      treeSearch
+                        ? { query: searchQuery, active: activeIdx, tree: treeSearch }
+                        : undefined
+                    }
+                  />
+                )
               ) : (
                 <p className="text-xs text-amber-400">
                   {filtered.invalid
