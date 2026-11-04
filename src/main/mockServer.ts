@@ -202,9 +202,7 @@ async function startMock(
   if (loaded.routes.length === 0) return { ok: false, error: 'La colección no tiene peticiones' }
 
   const chaos = normalizeChaos(rawChaos)
-  const server = createServer(
-    makeHandler(compileRoutes(loaded.routes), loaded.basePath, chaos)
-  )
+  const server = createServer(makeHandler(compileRoutes(loaded.routes), loaded.basePath, chaos))
   try {
     await new Promise<void>((resolve, reject) => {
       const onError = (err: Error): void => reject(err)

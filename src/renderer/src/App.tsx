@@ -40,6 +40,7 @@ import { togglePin, useQuickAccess } from './lib/quickAccess'
 import { VariablesAuditModal } from './components/VariablesAuditModal'
 import { FindReplaceModal } from './components/FindReplaceModal'
 import { ToolboxModal } from './components/ToolboxModal'
+import { EnvCompareModal } from './components/EnvCompareModal'
 import { cancelInFlight } from './lib/inFlight'
 
 type ModalType =
@@ -62,6 +63,7 @@ type ModalType =
   | 'coverage'
   | 'vars'
   | 'replace'
+  | 'compare'
   | 'toolbox'
   | null
 
@@ -301,6 +303,13 @@ function App(): React.JSX.Element {
       label: 'Buscar y reemplazar',
       description: 'Cambiar un host, variable o header en toda una colección',
       onSelect: () => setModal('replace')
+    },
+    {
+      id: 'compare',
+      icon: 'activity',
+      label: 'Comparar entornos',
+      description: 'Enviar la petición a dos entornos y ver qué cambia',
+      onSelect: () => setModal('compare')
     },
     {
       id: 'toolbox',
@@ -646,6 +655,7 @@ function App(): React.JSX.Element {
       {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
       {modal === 'replace' && <FindReplaceModal onClose={() => setModal(null)} />}
       {modal === 'toolbox' && <ToolboxModal onClose={() => setModal(null)} />}
+      {modal === 'compare' && <EnvCompareModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
