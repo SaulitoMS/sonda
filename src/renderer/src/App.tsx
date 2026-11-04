@@ -30,6 +30,8 @@ import { Splitter } from './components/Splitter'
 import { ToolsMenu, type ToolItem } from './components/ToolsMenu'
 import { getLayout, setLayout, useLayout } from './lib/layout'
 import { toggleTheme } from './lib/theme'
+import { isDirtyState } from '../../shared/dirty'
+import { tabLabel } from '../../shared/tabs'
 import { useMediaQuery } from './lib/useMediaQuery'
 import { DEFAULT_LAYOUT } from '../../shared/layout'
 import { CoverageModal } from './components/CoverageModal'
@@ -136,12 +138,49 @@ function App(): React.JSX.Element {
     []
   )
 
+  // Cierra la pestaña activa y pide confirmación si tiene cambios sin guardar
+  const closeActiveTab = useCallback(() => {
+    const live = useRequestStore.getState()
+    if (
+      isDirtyState(live) &&
+      !confirm(`"${tabLabel(live)}" tiene cambios sin guardar. ¿Cerrar sin guardar?`)
+    )
+      return
+    const { activeId, close } = useTabsStore.getState()
+    close(activeId)
+  }, [])
+
+  // Salta a la pestaña siguiente (1) o anterior (-1), de forma circular
+  const cycleTab = useCallback((step: 1 | -1) => {
+    const { tabs, activeId, select } = useTabsStore.getState()
+    const index = tabs.findIndex((t) => t.id === activeId)
+    select(tabs[(index + step + tabs.length) % tabs.length].id)
+  }, [])
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (!(e.metaKey || e.ctrlKey)) return
       if (e.key.toLowerCase() === 't' && e.shiftKey) {
         e.preventDefault()
         reopenClosed()
+        return
+      }
+      if (e.key.toLowerCase() === 'w' && !e.shiftKey) {
+        e.preventDefault()
+        closeActiveTab()
+        return
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        cycleTab(e.shiftKey ? -1 : 1)
+        return
+      }
+      // Ctrl+1…8 va a esa pestaña; Ctrl+9 va a la última (como en los navegadores)
+      if (/^[1-9]$/.test(e.key) && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        const { tabs, select } = useTabsStore.getState()
+        const target = e.key === '9' ? tabs[tabs.length - 1] : tabs[Number(e.key) - 1]
+        if (target) select(target.id)
         return
       }
       if (e.key === 'Enter') send()
@@ -174,7 +213,7 @@ function App(): React.JSX.Element {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [send, save, newTab, reopenClosed, toggleSidebar, toggleDirection])
+  }, [send, save, newTab, reopenClosed, closeActiveTab, cycleTab, toggleSidebar, toggleDirection])
 
   // Herramientas: un solo lugar para el menú de la cabecera y la paleta de comandos
   const tools: ToolItem[] = [
@@ -283,6 +322,13 @@ function App(): React.JSX.Element {
       hint: `${MOD}⇧T`,
       keywords: 'deshacer cerrar restaurar',
       run: reopenClosed
+    },
+    {
+      id: 'close-tab',
+      label: 'Cerrar pestaña',
+      hint: `${MOD}W`,
+      keywords: 'cerrar quitar',
+      run: closeActiveTab
     },
     {
       id: 'duplicate-tab',
