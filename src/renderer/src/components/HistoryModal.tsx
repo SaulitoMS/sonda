@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { dayLabel, filterHistory, latencySeries, type HistoryEntry } from '../../../shared/history'
+import { compareEntries } from '../../../shared/historyCompare'
+import { DEFAULT_IGNORE } from '../../../shared/snapshot'
 import { applyHistory } from '../lib/applyHistory'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useHistoryStore } from '../store/useHistoryStore'
@@ -54,9 +56,102 @@ interface Props {
   onRestored: () => void
 }
 
+const showValue = (v: unknown): string => {
+  const text = JSON.stringify(v) ?? 'undefined'
+  return text.length > 80 ? `${text.slice(0, 77)}…` : text
+}
+
+const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`
+
+/** Diferencias entre dos envíos elegidos del historial */
+function ComparisonView({ a, b }: { a: HistoryEntry; b: HistoryEntry }): React.JSX.Element {
+  const [ignoreVolatile, setIgnoreVolatile] = useState(true)
+  const result = useMemo(
+    () => compareEntries(a, b, ignoreVolatile ? DEFAULT_IGNORE : []),
+    [a, b, ignoreVolatile]
+  )
+
+  return (
+    <div className="selectable mt-3 space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-3 text-xs">
+      <label className="flex items-center gap-2 text-zinc-400">
+        <input
+          type="checkbox"
+          checked={ignoreVolatile}
+          onChange={(e) => setIgnoreVolatile(e.target.checked)}
+        />
+        Ignorar campos que cambian solos ({DEFAULT_IGNORE.join(', ')})
+      </label>
+
+      {result.state === 'invalid' ? (
+        <p className="text-amber-400">{result.reason}</p>
+      ) : (
+        <>
+          <div className="space-y-0.5 font-mono text-zinc-500">
+            {[result.before, result.after].map((e, i) => (
+              <p key={e.id} className="truncate" title={e.url}>
+                {i === 0 ? 'Antes  ' : 'Después'} · {e.method} {e.url} ·{' '}
+                {e.response.ok ? e.response.status : 'Error'} · {hour(e.at)}
+              </p>
+            ))}
+          </div>
+
+          <p
+            className={`font-semibold ${
+              result.identical ? 'text-emerald-400' : 'text-amber-400'
+            }`}
+          >
+            {result.changes.length > 0
+              ? plural(result.changes.length, 'cambio', 'cambios')
+              : result.identical
+                ? 'Las dos respuestas son idénticas'
+                : 'Sin cambios en el body, pero cambió el status'}
+          </p>
+
+          {result.statusBefore !== result.statusAfter && (
+            <p className="font-mono text-amber-300">
+              Status: {result.statusBefore} → {result.statusAfter}
+            </p>
+          )}
+
+          <ul className="max-h-56 space-y-1.5 overflow-auto font-mono">
+            {result.changes.map((c, i) => (
+              <li key={i} className="flex flex-wrap gap-2">
+                <span
+                  className={
+                    c.kind === 'added'
+                      ? 'text-emerald-400'
+                      : c.kind === 'removed'
+                        ? 'text-red-400'
+                        : 'text-amber-400'
+                  }
+                >
+                  {c.kind === 'added' ? '+' : c.kind === 'removed' ? '−' : '~'}
+                </span>
+                <span className="font-semibold text-blue-300">{c.path}</span>
+                {c.kind === 'changed' && (
+                  <span className="text-zinc-300">
+                    {showValue(c.before)} → {showValue(c.after)}
+                  </span>
+                )}
+                {c.kind === 'added' && <span className="text-zinc-300">{showValue(c.after)}</span>}
+                {c.kind === 'removed' && (
+                  <span className="text-zinc-500 line-through">{showValue(c.before)}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element {
   const { entries, remove, clear } = useHistoryStore()
   const [query, setQuery] = useState('')
+  const [compareMode, setCompareMode] = useState(false)
+  // Ids de los envíos elegidos para comparar (máximo 2; al elegir un tercero sale el más viejo)
+  const [picked, setPicked] = useState<string[]>([])
 
   const groups = useMemo(() => {
     const out: { label: string; items: HistoryEntry[] }[] = []
@@ -69,10 +164,22 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
     return out
   }, [entries, query])
 
+  const pickedEntries = picked
+    .map((id) => entries.find((e) => e.id === id))
+    .filter((e): e is HistoryEntry => e !== undefined)
+
   const restore = (e: HistoryEntry): void => {
     applyHistory(e)
     onRestored()
     onClose()
+  }
+
+  const togglePick = (id: string): void =>
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id].slice(-2)))
+
+  const toggleCompare = (): void => {
+    setCompareMode((on) => !on)
+    setPicked([])
   }
 
   const clearAll = (): void => {
@@ -81,16 +188,36 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
 
   return (
     <Modal title="Historial" onClose={onClose} wide>
-      <input
-        autoFocus
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Buscar por método, URL o status…"
-        spellCheck={false}
-        className="mb-3 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
-      />
+      <div className="mb-3 flex items-center gap-2">
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por método, URL o status…"
+          spellCheck={false}
+          className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs outline-none placeholder:text-zinc-500 focus:border-blue-500"
+        />
+        <button
+          onClick={toggleCompare}
+          disabled={entries.length < 2}
+          title="Elige dos envíos para ver en qué se diferencian sus respuestas"
+          className={`shrink-0 rounded-md px-3 py-2 text-xs disabled:opacity-40 ${
+            compareMode
+              ? 'bg-blue-600 font-semibold text-white'
+              : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+          }`}
+        >
+          Comparar
+        </button>
+      </div>
 
-      <div className="max-h-[55vh] min-h-32 overflow-auto">
+      {compareMode && (
+        <p className="mb-2 text-[11px] text-zinc-500">
+          Elige dos envíos de la lista ({picked.length}/2).
+        </p>
+      )}
+
+      <div className={`${compareMode ? 'max-h-[30vh]' : 'max-h-[55vh]'} min-h-32 overflow-auto`}>
         {entries.length === 0 && (
           <p className="p-3 text-xs text-zinc-500">
             Aún no hay peticiones. Las que envíes aparecerán aquí.
@@ -108,9 +235,16 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
             {g.items.map((e) => (
               <div
                 key={e.id}
-                onClick={() => restore(e)}
-                className="group flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-xs hover:bg-zinc-800/70"
+                onClick={() => (compareMode ? togglePick(e.id) : restore(e))}
+                className={`group flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-xs ${
+                  picked.includes(e.id) ? 'bg-blue-500/15' : 'hover:bg-zinc-800/70'
+                }`}
               >
+                {compareMode && (
+                  <span className="w-3 shrink-0 text-blue-400">
+                    {picked.includes(e.id) ? '●' : '○'}
+                  </span>
+                )}
                 <span className={`w-12 shrink-0 font-bold ${METHOD_COLORS[e.method]}`}>
                   {e.method}
                 </span>
@@ -142,6 +276,10 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
           </div>
         ))}
       </div>
+
+      {compareMode && pickedEntries.length === 2 && (
+        <ComparisonView a={pickedEntries[0]} b={pickedEntries[1]} />
+      )}
 
       <div className="mt-4 flex items-center justify-between">
         <button
