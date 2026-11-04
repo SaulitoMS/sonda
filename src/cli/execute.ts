@@ -16,6 +16,7 @@ import type {
   SendRequestInput,
   SendRequestResult
 } from '../shared/types'
+import { looksLikeXml } from '../shared/bodyType'
 
 type Send = (input: SendRequestInput) => Promise<SendRequestResult>
 
@@ -211,6 +212,8 @@ export async function executeRequest(
       headers.push({ key: 'Content-Type', value: 'application/x-www-form-urlencoded' })
     } else if (mode === 'raw' && looksLikeJson(finalBody)) {
       headers.push({ key: 'Content-Type', value: 'application/json' })
+    } else if (mode === 'raw' && looksLikeXml(finalBody)) {
+      headers.push({ key: 'Content-Type', value: 'application/xml' })
     }
   }
 

@@ -21,6 +21,7 @@ import type {
 } from '../../../shared/types'
 import { validateRequestBody, validateResponse } from '../../../shared/validate'
 import { buildVarMap, interpolate, withCollectionVariables } from '../../../shared/variables'
+import { looksLikeXml } from '../../../shared/bodyType'
 import { collectionVarsForPath } from './collectionVariables'
 import { resolveHeadersForPath } from './inheritedHeaders'
 import { retryDelayMs, shouldRetry } from '../../../shared/retry'
@@ -208,6 +209,8 @@ export async function executeRequest(
       headers.push({ key: 'Content-Type', value: 'application/x-www-form-urlencoded' })
     } else if (mode === 'raw' && looksLikeJson(finalBody)) {
       headers.push({ key: 'Content-Type', value: 'application/json' })
+    } else if (mode === 'raw' && looksLikeXml(finalBody)) {
+      headers.push({ key: 'Content-Type', value: 'application/xml' })
     }
   }
 
