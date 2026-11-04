@@ -4,6 +4,8 @@ import { safeRequestsOf } from '../lib/monitorRunner'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useMonitorStore } from '../store/useMonitorStore'
 import { Modal } from './Modal'
+import { buildWebhookPayload } from '../../../shared/monitorWebhook'
+import { getWebhookUrl, setWebhookUrl } from '../lib/monitorWebhook'
 
 const field =
   'w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500 disabled:opacity-50'
@@ -20,6 +22,9 @@ export function MonitorModal({ onClose }: Props): React.JSX.Element {
 
   const [selected, setSelected] = useState(collectionId ?? collections[0]?.id ?? '')
   const [minutes, setMinutes] = useState(active ? intervalMin : 5)
+
+  const [hook, setHook] = useState(getWebhookUrl())
+  const [hookMsg, setHookMsg] = useState('')
 
   const safeCount = selected ? safeRequestsOf(selected).length : 0
   const rate = uptime(runs)
@@ -62,6 +67,46 @@ export function MonitorModal({ onClose }: Props): React.JSX.Element {
         activo. Funciona mientras Sonda esté abierta, incluso con este modal cerrado, y avisa con
         una notificación cuando algo empieza a fallar o se recupera.
       </p>
+
+      <div className="mt-3">
+        <label className={label}>Webhook (Slack, Discord u otro), opcional</label>
+        <div className="flex gap-2">
+          <input
+            value={hook}
+            onChange={(e) => {
+              setHook(e.target.value)
+              setWebhookUrl(e.target.value)
+              setHookMsg('')
+            }}
+            placeholder="https://hooks.slack.com/services/..."
+            spellCheck={false}
+            className={field}
+          />
+          <button
+            type="button"
+            disabled={!hook.trim()}
+            onClick={async () => {
+              const url = hook.trim()
+              const err = await window.api.sendWebhook(
+                url,
+                buildWebhookPayload(url, {
+                  title: 'Sonda: prueba de webhook',
+                  body: 'Si ves este mensaje, el webhook funciona.'
+                })
+              )
+              setHookMsg(err ?? 'Enviado ✓')
+            }}
+            className="shrink-0 rounded bg-zinc-800 px-3 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-50"
+          >
+            Probar
+          </button>
+        </div>
+        {hookMsg && <p className="mt-1 text-[11px] text-zinc-400">{hookMsg}</p>}
+        <p className="mt-1 text-[11px] text-zinc-500">
+          Se envía solo cuando algo empieza a fallar o se recupera. La URL se guarda únicamente en
+          este equipo; trátala como un secreto.
+        </p>
+      </div>
 
       <div className="mt-3 flex items-center gap-4 text-xs">
         <span className={active ? 'text-emerald-400' : 'text-zinc-500'}>

@@ -61,6 +61,7 @@ const api: SondaApi = {
   setMockOverride: (key, override) => ipcRenderer.invoke('mock:setOverride', key, override),
   runScript: (input) => ipcRenderer.invoke('script:run', input),
   oauthAuthorize: (input) => ipcRenderer.invoke('oauth:authorize', input),
+  sendWebhook: (url, payload) => ipcRenderer.invoke('webhook:send', url, payload),
   wsConnect: (input) => ipcRenderer.invoke('ws:connect', input),
   wsSend: (id, data, binary) => ipcRenderer.invoke('ws:send', id, data, binary),
   wsClose: (id) => ipcRenderer.invoke('ws:close', id),

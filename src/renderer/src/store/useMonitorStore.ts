@@ -6,6 +6,8 @@ import {
   type MonitorRun
 } from '../../../shared/monitor'
 import { runMonitorOnce } from '../lib/monitorRunner'
+import { buildWebhookPayload } from '../../../shared/monitorWebhook'
+import { getWebhookUrl } from '../lib/monitorWebhook'
 
 interface MonitorState {
   collectionId: string | null
@@ -43,7 +45,11 @@ export const useMonitorStore = create<MonitorState>((set, get) => {
       const previous = get().runs[0] ?? null
       set({ runs: pushRun(get().runs, run) })
       const note = decideNotification(previous, run)
-      if (note) notify(note.title, note.body)
+      if (note) {
+        notify(note.title, note.body)
+        const hook = getWebhookUrl()
+        if (hook) void window.api.sendWebhook(hook, buildWebhookPayload(hook, note))
+      }
     } finally {
       set({ checking: false })
     }

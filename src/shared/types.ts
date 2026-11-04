@@ -417,6 +417,8 @@ export interface SondaApi {
   /** Ejecuta un script de usuario en un contexto aislado (máximo 2 s) */
   runScript: (input: ScriptInput) => Promise<ScriptOutput>
   oauthAuthorize: (input: OAuthAuthorizeInput) => Promise<OAuthAuthorizeResult>
+  /** Envía un POST JSON a un webhook. Devuelve el error, o null si salió bien */
+  sendWebhook: (url: string, payload: unknown) => Promise<string | null>
   /** Abre una conexión WebSocket (solo una a la vez). Lo que llega se recibe con onWsEvent */
   wsConnect: (input: WsConnectInput) => Promise<WsConnectResult>
   /** Envía un mensaje: texto, o bytes si `binary` es true (entonces `data` es hexadecimal). Devuelve el error, o null si salió bien */
