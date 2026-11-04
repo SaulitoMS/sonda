@@ -230,8 +230,12 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
             </button>
           </div>
           {chaosSummary && <p className="mb-1 text-xs text-amber-400">Simulando: {chaosSummary}</p>}
-          <p className="mb-2 text-xs text-zinc-500">
+          <p className="mb-1 text-xs text-zinc-500">
             Pon esa URL en la variable <code>baseUrl</code> de tu entorno para probarlo desde Sonda.
+          </p>
+          <p className="mb-2 text-xs text-zinc-500">
+            Para ver otra respuesta de la spec, agrega el header <code>x-sonda-status: 404</code> a la
+            petición (acepta el status exacto, un rango como <code>4XX</code> o <code>default</code>).
           </p>
 
           <div className="max-h-64 overflow-auto rounded-md border border-zinc-800">

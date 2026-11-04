@@ -9,10 +9,13 @@ import {
 } from 'http'
 import { join } from 'path'
 import {
+  buildMockResponses,
   compileRoutes,
   matchRoute,
+  parseForcedStatus,
   pathFromRequestUrl,
   pickMockResponse,
+  resolveMockResponse,
   type CompiledRoute,
   type MockRoute
 } from '../shared/mock'
@@ -78,7 +81,12 @@ async function loadRoutes(
 
       const id = `${method} ${path}`
       if (byKey.has(id)) continue
-      byKey.set(id, { method, path, ...pickMockResponse(request.responseSchemas) })
+      byKey.set(id, {
+        method,
+        path,
+        ...pickMockResponse(request.responseSchemas),
+        responses: buildMockResponses(request.responseSchemas)
+      })
     }
   }
 
@@ -136,7 +144,32 @@ function makeHandler(routes: CompiledRoute[], basePath: string, chaos: MockChaos
     }
 
     const hit = route
+
+    // Header x-sonda-status: fuerza el status con el ejemplo que la spec define para él
+    const forced = parseForcedStatus(req.headers['x-sonda-status'])
+    if (forced.kind === 'invalid') {
+      res
+        .writeHead(400, { ...cors, 'content-type': 'application/json; charset=utf-8' })
+        .end(
+          JSON.stringify({ error: 'Sonda mock: x-sonda-status debe ser un entero entre 100 y 599' })
+        )
+      return
+    }
+
     const respond = (): void => {
+      if (forced.kind === 'ok') {
+        const r = resolveMockResponse(hit, forced.status)
+        res
+          .writeHead(r.status, {
+            ...cors,
+            'x-sonda-mock': 'true',
+            'x-sonda-forced': r.documented ? 'documented' : 'undocumented',
+            ...(r.body ? { 'content-type': 'application/json; charset=utf-8' } : {})
+          })
+          .end(r.body)
+        return
+      }
+
       // Fallo simulado: un 429 incluye Retry-After para poder probar los reintentos
       if (chaosShouldFail(chaos)) {
         res

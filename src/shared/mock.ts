@@ -1,6 +1,5 @@
 import type { HttpMethod, ResponseSchemas } from './types'
 
-/** Un endpoint que el servidor mock sabe responder */
 export interface MockRoute {
   method: HttpMethod
   /** Ruta con parámetros, ej: /pet/{petId} */
@@ -8,6 +7,8 @@ export interface MockRoute {
   status: number
   /** JSON ya serializado. Vacío = responder sin body */
   body: string
+  /** Body de cada status documentado en la spec ("200", "404", "4XX", "default"). Vacío = sin body */
+  responses?: Record<string, string>
 }
 
 export interface CompiledRoute extends MockRoute {
@@ -102,6 +103,50 @@ export function pickMockResponse(schemas?: ResponseSchemas): { status: number; b
   const schema = schemas[code]
   if (!schema || status === 204) return { status, body: '' }
   return { status, body: JSON.stringify(sampleFromSchema(schema), null, 2) }
+}
+
+/** Body de ejemplo de cada status documentado, para poder forzar cualquiera con el header x-sonda-status */
+export function buildMockResponses(schemas?: ResponseSchemas): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [code, schema] of Object.entries(schemas ?? {})) {
+    out[code] = !schema || code === '204' ? '' : JSON.stringify(sampleFromSchema(schema), null, 2)
+  }
+  return out
+}
+
+export type ForcedStatus = { kind: 'none' } | { kind: 'ok'; status: number } | { kind: 'invalid' }
+
+/** Lee el header x-sonda-status: un entero de 100 a 599 */
+export function parseForcedStatus(raw: string | string[] | undefined): ForcedStatus {
+  const value = (Array.isArray(raw) ? raw[0] : raw)?.trim()
+  if (!value) return { kind: 'none' }
+  const n = Number(value)
+  return Number.isInteger(n) && n >= 100 && n <= 599 ? { kind: 'ok', status: n } : { kind: 'invalid' }
+}
+
+/**
+ * Respuesta del mock para un status forzado: busca el exacto ("404"), luego el rango ("4XX")
+ * y luego "default". Si la spec no lo documenta, responde igual con ese status y un error en JSON.
+ */
+export function resolveMockResponse(
+  route: Pick<MockRoute, 'responses'>,
+  wanted: number
+): { status: number; body: string; documented: boolean } {
+  const responses = route.responses ?? {}
+  const keys = Object.keys(responses)
+  const range = `${Math.floor(wanted / 100)}xx`
+  const key =
+    keys.find((k) => k === String(wanted)) ??
+    keys.find((k) => k.toLowerCase() === range) ??
+    keys.find((k) => k === 'default')
+
+  // 1xx, 204 y 304 no llevan body
+  const noBody = wanted < 200 || wanted === 204 || wanted === 304
+  if (key === undefined) {
+    const body = JSON.stringify({ error: 'Sonda mock: status no documentado en la spec', status: wanted })
+    return { status: wanted, body: noBody ? '' : body, documented: false }
+  }
+  return { status: wanted, body: noBody ? '' : responses[key], documented: true }
 }
 
 /** "{{baseUrl}}/pet/1?x=2" → "/pet/1". Una {{variable}} dentro del path se vuelve comodín */
