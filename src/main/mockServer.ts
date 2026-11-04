@@ -23,11 +23,22 @@ import { chaosDelay, chaosShouldFail, normalizeChaos, type MockChaos } from '../
 import type { EndpointStamp } from '../shared/specSync'
 import type {
   MockLogEntry,
+  MockOverrideResult,
+  MockRouteDetail,
   MockRouteInfo,
   MockStartResult,
   MockStatus,
   SavedRequest
 } from '../shared/types'
+import {
+  MOCK_OVERRIDES_FILE,
+  applyOverrides,
+  normalizeOverrides,
+  overrideError,
+  overrideKey,
+  type MockOverride,
+  type MockOverrides
+} from '../shared/mockOverrides'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -37,6 +48,10 @@ interface Running {
   port: number
   routes: MockRouteInfo[]
   chaos: MockChaos
+  /** Rutas tal como salen de la colección, sin respuestas fijadas */
+  base: MockRoute[]
+  /** Rutas que usa el servidor. Se modifican en el lugar para aplicar cambios sin reiniciar */
+  compiled: CompiledRoute[]
 }
 
 let running: Running | null = null
@@ -45,6 +60,35 @@ let running: Running | null = null
 function collectionDir(id: string): string {
   if (!id || id.startsWith('.') || /[\\/]/.test(id)) throw new Error('Colección no válida')
   return join(app.getPath('documents'), 'Sonda', id)
+}
+
+const overridesFile = (collectionId: string): string =>
+  join(collectionDir(collectionId), MOCK_OVERRIDES_FILE)
+
+async function readOverrides(collectionId: string): Promise<MockOverrides> {
+  try {
+    return normalizeOverrides(JSON.parse(await fs.readFile(overridesFile(collectionId), 'utf-8')))
+  } catch {
+    return {} // sin archivo (o ilegible): no hay respuestas fijadas
+  }
+}
+
+async function writeOverrides(collectionId: string, overrides: MockOverrides): Promise<void> {
+  const file = overridesFile(collectionId)
+  if (Object.keys(overrides).length === 0) {
+    await fs.rm(file, { force: true })
+    return
+  }
+  await fs.writeFile(file, JSON.stringify(overrides, null, 2) + '\n', 'utf-8')
+}
+
+function routeInfos(routes: MockRoute[], overrides: MockOverrides): MockRouteInfo[] {
+  return routes.map(({ method, path, status }) => ({
+    method,
+    path,
+    status,
+    ...(overrideKey(method, path) in overrides ? { overridden: true } : {})
+  }))
 }
 
 /** Lee la colección: una ruta por petición, con el path de la spec ({petId}) si viene de una */
@@ -285,9 +329,10 @@ async function startMock(
 
   const chaos = normalizeChaos(rawChaos)
   mockLog.length = 0
-  const server = createServer(
-    withLogging(makeHandler(compileRoutes(loaded.routes), loaded.basePath, chaos))
-  )
+  const overrides = await readOverrides(collectionId)
+  const applied = applyOverrides(loaded.routes, overrides)
+  const compiled = compileRoutes(applied)
+  const server = createServer(withLogging(makeHandler(compiled, loaded.basePath, chaos)))
   try {
     await new Promise<void>((resolve, reject) => {
       const onError = (err: Error): void => reject(err)
@@ -306,13 +351,50 @@ async function startMock(
     }
   }
 
-  const routes: MockRouteInfo[] = loaded.routes.map(({ method, path, status }) => ({
-    method,
-    path,
-    status
-  }))
-  running = { server, collectionId, port, routes, chaos }
+  const routes = routeInfos(applied, overrides)
+  running = { server, collectionId, port, routes, chaos, base: loaded.routes, compiled }
   return { ok: true, port, routes }
+}
+
+/** Respuesta actual de una ruta ("GET /pet/{petId}"): la fijada a mano o la generada desde la spec */
+async function getRoute(key: string): Promise<MockRouteDetail | null> {
+  const current = running
+  if (!current) return null
+  const route = current.base.find((r) => overrideKey(r.method, r.path) === key)
+  if (!route) return null
+  const o = (await readOverrides(current.collectionId))[key]
+  return o
+    ? { status: o.status, body: o.body, overridden: true }
+    : { status: route.status, body: route.body, overridden: false }
+}
+
+/** Fija (o quita, con null) la respuesta de una ruta y la aplica al servidor en marcha */
+async function setOverride(key: string, raw: MockOverride | null): Promise<MockOverrideResult> {
+  const current = running
+  if (!current) return { ok: false, error: 'El mock no está en marcha' }
+  if (!current.base.some((r) => overrideKey(r.method, r.path) === key)) {
+    return { ok: false, error: 'Esa ruta no existe en el mock' }
+  }
+
+  const overrides = await readOverrides(current.collectionId)
+  if (raw === null) {
+    delete overrides[key]
+  } else {
+    const o: MockOverride = {
+      status: Number(raw.status),
+      body: typeof raw.body === 'string' ? raw.body : ''
+    }
+    const error = overrideError(o)
+    if (error) return { ok: false, error }
+    overrides[key] = o
+  }
+  await writeOverrides(current.collectionId, overrides)
+
+  const applied = applyOverrides(current.base, overrides)
+  // El handler del servidor usa este mismo arreglo: el cambio vale desde la siguiente petición
+  current.compiled.splice(0, current.compiled.length, ...compileRoutes(applied))
+  current.routes = routeInfos(applied, overrides)
+  return { ok: true, routes: current.routes }
 }
 
 export function registerMockHandlers(): void {
@@ -335,4 +417,8 @@ export function registerMockHandlers(): void {
   ipcMain.handle('mock:clearLog', (): void => {
     mockLog.length = 0
   })
+  ipcMain.handle('mock:getRoute', (_e, key: string) => getRoute(String(key)))
+  ipcMain.handle('mock:setOverride', (_e, key: string, override: MockOverride | null) =>
+    setOverride(String(key), override)
+  )
 }

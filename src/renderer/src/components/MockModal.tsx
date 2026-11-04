@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { CHAOS_STATUSES, MAX_CHAOS_DELAY_MS, type MockChaos } from '../../../shared/mockChaos'
-import type { MockLogEntry, MockStatus } from '../../../shared/types'
+import { overrideKey, type MockOverride } from '../../../shared/mockOverrides'
+import type { MockLogEntry, MockRouteInfo, MockStatus } from '../../../shared/types'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { Modal } from './Modal'
@@ -34,6 +35,10 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
   const [copied, setCopied] = useState(false)
   const [log, setLog] = useState<MockLogEntry[]>([])
   const [openId, setOpenId] = useState<number | null>(null)
+  const [editKey, setEditKey] = useState<string | null>(null)
+  const [editStatus, setEditStatus] = useState('200')
+  const [editBody, setEditBody] = useState('')
+  const [editError, setEditError] = useState('')
 
   // Si ya hay un mock corriendo (se cerró la ventana y se volvió a abrir), se muestra tal cual
   useEffect(() => {
@@ -108,6 +113,34 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
     await window.api.stopMock()
     setStatus({ running: false })
     setBusy(false)
+  }
+
+  const openEditor = async (key: string): Promise<void> => {
+    if (editKey === key) {
+      setEditKey(null)
+      return
+    }
+    const detail = await window.api.getMockRoute(key)
+    if (!detail) return
+    setEditStatus(String(detail.status))
+    setEditBody(detail.body)
+    setEditError('')
+    setEditKey(key)
+  }
+
+  const applyRoutes = (routes: MockRouteInfo[]): void => {
+    setStatus((prev) => (prev && prev.running ? { ...prev, routes } : prev))
+  }
+
+  const saveOverride = async (override: MockOverride | null): Promise<void> => {
+    if (!editKey) return
+    const result = await window.api.setMockOverride(editKey, override)
+    if (!result.ok) {
+      setEditError(result.error)
+      return
+    }
+    applyRoutes(result.routes)
+    setEditKey(null)
   }
 
   const copyUrl = async (): Promise<void> => {
@@ -266,20 +299,82 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
                   <th className="px-3 py-2 font-medium">Método</th>
                   <th className="px-3 py-2 font-medium">Ruta</th>
                   <th className="px-3 py-2 font-medium">Responde</th>
+                  <th className="px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
-                {live.routes.map((r) => (
-                  <tr key={`${r.method} ${r.path}`} className="border-t border-zinc-800">
-                    <td
-                      className={`px-3 py-1.5 font-mono font-semibold ${METHOD_COLORS[r.method]}`}
-                    >
-                      {r.method}
-                    </td>
-                    <td className="px-3 py-1.5 font-mono text-zinc-300">{r.path}</td>
-                    <td className="px-3 py-1.5 text-zinc-400">{r.status}</td>
-                  </tr>
-                ))}
+                {live.routes.map((r) => {
+                  const key = overrideKey(r.method, r.path)
+                  return (
+                    <Fragment key={key}>
+                      <tr className="border-t border-zinc-800">
+                        <td
+                          className={`px-3 py-1.5 font-mono font-semibold ${METHOD_COLORS[r.method]}`}
+                        >
+                          {r.method}
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-zinc-300">{r.path}</td>
+                        <td className="px-3 py-1.5 text-zinc-400">
+                          {r.status}
+                          {r.overridden && (
+                            <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-400">
+                              editada
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          <button
+                            onClick={() => openEditor(key)}
+                            className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                          >
+                            {editKey === key ? 'Cerrar' : 'Editar'}
+                          </button>
+                        </td>
+                      </tr>
+                      {editKey === key && (
+                        <tr className="bg-zinc-950">
+                          <td colSpan={4} className="space-y-2 px-3 py-3">
+                            <label className="flex items-center gap-2">
+                              <span className="text-zinc-400">Status</span>
+                              <input
+                                className={`${field} w-20`}
+                                inputMode="numeric"
+                                value={editStatus}
+                                onChange={(e) => setEditStatus(e.target.value)}
+                              />
+                            </label>
+                            <textarea
+                              className={`${field} h-32 w-full resize-y font-mono`}
+                              spellCheck={false}
+                              value={editBody}
+                              onChange={(e) => setEditBody(e.target.value)}
+                              placeholder="Body JSON (vacío = sin body)"
+                            />
+                            {editError && <p className="text-red-400">{editError}</p>}
+                            <div className="flex justify-end gap-2">
+                              {r.overridden && (
+                                <button
+                                  onClick={() => saveOverride(null)}
+                                  className="rounded px-3 py-1.5 text-zinc-300 hover:bg-zinc-800"
+                                >
+                                  Restaurar la de la spec
+                                </button>
+                              )}
+                              <button
+                                onClick={() =>
+                                  saveOverride({ status: Number(editStatus), body: editBody })
+                                }
+                                className="rounded-md bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-500"
+                              >
+                                Guardar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>

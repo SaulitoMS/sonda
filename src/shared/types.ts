@@ -7,6 +7,7 @@ import type {
   WsEvent
 } from './websocket'
 import type { MockChaos } from './mockChaos'
+import type { MockOverride } from './mockOverrides'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
@@ -407,6 +408,10 @@ export interface SondaApi {
   /** Últimas peticiones recibidas por el mock (máximo 200, solo en memoria) */
   getMockLog: () => Promise<MockLogEntry[]>
   clearMockLog: () => Promise<void>
+  /** Respuesta actual de una ruta del mock en marcha ("GET /pet/{petId}"): la fijada a mano o la generada */
+  getMockRoute: (key: string) => Promise<MockRouteDetail | null>
+  /** Fija (o quita, con null) la respuesta de una ruta del mock en marcha. Se aplica al instante */
+  setMockOverride: (key: string, override: MockOverride | null) => Promise<MockOverrideResult>
   /** Ejecuta un script de usuario en un contexto aislado (máximo 2 s) */
   runScript: (input: ScriptInput) => Promise<ScriptOutput>
   oauthAuthorize: (input: OAuthAuthorizeInput) => Promise<OAuthAuthorizeResult>
@@ -617,9 +622,22 @@ export interface MockRouteInfo {
   method: HttpMethod
   /** Ruta con parámetros, ej: /pet/{petId} */
   path: string
-  /** Status con el que responde (el primer 2xx documentado) */
+  /** Status con el que responde (el primer 2xx documentado, o el que fijó el usuario) */
   status: number
+  /** true si el usuario fijó la respuesta a mano */
+  overridden?: boolean
 }
+
+/** Respuesta actual de una ruta del mock, lista para editarse */
+export interface MockRouteDetail {
+  status: number
+  body: string
+  /** true si es la que fijó el usuario; false si es la generada desde la spec */
+  overridden: boolean
+}
+
+export type MockOverrideResult =
+  { ok: true; routes: MockRouteInfo[] } | { ok: false; error: string }
 
 export type MockStatus =
   | { running: false }
