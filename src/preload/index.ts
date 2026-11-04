@@ -52,6 +52,8 @@ const api: SondaApi = {
     ipcRenderer.invoke('mock:start', collectionId, port, chaos),
   stopMock: () => ipcRenderer.invoke('mock:stop'),
   getMockStatus: () => ipcRenderer.invoke('mock:status'),
+  getMockLog: () => ipcRenderer.invoke('mock:log'),
+  clearMockLog: () => ipcRenderer.invoke('mock:clearLog'),
   runScript: (input) => ipcRenderer.invoke('script:run', input),
   oauthAuthorize: (input) => ipcRenderer.invoke('oauth:authorize', input),
   wsConnect: (input) => ipcRenderer.invoke('ws:connect', input),

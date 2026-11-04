@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CHAOS_STATUSES, MAX_CHAOS_DELAY_MS, type MockChaos } from '../../../shared/mockChaos'
-import type { MockStatus } from '../../../shared/types'
+import type { MockLogEntry, MockStatus } from '../../../shared/types'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { Modal } from './Modal'
@@ -32,6 +32,8 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [log, setLog] = useState<MockLogEntry[]>([])
+  const [openId, setOpenId] = useState<number | null>(null)
 
   // Si ya hay un mock corriendo (se cerró la ventana y se volvió a abrir), se muestra tal cual
   useEffect(() => {
@@ -57,6 +59,24 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
 
   const collectionId = pickedId || collections[0]?.id || ''
   const live = status && status.running ? status : null
+
+  // Mientras el mock corre, se refresca el registro de peticiones cada segundo
+  const isLive = !!live
+  useEffect(() => {
+    if (!isLive) return
+    let alive = true
+    const tick = (): void => {
+      window.api.getMockLog().then((entries) => {
+        if (alive) setLog(entries)
+      })
+    }
+    tick()
+    const timer = setInterval(tick, 1000)
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [isLive])
 
   const currentChaos = (): MockChaos => ({
     delayMs: Number(delay) || 0,
@@ -262,6 +282,67 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {live && (
+        <div className="mt-4">
+          <div className="mb-1 flex items-center justify-between">
+            <p className="text-xs font-medium text-zinc-300">Peticiones recibidas ({log.length})</p>
+            <button
+              onClick={async () => {
+                await window.api.clearMockLog()
+                setLog([])
+              }}
+              className="rounded px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+            >
+              Limpiar
+            </button>
+          </div>
+          <div className="max-h-64 overflow-auto rounded-md border border-zinc-800">
+            {log.length === 0 ? (
+              <p className="px-3 py-3 text-xs text-zinc-500">Aún no ha llegado ninguna petición.</p>
+            ) : (
+              [...log].reverse().map((e) => (
+                <div key={e.id} className="border-t border-zinc-800 first:border-t-0">
+                  <button
+                    onClick={() => setOpenId(openId === e.id ? null : e.id)}
+                    className="flex w-full items-center gap-3 px-3 py-1.5 text-left text-xs hover:bg-zinc-900"
+                  >
+                    <span
+                      className={`w-14 shrink-0 font-mono font-semibold ${(METHOD_COLORS as Record<string, string>)[e.method] ?? 'text-zinc-300'}`}
+                    >
+                      {e.method}
+                    </span>
+                    <span className="flex-1 truncate font-mono text-zinc-300">{e.url}</span>
+                    <span className={e.matched ? 'text-zinc-400' : 'text-amber-400'}>
+                      {e.status}
+                    </span>
+                    <span className="w-14 shrink-0 text-right text-zinc-500">{e.timeMs} ms</span>
+                  </button>
+                  {openId === e.id && (
+                    <div className="space-y-2 bg-zinc-950 px-3 py-2">
+                      {!e.matched && (
+                        <p className="text-[11px] text-amber-400">
+                          Ninguna ruta de la colección coincide con esta petición.
+                        </p>
+                      )}
+                      <pre className="overflow-auto text-[11px] text-zinc-400">
+                        {Object.entries(e.headers)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join('\n')}
+                      </pre>
+                      {e.body && (
+                        <pre className="max-h-40 overflow-auto border-t border-zinc-800 pt-2 text-[11px] text-zinc-300">
+                          {e.body}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

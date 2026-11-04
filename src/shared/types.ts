@@ -386,6 +386,9 @@ export interface SondaApi {
   startMock: (collectionId: string, port: number, chaos?: MockChaos) => Promise<MockStartResult>
   stopMock: () => Promise<void>
   getMockStatus: () => Promise<MockStatus>
+  /** Últimas peticiones recibidas por el mock (máximo 200, solo en memoria) */
+  getMockLog: () => Promise<MockLogEntry[]>
+  clearMockLog: () => Promise<void>
   /** Ejecuta un script de usuario en un contexto aislado (máximo 2 s) */
   runScript: (input: ScriptInput) => Promise<ScriptOutput>
   oauthAuthorize: (input: OAuthAuthorizeInput) => Promise<OAuthAuthorizeResult>
@@ -609,6 +612,23 @@ export type MockStatus =
       routes: MockRouteInfo[]
       chaos?: MockChaos
     }
+
+/** Una petición que recibió el servidor mock */
+export interface MockLogEntry {
+  id: number
+  /** ISO 8601 */
+  at: string
+  method: string
+  /** Path y query tal como llegaron */
+  url: string
+  status: number
+  /** false = ninguna ruta de la colección coincidió (404 del mock) */
+  matched: boolean
+  timeMs: number
+  headers: Record<string, string>
+  /** Primeros 4000 caracteres del body */
+  body: string
+}
 
 export type MockStartResult =
   { ok: true; port: number; routes: MockRouteInfo[] } | { ok: false; error: string }

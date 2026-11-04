@@ -21,7 +21,13 @@ import {
 } from '../shared/mock'
 import { chaosDelay, chaosShouldFail, normalizeChaos, type MockChaos } from '../shared/mockChaos'
 import type { EndpointStamp } from '../shared/specSync'
-import type { MockRouteInfo, MockStartResult, MockStatus, SavedRequest } from '../shared/types'
+import type {
+  MockLogEntry,
+  MockRouteInfo,
+  MockStartResult,
+  MockStatus,
+  SavedRequest
+} from '../shared/types'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -100,6 +106,49 @@ async function loadRoutes(
 }
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void
+
+// ---------- Registro de peticiones recibidas (solo en memoria) ----------
+
+const MAX_LOG_ENTRIES = 200
+const MAX_LOG_BODY = 4000
+const mockLog: MockLogEntry[] = []
+let nextLogId = 1
+
+/** Envuelve el handler del mock para anotar cada petición que llega y cómo se respondió */
+function withLogging(handler: Handler): Handler {
+  return (req, res) => {
+    const startedAt = Date.now()
+    const chunks: Buffer[] = []
+    let size = 0
+    req.on('data', (chunk: Buffer) => {
+      if (size >= MAX_LOG_BODY) return
+      chunks.push(chunk)
+      size += chunk.length
+    })
+
+    res.on('finish', () => {
+      const headers: Record<string, string> = {}
+      for (const [name, value] of Object.entries(req.headers)) {
+        if (value !== undefined) headers[name] = Array.isArray(value) ? value.join(', ') : value
+      }
+      mockLog.push({
+        id: nextLogId++,
+        at: new Date().toISOString(),
+        method: req.method ?? 'GET',
+        url: req.url ?? '/',
+        status: res.statusCode,
+        // Un 404 sin la marca del mock significa que ninguna ruta de la colección coincidió
+        matched: res.statusCode !== 404 || res.hasHeader('x-sonda-mock'),
+        timeMs: Date.now() - startedAt,
+        headers,
+        body: Buffer.concat(chunks).toString('utf-8').slice(0, MAX_LOG_BODY)
+      })
+      if (mockLog.length > MAX_LOG_ENTRIES) mockLog.splice(0, mockLog.length - MAX_LOG_ENTRIES)
+    })
+
+    handler(req, res)
+  }
+}
 
 function makeHandler(routes: CompiledRoute[], basePath: string, chaos: MockChaos): Handler {
   return (req, res) => {
@@ -235,7 +284,10 @@ async function startMock(
   if (loaded.routes.length === 0) return { ok: false, error: 'La colección no tiene peticiones' }
 
   const chaos = normalizeChaos(rawChaos)
-  const server = createServer(makeHandler(compileRoutes(loaded.routes), loaded.basePath, chaos))
+  mockLog.length = 0
+  const server = createServer(
+    withLogging(makeHandler(compileRoutes(loaded.routes), loaded.basePath, chaos))
+  )
   try {
     await new Promise<void>((resolve, reject) => {
       const onError = (err: Error): void => reject(err)
@@ -279,4 +331,8 @@ export function registerMockHandlers(): void {
         }
       : { running: false }
   )
+  ipcMain.handle('mock:log', (): MockLogEntry[] => [...mockLog])
+  ipcMain.handle('mock:clearLog', (): void => {
+    mockLog.length = 0
+  })
 }
