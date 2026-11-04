@@ -65,6 +65,16 @@ function parseAuth(raw: unknown, warnings: string[]): AuthConfig | null | undefi
         keyValue: authValue(raw.apikey, 'value'),
         keyIn: authValue(raw.apikey, 'in') === 'query' ? 'query' : 'header'
       }
+    case 'awsv4':
+      return {
+        ...base,
+        type: 'awsv4',
+        username: authValue(raw.awsv4, 'accessKey'),
+        password: authValue(raw.awsv4, 'secretKey'),
+        token: authValue(raw.awsv4, 'sessionToken'),
+        awsRegion: authValue(raw.awsv4, 'region'),
+        awsService: authValue(raw.awsv4, 'service')
+      }
     default:
       if (type) warnings.push(`Auth "${type}" no está soportada: se importó sin autenticación.`)
       return undefined
