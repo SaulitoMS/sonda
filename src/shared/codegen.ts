@@ -2,7 +2,17 @@ import { toCurl, type CurlRequest } from './curl'
 import type { FormPart } from './types'
 
 export type CodeLang =
-  'curl' | 'fetch' | 'axios' | 'python' | 'go' | 'php' | 'csharp' | 'powershell' | 'ruby'
+  | 'curl'
+  | 'fetch'
+  | 'axios'
+  | 'python'
+  | 'go'
+  | 'php'
+  | 'csharp'
+  | 'powershell'
+  | 'ruby'
+  | 'rust'
+  | 'java'
 
 export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'curl', label: 'cURL' },
@@ -13,7 +23,9 @@ export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'php', label: 'PHP (cURL)' },
   { id: 'csharp', label: 'C# (HttpClient)' },
   { id: 'powershell', label: 'PowerShell (Invoke-WebRequest)' },
-  { id: 'ruby', label: 'Ruby (Net::HTTP)' }
+  { id: 'ruby', label: 'Ruby (Net::HTTP)' },
+  { id: 'rust', label: 'Rust (reqwest)' },
+  { id: 'java', label: 'Java (HttpClient)' }
 ]
 
 // JSON.stringify produce literales de string válidos tanto en JavaScript como en Python
@@ -416,6 +428,164 @@ function toRuby(r: CurlRequest): string {
   return lines.join('\n')
 }
 
+
+// Rust no acepta \uXXXX, \b ni \f de JSON: se convierten a \u{...}
+const rsStr = (s: string): string =>
+  str(s).replace(/\\(u[0-9a-fA-F]{4}|.)/g, (m, e: string) =>
+    e.length === 5
+      ? `\\u{${e.slice(1).replace(/^0+(?=.)/, '')}}`
+      : e === 'b'
+        ? '\\u{8}'
+        : e === 'f'
+          ? '\\u{c}'
+          : m
+  )
+
+function toRust(r: CurlRequest): string {
+  const parts = formParts(r)
+  const chain = [`    .request(reqwest::Method::${r.method}, ${rsStr(r.url)})`]
+
+  for (const h of r.headers) {
+    // multipart pone su propio Content-Type con el boundary
+    if (parts.length && isContentType(h)) continue
+    chain.push(`    .header(${rsStr(h.key)}, ${rsStr(h.value)})`)
+  }
+  if (r.user) {
+    const [username, password] = splitUser(r.user)
+    chain.push(`    .basic_auth(${rsStr(username)}, Some(${rsStr(password)}))`)
+  }
+  if (parts.length) chain.push('    .multipart(form)')
+  else if (hasBody(r)) chain.push(`    .body(${rsStr(r.body)})`)
+
+  const lines = [
+    '// Cargo.toml: reqwest = { version = "0.12", features = ["blocking", "multipart"] }',
+    'use reqwest::blocking::Client;',
+    '',
+    'fn main() -> Result<(), Box<dyn std::error::Error>> {',
+    '    let client = Client::new();'
+  ]
+
+  if (parts.length) {
+    lines.push('', '    let form = reqwest::blocking::multipart::Form::new()')
+    for (const p of parts) {
+      lines.push(
+        p.kind === 'file'
+          ? `        .file(${rsStr(p.key)}, ${rsStr(p.value)})?`
+          : `        .text(${rsStr(p.key)}, ${rsStr(p.value)})`
+      )
+    }
+    lines[lines.length - 1] += ';'
+    lines.push('')
+  }
+
+  lines.push(
+    '    let response = client',
+    ...chain,
+    '    .send()?;',
+    '',
+    '    println!("{}", response.status().as_u16());',
+    '    println!("{}", response.text()?);',
+    '    Ok(())',
+    '}'
+  )
+  return lines.join('\n')
+}
+
+// HttpClient de Java lanza excepción si intentas fijar estos headers
+const JAVA_RESTRICTED = new Set(['connection', 'content-length', 'expect', 'host', 'upgrade'])
+
+function toJava(r: CurlRequest): string {
+  const parts = formParts(r)
+  const lines = [
+    'import java.net.URI;',
+    'import java.net.http.HttpClient;',
+    'import java.net.http.HttpRequest;',
+    'import java.net.http.HttpResponse;'
+  ]
+  if (parts.length || r.user) lines.push('import java.nio.charset.StandardCharsets;')
+  if (parts.length) {
+    lines.push(
+      'import java.io.ByteArrayOutputStream;',
+      'import java.nio.file.Files;',
+      'import java.nio.file.Path;'
+    )
+  }
+  if (r.user) lines.push('import java.util.Base64;')
+  lines.push(
+    '',
+    'public class Main {',
+    '    public static void main(String[] args) throws Exception {',
+    '        HttpClient client = HttpClient.newHttpClient();'
+  )
+
+  let publisher = 'HttpRequest.BodyPublishers.noBody()'
+  if (parts.length) {
+    lines.push(
+      '',
+      '        String boundary = "----SondaBoundary" + System.currentTimeMillis();',
+      '        ByteArrayOutputStream form = new ByteArrayOutputStream();'
+    )
+    for (const p of parts) {
+      if (p.kind === 'file') {
+        lines.push(
+          `        form.write(("--" + boundary + "\\r\\nContent-Disposition: form-data; name=\\"" + ${str(p.key)} + "\\"; filename=\\"" + ${str(fileName(p.value))} + "\\"\\r\\nContent-Type: application/octet-stream\\r\\n\\r\\n").getBytes(StandardCharsets.UTF_8));`,
+          `        form.write(Files.readAllBytes(Path.of(${str(p.value)})));`,
+          '        form.write("\\r\\n".getBytes(StandardCharsets.UTF_8));'
+        )
+      } else {
+        lines.push(
+          `        form.write(("--" + boundary + "\\r\\nContent-Disposition: form-data; name=\\"" + ${str(p.key)} + "\\"\\r\\n\\r\\n" + ${str(p.value)} + "\\r\\n").getBytes(StandardCharsets.UTF_8));`
+        )
+      }
+    }
+    lines.push(
+      '        form.write(("--" + boundary + "--\\r\\n").getBytes(StandardCharsets.UTF_8));'
+    )
+    publisher = 'HttpRequest.BodyPublishers.ofByteArray(form.toByteArray())'
+  } else if (hasBody(r)) {
+    publisher = `HttpRequest.BodyPublishers.ofString(${str(r.body)})`
+  }
+
+  const chain = [`            .uri(URI.create(${str(r.url)}))`]
+  const skipped: string[] = []
+  for (const h of r.headers) {
+    // El Content-Type del multipart lleva el boundary y lo pone el código de arriba
+    if (parts.length && isContentType(h)) continue
+    if (JAVA_RESTRICTED.has(h.key.trim().toLowerCase())) {
+      skipped.push(h.key)
+      continue
+    }
+    chain.push(`            .header(${str(h.key)}, ${str(h.value)})`)
+  }
+  if (parts.length) {
+    chain.push('            .header("Content-Type", "multipart/form-data; boundary=" + boundary)')
+  }
+  if (r.user) {
+    chain.push(
+      `            .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((${str(r.user)}).getBytes(StandardCharsets.UTF_8)))`
+    )
+  }
+  chain.push(`            .method(${str(r.method)}, ${publisher})`, '            .build();')
+
+  lines.push('')
+  if (skipped.length) {
+    lines.push(
+      `        // Java no deja fijar estos headers a mano (los pone HttpClient): ${skipped.join(', ')}`
+    )
+  }
+  lines.push(
+    '        HttpRequest request = HttpRequest.newBuilder()',
+    ...chain,
+    '',
+    '        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());',
+    '        System.out.println(response.statusCode());',
+    '        System.out.println(response.body());',
+    '    }',
+    '}'
+  )
+  return lines.join('\n')
+}
+
 export function generateCode(lang: CodeLang, request: CurlRequest): string {
   switch (lang) {
     case 'curl':
@@ -436,5 +606,9 @@ export function generateCode(lang: CodeLang, request: CurlRequest): string {
       return toPowerShell(request)
     case 'ruby':
       return toRuby(request)
+    case 'rust':
+      return toRust(request)
+    case 'java':
+      return toJava(request)
   }
 }
