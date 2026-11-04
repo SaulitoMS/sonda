@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   describeTimestamp,
+  escapeJsonString,
+  formatJson,
   fromBase64,
+  fromHex,
   hashText,
+  minifyJson,
   toBase64,
+  toHex,
+  unescapeJsonString,
   urlDecode,
   urlEncode,
   type HashAlgo
@@ -15,6 +21,12 @@ const MODES = [
   { id: 'b64-dec', label: 'Base64 · decodificar' },
   { id: 'url-enc', label: 'URL · codificar' },
   { id: 'url-dec', label: 'URL · decodificar' },
+  { id: 'json-fmt', label: 'JSON · formatear' },
+  { id: 'json-min', label: 'JSON · minificar' },
+  { id: 'json-esc', label: 'Texto → string JSON (escapar)' },
+  { id: 'json-unesc', label: 'String JSON → texto (desescapar)' },
+  { id: 'hex-enc', label: 'Hex · codificar' },
+  { id: 'hex-dec', label: 'Hex · decodificar' },
   { id: 'ts', label: 'Timestamp ↔ fecha' },
   { id: 'sha1', label: 'Hash SHA-1' },
   { id: 'sha256', label: 'Hash SHA-256' },
@@ -27,6 +39,18 @@ const HASH_ALGO: Partial<Record<Mode, HashAlgo>> = {
   sha1: 'SHA-1',
   sha256: 'SHA-256',
   sha512: 'SHA-512'
+}
+
+/** Operación inversa: al usar el resultado como entrada, se cambia a la opuesta */
+const SWAP: Partial<Record<Mode, Mode>> = {
+  'b64-enc': 'b64-dec',
+  'b64-dec': 'b64-enc',
+  'url-enc': 'url-dec',
+  'url-dec': 'url-enc',
+  'json-esc': 'json-unesc',
+  'json-unesc': 'json-esc',
+  'hex-enc': 'hex-dec',
+  'hex-dec': 'hex-enc'
 }
 
 interface Result {
@@ -45,6 +69,18 @@ function convert(mode: Mode, input: string): Result {
         return { text: urlEncode(input), error: false }
       case 'url-dec':
         return { text: urlDecode(input), error: false }
+      case 'json-fmt':
+        return { text: formatJson(input), error: false }
+      case 'json-min':
+        return { text: minifyJson(input), error: false }
+      case 'json-esc':
+        return { text: escapeJsonString(input), error: false }
+      case 'json-unesc':
+        return { text: unescapeJsonString(input), error: false }
+      case 'hex-enc':
+        return { text: toHex(input), error: false }
+      case 'hex-dec':
+        return { text: fromHex(input), error: false }
       case 'ts':
         return { text: describeTimestamp(input), error: false }
       default:
@@ -132,12 +168,7 @@ export function ToolboxModal({ onClose }: { onClose: () => void }): React.JSX.El
         <button
           onClick={() => {
             setInput(result.text)
-            if (!algo && mode !== 'ts')
-              setMode(
-                mode.endsWith('enc')
-                  ? (mode.replace('enc', 'dec') as Mode)
-                  : (mode.replace('dec', 'enc') as Mode)
-              )
+            setMode(SWAP[mode] ?? mode)
           }}
           disabled={!result.text || result.error}
           className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 disabled:opacity-40"

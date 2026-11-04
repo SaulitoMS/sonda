@@ -44,3 +44,37 @@ export function describeTimestamp(input: string): string {
     `Milisegundos:   ${ms}`
   ].join('\n')
 }
+
+/** Da formato legible (2 espacios) a un JSON */
+export const formatJson = (text: string): string => JSON.stringify(JSON.parse(text), null, 2)
+
+/** Quita espacios y saltos de línea de un JSON */
+export const minifyJson = (text: string): string => JSON.stringify(JSON.parse(text))
+
+/** Escapa un texto para meterlo dentro de un string JSON (sin las comillas de los extremos) */
+export const escapeJsonString = (text: string): string => JSON.stringify(text).slice(1, -1)
+
+/** Inverso de escapeJsonString: acepta el texto con o sin las comillas de los extremos */
+export function unescapeJsonString(text: string): string {
+  const raw = text.trim()
+  const quoted = raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"') ? raw : `"${raw}"`
+  const out: unknown = JSON.parse(quoted)
+  if (typeof out !== 'string') throw new Error('No es un texto JSON válido')
+  return out
+}
+
+export function toHex(text: string): string {
+  return Array.from(new TextEncoder().encode(text))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join(' ')
+}
+
+/** Acepta "48 6f", "48:6f", "48,6f", "0x48 0x6f" o "486f" */
+export function fromHex(input: string): string {
+  const clean = input.replace(/0x/gi, '').replace(/[\s,:-]/g, '')
+  if (clean === '' || clean.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(clean)) {
+    throw new Error('Hex inválido: usa pares de dígitos (ej: 48 6f 6c 61)')
+  }
+  const bytes = Uint8Array.from(clean.match(/../g) ?? [], (h) => parseInt(h, 16))
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+}
