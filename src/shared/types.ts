@@ -262,6 +262,14 @@ export interface RequestItem {
   method: HttpMethod
 }
 
+/** Scripts que corren en todas las peticiones de una colección o carpeta, antes del script de la petición */
+export interface ScopeScripts {
+  /** Antes de enviar */
+  pre?: string
+  /** Al recibir la respuesta */
+  post?: string
+}
+
 export interface FolderItem {
   name: string
   requests: RequestItem[]
@@ -269,6 +277,8 @@ export interface FolderItem {
   auth?: AuthConfig
   /** Headers de la carpeta. Se suman a los de la colección; los de la petición tienen prioridad */
   headers?: KeyValueData[]
+  /** Scripts de la carpeta. Corren después de los de la colección y antes de los de la petición */
+  scripts?: ScopeScripts
 }
 
 export interface CollectionItem {
@@ -285,6 +295,8 @@ export interface CollectionItem {
   headers?: KeyValueData[]
   /** Variables de la colección. Valen solo si el entorno activo no define la misma clave */
   variables?: KeyValueData[]
+  /** Scripts que corren en todas las peticiones de la colección */
+  scripts?: ScopeScripts
 }
 
 export interface SaveRequestInput {
@@ -359,6 +371,12 @@ export interface SondaApi {
     collectionId: string,
     folder: string | null,
     headers: KeyValueData[] | null
+  ) => Promise<void>
+  /** Guarda los scripts heredables de una colección (folder = null) o de una carpeta. null = quitarlos */
+  setScopeScripts: (
+    collectionId: string,
+    folder: string | null,
+    scripts: ScopeScripts | null
   ) => Promise<void>
   /** Guarda las variables de una colección. null = quitarlas */
   setCollectionVariables: (collectionId: string, variables: KeyValueData[] | null) => Promise<void>

@@ -31,6 +31,8 @@ const api: SondaApi = {
     ipcRenderer.invoke('collections:setAuth', collectionId, folder, auth),
   setScopeHeaders: (collectionId, folder, headers) =>
     ipcRenderer.invoke('collections:setHeaders', collectionId, folder, headers),
+  setScopeScripts: (collectionId, folder, scripts) =>
+    ipcRenderer.invoke('collections:setScripts', collectionId, folder, scripts),
   setCollectionVariables: (collectionId, variables) =>
     ipcRenderer.invoke('collections:setVariables', collectionId, variables),
   openWorkspace: () => ipcRenderer.invoke('collections:openWorkspace'),

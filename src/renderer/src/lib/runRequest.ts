@@ -25,6 +25,7 @@ import { buildVarMap, interpolate, withCollectionVariables } from '../../../shar
 import { looksLikeXml } from '../../../shared/bodyType'
 import { collectionVarsForPath } from './collectionVariables'
 import { resolveHeadersForPath } from './inheritedHeaders'
+import { resolveScriptForPath } from './inheritedScripts'
 import { retryDelayMs, shouldRetry } from '../../../shared/retry'
 import { isCancelled } from './inFlight'
 import {
@@ -107,11 +108,13 @@ export async function executeRequest(
   })
 
   // ---- Pre-script: puede cambiar la petición y asignar variables ----
+  // Corren primero los de la colección, luego los de la carpeta y al final el de la petición
   let draft = input
-  if (input.preScript?.trim()) {
+  const preCode = resolveScriptForPath(options.path, 'pre', input.preScript)
+  if (preCode) {
     const out = await window.api.runScript({
       phase: 'pre',
-      code: input.preScript,
+      code: preCode,
       vars,
       request: {
         method: input.method,
@@ -364,10 +367,11 @@ export async function executeRequest(
   const extractions = response.ok ? evaluateExtractions(draft.extractions, response) : []
 
   // ---- Post-script: tests y variables a partir de la respuesta ----
-  if (response.ok && draft.postScript?.trim()) {
+  const postCode = resolveScriptForPath(options.path, 'post', draft.postScript)
+  if (response.ok && postCode) {
     const out = await window.api.runScript({
       phase: 'post',
-      code: draft.postScript,
+      code: postCode,
       vars,
       response: {
         status: response.status,

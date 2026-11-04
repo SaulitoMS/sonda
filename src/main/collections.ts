@@ -13,10 +13,12 @@ import type {
   RequestItem,
   SaveRequestInput,
   SavedRequest,
+  ScopeScripts,
   SyncOptions,
   SyncPreviewResult,
   SyncResult
 } from '../shared/types'
+import { cleanScopeScripts } from '../shared/scopeScripts'
 import {
   mergeChange,
   planSync,
@@ -44,6 +46,8 @@ interface CollectionMeta {
   auth?: AuthConfig
   /** Headers que heredan las peticiones. También se guardan en el sonda.collection.json de cada carpeta */
   headers?: KeyValueData[]
+  /** Scripts que corren en las peticiones. También se guardan en el sonda.collection.json de cada carpeta */
+  scripts?: ScopeScripts
   /** Variables de la colección (solo en el sonda.collection.json de la colección, no de las carpetas) */
   variables?: KeyValueData[]
   /** Cómo era cada endpoint al importarlo, por ruta relativa a la colección */
@@ -179,6 +183,15 @@ async function writeScopeVariables(dir: string, variables: KeyValueData[] | null
   await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
 }
 
+/** Guarda (o quita) los scripts heredables en el sonda.collection.json de una colección o carpeta, sin tocar lo demás */
+async function writeScopeScripts(dir: string, scripts: ScopeScripts | null): Promise<void> {
+  const meta: Partial<CollectionMeta> = (await readMeta(dir)) ?? {}
+  const clean = cleanScopeScripts(scripts)
+  if (clean) meta.scripts = clean
+  else delete meta.scripts
+  await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+}
+
 async function readRequestItem(file: string): Promise<RequestItem | null> {
   try {
     const data = JSON.parse(await fs.readFile(file, 'utf-8')) as Partial<SavedRequest>
@@ -228,7 +241,8 @@ async function listCollections(): Promise<CollectionItem[]> {
         name: child.name,
         requests: await listRequests(join(dir, child.name), folderMeta?.order),
         ...(folderMeta?.auth ? { auth: folderMeta.auth } : {}),
-        ...(folderMeta?.headers?.length ? { headers: folderMeta.headers } : {})
+        ...(folderMeta?.headers?.length ? { headers: folderMeta.headers } : {}),
+        ...(folderMeta?.scripts ? { scripts: folderMeta.scripts } : {})
       })
     }
     const orderedFolders = sortByOrder(
@@ -245,6 +259,7 @@ async function listCollections(): Promise<CollectionItem[]> {
       source: meta?.source,
       ...(meta?.auth ? { auth: meta.auth } : {}),
       ...(meta?.headers?.length ? { headers: meta.headers } : {}),
+      ...(meta?.scripts ? { scripts: meta.scripts } : {}),
       ...(meta?.variables?.length ? { variables: meta.variables } : {}),
       requests: await listRequests(dir, meta?.order),
       folders: orderedFolders
@@ -451,6 +466,14 @@ export function registerCollectionHandlers(): void {
     async (_e, collectionId: string, folder: string | null, headers: KeyValueData[] | null) => {
       const dir = folder ? safePath(collectionId, folder) : safePath(collectionId)
       await writeScopeHeaders(dir, headers)
+    }
+  )
+
+  ipcMain.handle(
+    'collections:setScripts',
+    async (_e, collectionId: string, folder: string | null, scripts: ScopeScripts | null) => {
+      const dir = folder ? safePath(collectionId, folder) : safePath(collectionId)
+      await writeScopeScripts(dir, scripts)
     }
   )
 
