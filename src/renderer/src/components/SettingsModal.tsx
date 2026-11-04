@@ -111,7 +111,7 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             <p className={hint}>Vacío = sin proxy. Las peticiones a localhost no lo usan.</p>
           </div>
 
-                    <div>
+          <div>
             <label className={label}>Certificado de cliente (mTLS)</label>
             <div className="space-y-2">
               {(

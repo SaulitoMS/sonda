@@ -31,6 +31,7 @@ import { checkSecurity, type SecurityFinding } from '../../../shared/securityChe
 import { analyzeHeaders, type HeaderInsight } from '../../../shared/headerInsights'
 import { describeTiming } from '../../../shared/timing'
 import { jsonToTypeScript } from '../../../shared/jsonToTypes'
+import { describeStatus } from '../../../shared/httpStatus'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -768,6 +769,14 @@ export function ResponsePanel(): React.JSX.Element {
         <div className="flex flex-wrap items-center gap-2 py-1 pr-2 text-xs">
           <span
             className={`flex items-center gap-1.5 rounded-md px-2 py-1 font-bold ${statusColor(response.status)}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {response.status}
+            <span className="hidden font-medium opacity-80 sm:inline">{response.statusText}</span>
+          </span>
+          <span
+            title={describeStatus(response.status)}
+            className={`flex cursor-help items-center gap-1.5 rounded-md px-2 py-1 font-bold ${statusColor(response.status)}`}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {response.status}

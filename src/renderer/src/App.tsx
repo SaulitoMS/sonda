@@ -69,6 +69,9 @@ function App(): React.JSX.Element {
   const currentFile = useRequestStore((s) => s.currentFile)
   const newTab = useTabsStore((s) => s.newTab)
   const reopenClosed = useTabsStore((s) => s.reopenClosed)
+  const duplicateTab = useTabsStore((s) => s.duplicate)
+  const closeOtherTabs = useTabsStore((s) => s.closeOthers)
+  const activeTabId = useTabsStore((s) => s.activeId)
   const loadEnvironments = useEnvironmentStore((s) => s.load)
   const monitorActive = useMonitorStore((s) => s.active)
   const monitorFailing = useMonitorStore((s) => (s.runs[0]?.fail ?? 0) > 0)
@@ -274,6 +277,18 @@ function App(): React.JSX.Element {
       hint: `${MOD}⇧T`,
       keywords: 'deshacer cerrar restaurar',
       run: reopenClosed
+    },
+    {
+      id: 'duplicate-tab',
+      label: 'Duplicar pestaña',
+      keywords: 'copiar clonar',
+      run: () => duplicateTab(activeTabId)
+    },
+    {
+      id: 'close-other-tabs',
+      label: 'Cerrar las demás pestañas',
+      keywords: 'cerrar otras',
+      run: () => closeOtherTabs(activeTabId)
     },
     { id: 'save', label: 'Guardar', hint: `${MOD}S`, run: () => void save() },
     ...(currentFile

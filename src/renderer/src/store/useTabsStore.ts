@@ -28,6 +28,10 @@ interface TabsState {
   close: (id: string) => void
   /** Reabre la última pestaña cerrada */
   reopenClosed: () => void
+  /** Crea una copia de la pestaña, sin vincular a ningún archivo, justo a su derecha */
+  duplicate: (id: string) => void
+  /** Cierra todas las pestañas menos la indicada (quedan en "reabrir cerrada") */
+  closeOthers: (id: string) => void
   /** Abre una petición de una colección: salta a su pestaña si ya está abierta */
   openSaved: (saved: SavedRequest, path: string) => void
   /** Actualiza una pestaña inactiva (ej: llegó la respuesta de una petición en vuelo) */
@@ -129,6 +133,49 @@ export const useTabsStore = create<TabsState>((set, get) => {
       const tab = makeTab()
       useRequestStore.setState(snapshot)
       set({ tabs: [...frozen, tab], activeId: tab.id, closed: rest })
+    },
+
+    duplicate: (id) => {
+      const { tabs, activeId } = get()
+      const frozen = freeze(tabs, activeId)
+      const index = frozen.findIndex((t) => t.id === id)
+      const source = frozen[index]?.snapshot
+      if (!source) return
+
+      const name = source.name.trim()
+      const copy: RequestSnapshot = {
+        ...source,
+        loading: false,
+        currentFile: null,
+        name: name ? `${name} (copia)` : ''
+      }
+      const tab: Tab = { id: crypto.randomUUID(), snapshot: copy }
+
+      useRequestStore.setState(copy)
+      set({
+        tabs: [...frozen.slice(0, index + 1), tab, ...frozen.slice(index + 1)],
+        activeId: tab.id
+      })
+    },
+
+    closeOthers: (id) => {
+      const { tabs, activeId, closed } = get()
+      const frozen = freeze(tabs, activeId)
+      const keep = frozen.find((t) => t.id === id)
+      if (!keep) return
+
+      const discarded = frozen
+        .filter((t) => t.id !== id)
+        .flatMap((t) => (t.snapshot ? [t.snapshot] : []))
+        .filter((s) => s.currentFile || s.url.trim())
+        .map((s) => ({ ...s, loading: false }))
+
+      if (id !== activeId) useRequestStore.setState(keep.snapshot ?? blankSnapshot())
+      set({
+        tabs: [keep],
+        activeId: id,
+        closed: [...discarded, ...closed].slice(0, MAX_CLOSED)
+      })
     },
 
     openSaved: (saved, path) => {

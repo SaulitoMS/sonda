@@ -20,7 +20,6 @@ const statusText = (e: HistoryEntry): string =>
 const hour = (at: number): string =>
   new Date(at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
 
-
 /** Mini gráfica de los últimos tiempos de una misma petición. Con menos de 3 puntos no se dibuja */
 function Sparkline({ values }: { values: number[] }): React.JSX.Element {
   if (values.length < 3) return <span className="w-16 shrink-0" />

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isDirtyState } from '../../../shared/dirty'
 import { tabLabel } from '../../../shared/tabs'
 import type { HttpMethod } from '../../../shared/types'
@@ -17,13 +17,24 @@ const SHORT: Record<HttpMethod, string> = {
   OPTIONS: 'OPT'
 }
 
+interface TabMenu {
+  x: number
+  y: number
+  id: string
+  label: string
+  dirty: boolean
+}
+
 export function TabsBar(): React.JSX.Element {
   const tabs = useTabsStore((s) => s.tabs)
   const activeId = useTabsStore((s) => s.activeId)
   const select = useTabsStore((s) => s.select)
   const newTab = useTabsStore((s) => s.newTab)
   const close = useTabsStore((s) => s.close)
+  const duplicate = useTabsStore((s) => s.duplicate)
+  const closeOthers = useTabsStore((s) => s.closeOthers)
   const strip = useRef<HTMLDivElement>(null)
+  const [menu, setMenu] = useState<TabMenu | null>(null)
 
   // La pestaña activa se lee en vivo; las demás, de su foto
   const liveName = useRequestStore((s) => s.name)
@@ -39,6 +50,23 @@ export function TabsBar(): React.JSX.Element {
       ?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
   }, [activeId, tabs.length])
 
+  // El menú contextual se cierra con cualquier clic, con Escape o al desplazar
+  useEffect(() => {
+    if (!menu) return
+    const hide = (): void => setMenu(null)
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setMenu(null)
+    }
+    window.addEventListener('mousedown', hide)
+    window.addEventListener('blur', hide)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', hide)
+      window.removeEventListener('blur', hide)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [menu])
+
   // La rueda vertical del ratón desplaza las pestañas en horizontal
   const onWheel = (e: React.WheelEvent): void => {
     if (strip.current && e.deltaY && !e.deltaX) strip.current.scrollLeft += e.deltaY
@@ -47,6 +75,22 @@ export function TabsBar(): React.JSX.Element {
   const requestClose = (id: string, label: string, dirty: boolean): void => {
     if (dirty && !confirm(`"${label}" tiene cambios sin guardar. ¿Cerrar sin guardar?`)) return
     close(id)
+  }
+
+  const requestCloseOthers = (id: string): void => {
+    const dirtyOthers = tabs.filter(
+      (t) =>
+        t.id !== id &&
+        (t.id === activeId ? liveDirty : t.snapshot ? isDirtyState(t.snapshot) : false)
+    ).length
+    if (
+      dirtyOthers > 0 &&
+      !confirm(
+        `Hay ${dirtyOthers} pestaña(s) con cambios sin guardar. ¿Cerrarlas sin guardar?\n(Podrás recuperarlas con "Reabrir pestaña cerrada".)`
+      )
+    )
+      return
+    closeOthers(id)
   }
 
   return (
@@ -82,6 +126,10 @@ export function TabsBar(): React.JSX.Element {
               role="tab"
               aria-selected={active}
               onClick={() => select(t.id)}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setMenu({ x: e.clientX, y: e.clientY, id: t.id, label, dirty: view.dirty })
+              }}
               onAuxClick={(e) => {
                 if (e.button === 1) {
                   e.preventDefault()
@@ -140,6 +188,52 @@ export function TabsBar(): React.JSX.Element {
       >
         <Icon name="plus" size={15} />
       </button>
+
+      {menu && (
+        <div
+          role="menu"
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            left: Math.min(menu.x, window.innerWidth - 200),
+            top: Math.min(menu.y, window.innerHeight - 130)
+          }}
+          className="anim-pop fixed z-50 w-48 rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 shadow-2xl"
+        >
+          {[
+            {
+              id: 'duplicate',
+              label: 'Duplicar pestaña',
+              disabled: false,
+              run: () => duplicate(menu.id)
+            },
+            {
+              id: 'close',
+              label: 'Cerrar pestaña',
+              disabled: false,
+              run: () => requestClose(menu.id, menu.label, menu.dirty)
+            },
+            {
+              id: 'others',
+              label: 'Cerrar las demás',
+              disabled: tabs.length < 2,
+              run: () => requestCloseOthers(menu.id)
+            }
+          ].map((item) => (
+            <button
+              key={item.id}
+              role="menuitem"
+              disabled={item.disabled}
+              onClick={() => {
+                setMenu(null)
+                item.run()
+              }}
+              className="flex w-full items-center rounded-lg px-2.5 py-1.5 text-left text-xs text-zinc-200 transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
