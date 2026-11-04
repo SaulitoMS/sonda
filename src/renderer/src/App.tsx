@@ -101,6 +101,7 @@ function App(): React.JSX.Element {
 
   const [modal, setModal] = useState<ModalType>(null)
   const [runCollectionId, setRunCollectionId] = useState('')
+  const [runFolder, setRunFolder] = useState<string | null>(null)
   const [syncCollection, setSyncCollection] = useState({ id: '', name: '' })
   const [coverageCollection, setCoverageCollection] = useState({ id: '', name: '' })
   const [flash, setFlash] = useState('')
@@ -455,8 +456,9 @@ function App(): React.JSX.Element {
   const sidebar = (
     <Sidebar
       onImport={() => setModal('import')}
-      onRun={(id) => {
+      onRun={(id, folder) => {
         setRunCollectionId(id)
+        setRunFolder(folder ?? null)
         setModal('runner')
       }}
       onSync={(id, name) => {
@@ -614,7 +616,11 @@ function App(): React.JSX.Element {
       {modal === 'import' && <ImportModal onClose={() => setModal(null)} />}
       {modal === 'palette' && <CommandPalette onClose={() => setModal(null)} commands={commands} />}
       {modal === 'runner' && (
-        <RunnerModal collectionId={runCollectionId} onClose={() => setModal(null)} />
+        <RunnerModal
+          collectionId={runCollectionId}
+          initialFolder={runFolder}
+          onClose={() => setModal(null)}
+        />
       )}
       {modal === 'sync' && (
         <SyncModal

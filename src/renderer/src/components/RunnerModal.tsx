@@ -76,14 +76,16 @@ const ICON: Record<RunStatus, { mark: string; color: string }> = {
 
 interface Props {
   collectionId: string
+  /** Carpeta preseleccionada. null = toda la colección, "" = peticiones sin carpeta */
+  initialFolder?: string | null
   onClose: () => void
 }
 
-export function RunnerModal({ collectionId, onClose }: Props): React.JSX.Element {
+export function RunnerModal({ collectionId, initialFolder = null, onClose }: Props): React.JSX.Element {
   const collection = useCollectionsStore((s) => s.collections.find((c) => c.id === collectionId))
 
   const [includeWrites, setIncludeWrites] = useState(false)
-  const [folderFilter, setFolderFilter] = useState<string | null>(null)
+  const [folderFilter, setFolderFilter] = useState<string | null>(initialFolder)
   const [stopOnFail, setStopOnFail] = useState(false)
   const [retries, setRetries] = useState(0)
   const [delayMs, setDelayMs] = useState(0)

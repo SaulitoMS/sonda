@@ -407,7 +407,7 @@ const norm = (text: string): string =>
 
 interface SidebarProps {
   onImport: () => void
-  onRun: (collectionId: string) => void
+  onRun: (collectionId: string, folder?: string) => void
   onSync: (collectionId: string, name: string) => void
   onCoverage: (collectionId: string, name: string) => void
 }
@@ -1108,6 +1108,12 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                             }
                             title="Headers de la carpeta"
                           />
+                          {f.requests.length > 0 && (
+                            <PlayButton
+                              onClick={() => onRun(c.id, f.name)}
+                              title="Ejecutar las peticiones de esta carpeta"
+                            />
+                          )}
 
                           {dropLineFor(`fo:${key}`)}
                         </div>
