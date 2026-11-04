@@ -18,6 +18,66 @@ const randomString = (length: number, random: () => number): string => {
   return out
 }
 
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const CONSONANTS = 'BCDFGHJKLMNPQRSTVWXYZ'
+const CURP_STATES = [
+  'AS',
+  'BC',
+  'BS',
+  'CC',
+  'CL',
+  'CM',
+  'CS',
+  'CH',
+  'DF',
+  'DG',
+  'GT',
+  'GR',
+  'HG',
+  'JC',
+  'MC',
+  'MN',
+  'MS',
+  'NT',
+  'NL',
+  'OC',
+  'PL',
+  'QT',
+  'QR',
+  'SP',
+  'SL',
+  'SR',
+  'TC',
+  'TS',
+  'TL',
+  'VZ',
+  'YN',
+  'ZS'
+] as const
+const LOREM = [
+  'lorem',
+  'ipsum',
+  'dolor',
+  'sit',
+  'amet',
+  'consectetur',
+  'adipiscing',
+  'elit',
+  'sed',
+  'do',
+  'eiusmod',
+  'tempor',
+  'incididunt',
+  'ut',
+  'labore',
+  'et',
+  'dolore',
+  'magna',
+  'aliqua'
+] as const
+
+const pad2 = (n: number): string => String(n).padStart(2, '0')
+
 const FIRST_NAMES = [
   'Ana',
   'Luis',
@@ -207,6 +267,47 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
     description: 'Fecha aleatoria de los próximos 365 días (YYYY-MM-DD)',
     generate: ({ now, random }) =>
       new Date(now.getTime() + (1 + Math.floor(random() * 365)) * DAY_MS).toISOString().slice(0, 10)
+  },
+  {
+    name: '$randomSlug',
+    description: 'Slug aleatorio de 3 palabras, ej: dolor-sit-amet',
+    generate: ({ random }) => Array.from({ length: 3 }, () => pick(LOREM, random)).join('-')
+  },
+  {
+    name: '$randomLorem',
+    description: 'Frase aleatoria de 8 palabras en lorem ipsum',
+    generate: ({ random }) => {
+      const s = Array.from({ length: 8 }, () => pick(LOREM, random)).join(' ')
+      return s.charAt(0).toUpperCase() + s.slice(1) + '.'
+    }
+  },
+  {
+    name: '$randomCurp',
+    description: 'CURP aleatoria con formato válido (18 caracteres). No es una persona real',
+    generate: ({ random }) => {
+      const letter = (): string => LETTERS[Math.floor(random() * LETTERS.length)]
+      const consonant = (): string => CONSONANTS[Math.floor(random() * CONSONANTS.length)]
+      const year = 1950 + Math.floor(random() * 56)
+      const month = 1 + Math.floor(random() * 12)
+      const day = 1 + Math.floor(random() * 28)
+      const sex = random() < 0.5 ? 'H' : 'M'
+      const homoclave = `${ALNUM[Math.floor(random() * ALNUM.length)].toUpperCase()}${Math.floor(random() * 10)}`
+      return (
+        letter() +
+        letter() +
+        letter() +
+        letter() +
+        String(year).slice(2) +
+        pad2(month) +
+        pad2(day) +
+        sex +
+        pick(CURP_STATES, random) +
+        consonant() +
+        consonant() +
+        consonant() +
+        homoclave
+      )
+    }
   }
 ]
 

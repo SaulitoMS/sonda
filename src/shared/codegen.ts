@@ -428,7 +428,6 @@ function toRuby(r: CurlRequest): string {
   return lines.join('\n')
 }
 
-
 // Rust no acepta \uXXXX, \b ni \f de JSON: se convierten a \u{...}
 const rsStr = (s: string): string =>
   str(s).replace(/\\(u[0-9a-fA-F]{4}|.)/g, (m, e: string) =>

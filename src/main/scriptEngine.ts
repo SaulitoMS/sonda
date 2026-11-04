@@ -34,6 +34,17 @@ const RUNNER = `
   const fail = (msg) => { throw new Error(msg) }
   const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b)
 
+  const typeOf = (v) => (v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v)
+
+  const isSubset = (a, b) => {
+    if (b === null || typeof b !== 'object') return Object.is(a, b)
+    if (a === null || typeof a !== 'object') return false
+    if (Array.isArray(b)) {
+      return Array.isArray(a) && a.length === b.length && b.every((x, i) => isSubset(a[i], x))
+    }
+    return Object.keys(b).every((k) => has(a, k) && isSubset(a[k], b[k]))
+  }
+
   const expect = (actual) => {
     const build = (negate) => {
       const check = (ok, msg) => { if (negate ? ok : !ok) fail(msg) }
@@ -46,7 +57,15 @@ const RUNNER = `
         toMatch: (re) => check(new RegExp(re).test(String(actual)), show(actual) + ' no coincide con ' + show(re)),
         toBeGreaterThan: (n) => check(actual > n, show(actual) + ' no es mayor que ' + show(n)),
         toBeLessThan: (n) => check(actual < n, show(actual) + ' no es menor que ' + show(n)),
-        toHaveProperty: (k) => check(actual != null && typeof actual === 'object' && k in actual, 'falta la propiedad ' + show(k))
+        toHaveProperty: (k) => check(actual != null && typeof actual === 'object' && k in actual, 'falta la propiedad ' + show(k)),
+        toBeGreaterThanOrEqual: (n) => check(actual >= n, show(actual) + ' no es mayor o igual que ' + show(n)),
+        toBeLessThanOrEqual: (n) => check(actual <= n, show(actual) + ' no es menor o igual que ' + show(n)),
+        toBeBetween: (min, max) => check(actual >= min && actual <= max, show(actual) + ' no está entre ' + show(min) + ' y ' + show(max)),
+        toBeNull: () => check(actual === null, 'se esperaba null y llegó ' + show(actual)),
+        toBeType: (t) => check(typeOf(actual) === t, 'se esperaba tipo ' + show(t) + ' y llegó ' + typeOf(actual)),
+        toHaveLength: (n) => check(actual != null && actual.length === n, 'se esperaba longitud ' + show(n) + ' y llegó ' + (actual == null ? show(actual) : actual.length)),
+        toBeOneOf: (list) => check(Array.isArray(list) && list.some((x) => Object.is(x, actual)), show(actual) + ' no está en ' + show(list)),
+        toMatchObject: (sub) => check(isSubset(actual, sub), show(actual) + ' no contiene la estructura ' + show(sub))
       }
       return m
     }
@@ -87,11 +106,15 @@ const RUNNER = `
   } else {
     const res = input.response
     const text = res.body
+    const lowerHeaders = Object.create(null)
+    for (const k of Object.keys(res.headers || {})) lowerHeaders[k.toLowerCase()] = res.headers[k]
     sonda.response = {
       status: res.status,
       statusText: res.statusText,
       timeMs: res.timeMs,
+      ok: res.status >= 200 && res.status < 300,
       headers: Object.assign({}, res.headers),
+      header: (name) => lowerHeaders[String(name).toLowerCase()],
       text,
       json: () => JSON.parse(text)
     }
