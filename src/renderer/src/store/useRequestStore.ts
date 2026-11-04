@@ -26,6 +26,7 @@ import { useTabsStore } from './useTabsStore'
 import { finishInFlight, startInFlight } from '../lib/inFlight'
 import { resolveAuthForPath } from '../lib/inheritedAuth'
 import { cleanOverrides, hasOverrides } from '../../../shared/requestOverrides'
+import { confirmSendMessage } from '../../../shared/writeGuard'
 
 export interface KeyValue {
   id: string
@@ -267,6 +268,10 @@ export const useRequestStore = create<RequestState>((set, get) => ({
       currentFile
     } = get()
     if (loading || !url.trim()) return
+
+    // Entorno protegido: los métodos que modifican datos piden confirmación
+    const guard = confirmSendMessage(useEnvironmentStore.getState().getActive(), method, url)
+    if (guard && !confirm(guard)) return
 
     // La pestaña desde la que se envía: el usuario puede cambiar de pestaña mientras responde
     const tabId = useTabsStore.getState().activeId

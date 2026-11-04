@@ -26,6 +26,7 @@ import { useRequestStore } from '../store/useRequestStore'
 import { Modal } from './Modal'
 import { timingStats } from '../../../shared/timing'
 import { parseDataSet, withDataVars, type DataSet } from '../../../shared/csvData'
+import { confirmRunMessage, isWriteMethod } from '../../../shared/writeGuard'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -205,6 +206,11 @@ export function RunnerModal({
   }
 
   const run = async (queue: Job[] = jobs): Promise<void> => {
+    // Entorno protegido: si la cola trae peticiones que modifican datos, se confirma antes de empezar
+    const writes = queue.filter((j) => isWriteMethod(j.entry.item.method)).length
+    const guard = confirmRunMessage(useEnvironmentStore.getState().getActive(), writes)
+    if (guard && !confirm(guard)) return
+
     const myRun = ++runId.current
     runEnvName.current = useEnvironmentStore.getState().getActive()?.name ?? null
     setRows([])

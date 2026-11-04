@@ -306,8 +306,17 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
                 value={selected.name}
                 onChange={(e) => updateEnv(selected.id, { name: e.target.value })}
                 placeholder="Nombre del entorno"
-                className={`${inputClass} mb-3 font-sans text-sm font-semibold`}
+                className={`${inputClass} mb-2 font-sans text-sm font-semibold`}
               />
+
+              <label className="mb-3 flex items-center gap-2 text-xs text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={selected.protected === true}
+                  onChange={(e) => updateEnv(selected.id, { protected: e.target.checked })}
+                />
+                Entorno protegido (confirmar antes de enviar POST, PUT, PATCH y DELETE)
+              </label>
 
               {draft.environments.length > 1 && (
                 <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
