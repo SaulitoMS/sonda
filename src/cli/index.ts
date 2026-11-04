@@ -1,4 +1,5 @@
-import { promises as fs } from 'fs'
+import { watch as fsWatch, promises as fs } from 'fs'
+import { resolve as resolvePath } from 'path'
 import { parseArgs } from 'util'
 import { classifyResult, type RunStatus } from '../shared/classify'
 import { parseDataSet, withDataVars, type DataSet } from '../shared/csvData'
@@ -49,6 +50,7 @@ Opciones de "run":
       --junit <archivo>    Escribe el reporte JUnit XML
       --json <archivo>     Escribe el reporte JSON
       --html <archivo>     Escribe el reporte HTML
+      --watch              Vuelve a ejecutar la colección cada vez que cambia un .json del workspace
       --no-color           Sin colores en la salida
   -h, --help               Muestra esta ayuda
 
@@ -149,6 +151,7 @@ async function main(argv: string[]): Promise<number> {
       junit: { type: 'string' },
       json: { type: 'string' },
       html: { type: 'string' },
+      watch: { type: 'boolean' },
       'no-color': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' }
     }
@@ -410,9 +413,74 @@ const exit = (code: number): void => {
   process.stdout.write('', () => process.exit(code))
 }
 
-main(process.argv.slice(2)).then(exit, (err: unknown) => {
-  const message = err instanceof Error ? err.message : String(err)
-  process.stderr.write(`Error: ${message}\n`)
-  if (err instanceof UsageError) process.stderr.write('Usa --help para ver las opciones.\n')
-  exit(2)
-})
+/** Ejecuta la colección y, después, la vuelve a ejecutar cada vez que cambia un .json del workspace */
+async function watchLoop(argv: string[]): Promise<void> {
+  const { values } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    strict: false,
+    options: {
+      workspace: { type: 'string', short: 'w' },
+      junit: { type: 'string' },
+      json: { type: 'string' },
+      html: { type: 'string' }
+    }
+  })
+  const root = typeof values.workspace === 'string' ? values.workspace : defaultWorkspace()
+  // Los reportes pueden caer dentro del workspace: se ignoran para no entrar en bucle
+  const reports = [values.junit, values.json, values.html]
+    .filter((f): f is string => typeof f === 'string')
+    .map((f) => resolvePath(f))
+
+  let running = false
+  let pending = false
+  let timer: NodeJS.Timeout | undefined
+
+  const run = async (): Promise<void> => {
+    // Si cambia algo mientras corre, se vuelve a ejecutar una sola vez al terminar
+    if (running) {
+      pending = true
+      return
+    }
+    running = true
+    if (process.stdout.isTTY) process.stdout.write('\x1b[2J\x1b[H')
+    try {
+      await main(argv.filter((a) => a !== '--watch'))
+    } catch (err) {
+      process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`)
+    }
+    running = false
+    process.stdout.write('\nEsperando cambios en el workspace… (Ctrl+C para salir)\n')
+    if (pending) {
+      pending = false
+      void run()
+    }
+  }
+
+  fsWatch(root, { recursive: true }, (_event, filename) => {
+    if (!filename || !filename.endsWith('.json')) return
+    if (filename.split(/[\\/]/).some((part) => part.startsWith('.'))) return
+    if (reports.includes(resolvePath(root, filename))) return
+    clearTimeout(timer)
+    timer = setTimeout(() => void run(), 300)
+  })
+
+  await run()
+  await new Promise<never>(() => {}) // se queda escuchando hasta Ctrl+C
+}
+
+const argv = process.argv.slice(2)
+
+if (argv.includes('--watch')) {
+  watchLoop(argv).catch((err: unknown) => {
+    process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`)
+    exit(2)
+  })
+} else {
+  main(argv).then(exit, (err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err)
+    process.stderr.write(`Error: ${message}\n`)
+    if (err instanceof UsageError) process.stderr.write('Usa --help para ver las opciones.\n')
+    exit(2)
+  })
+}
