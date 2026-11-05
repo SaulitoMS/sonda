@@ -39,6 +39,7 @@ import { useHistoryStore } from '../store/useHistoryStore'
 import { TimeTrendChart } from './TimeTrendChart'
 import { HeadersTable } from './HeadersTable'
 import { addBodyExtraction } from '../../../shared/extractFromTree'
+import { buildBugReport } from '../../../shared/bugReport'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -457,6 +458,9 @@ export function ResponsePanel(): React.JSX.Element {
     useRequestStore()
   const method = useRequestStore((s) => s.method)
   const url = useRequestStore((s) => s.url)
+  const reqHeaders = useRequestStore((s) => s.headers)
+  const reqBody = useRequestStore((s) => s.body)
+  const reqBodyMode = useRequestStore((s) => s.bodyForm.mode)
   const diff = usePreviousDiff(response, method, url)
   const historyEntries = useHistoryStore((s) => s.entries)
   const trend = useMemo(
@@ -611,6 +615,26 @@ export function ResponsePanel(): React.JSX.Element {
   const copyTypes = async (): Promise<void> => {
     if (!parsed.ok) return
     await navigator.clipboard.writeText(jsonToTypeScript(parsed.value))
+    setMenuOpen(false)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const copyReport = async (): Promise<void> => {
+    if (!response?.ok) return
+    const report = buildBugReport({
+      request: {
+        method,
+        url,
+        headers: reqHeaders
+          .filter((h) => h.enabled && h.key.trim())
+          .map((h) => ({ key: h.key.trim(), value: h.value })),
+        // En formularios y archivos el texto de `body` no es lo que se envía
+        body: reqBodyMode === 'raw' ? reqBody : ''
+      },
+      response
+    })
+    await navigator.clipboard.writeText(report)
     setMenuOpen(false)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
@@ -850,6 +874,13 @@ export function ResponsePanel(): React.JSX.Element {
                       Copiar como tipos TypeScript
                     </button>
                   )}
+                  <button
+                    onClick={() => void copyReport()}
+                    title="Petición y respuesta en Markdown, con credenciales ocultas"
+                    className="block w-full rounded-md px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                  >
+                    Copiar como reporte (Markdown)
+                  </button>
                 </div>
               </>
             )}
