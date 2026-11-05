@@ -425,6 +425,8 @@ export interface SondaApi {
   importPostman: () => Promise<ImportResult | null>
   /** Exporta una colección a un archivo de Postman v2.1. null = el usuario canceló */
   exportPostman: (collectionId: string) => Promise<ExportResult | null>
+  /** Exporta una colección como export de Insomnia v4 (JSON). null = el usuario canceló */
+  exportInsomnia: (collectionId: string) => Promise<ExportResult | null>
   /** Exporta la documentación de una colección en Markdown. null = el usuario canceló */
   exportDocs: (collectionId: string) => Promise<ExportResult | null>
   /** Exporta una colección como spec OpenAPI 3.0 (JSON). null = el usuario canceló */

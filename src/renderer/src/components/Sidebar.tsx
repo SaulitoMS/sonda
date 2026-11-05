@@ -546,6 +546,16 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
     alert(`Se exportaron ${result.count} peticiones a:\n${result.path}`)
   }
 
+  const exportInsomnia = async (id: string): Promise<void> => {
+    const result = await window.api.exportInsomnia(id)
+    if (!result) return
+    if (!result.ok) {
+      alert(result.error)
+      return
+    }
+    alert(`Se exportaron ${result.count} peticiones a:\n${result.path}`)
+  }
+
   const exportDocs = async (id: string): Promise<void> => {
     const result = await window.api.exportDocs(id)
     if (!result) return
@@ -1080,6 +1090,12 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                 )}
                 {total > 0 && (
                   <ExportButton onClick={() => exportPostman(c.id)} title="Exportar a Postman" />
+                )}
+                {total > 0 && (
+                  <ExportButton
+                    onClick={() => exportInsomnia(c.id)}
+                    title="Exportar a Insomnia (JSON)"
+                  />
                 )}
                 {total > 0 && (
                   <ExportButton
