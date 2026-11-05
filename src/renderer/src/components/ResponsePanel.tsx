@@ -38,6 +38,7 @@ import { timeTrend } from '../../../shared/responseTrend'
 import { useHistoryStore } from '../store/useHistoryStore'
 import { TimeTrendChart } from './TimeTrendChart'
 import { HeadersTable } from './HeadersTable'
+import { addBodyExtraction } from '../../../shared/extractFromTree'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -615,6 +616,12 @@ export function ResponsePanel(): React.JSX.Element {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const extractFromTree = (path: string): void => {
+    const { extractions, setExtractions } = useRequestStore.getState()
+    const next = addBodyExtraction(extractions, path)
+    if (next) setExtractions(next)
+  }
+
   const bodyExt = !response?.ok
     ? 'txt'
     : response.binary
@@ -996,6 +1003,7 @@ export function ResponsePanel(): React.JSX.Element {
                         ? { query: searchQuery, active: activeIdx, tree: treeSearch }
                         : undefined
                     }
+                    onExtract={filter.trim() ? undefined : extractFromTree}
                   />
                 )
               ) : (

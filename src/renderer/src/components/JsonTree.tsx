@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from 'react'
 import { childPath, type TreeSearch } from '../lib/search'
 import { Highlight } from './Highlight'
 import { timestampHint } from '../../../shared/timestampHint'
+import { pathReaches } from '../../../shared/extractFromTree'
 
 const isContainer = (v: unknown): v is object => v !== null && typeof v === 'object'
 
@@ -38,6 +39,42 @@ function CopyValue({ value }: { value: unknown }): React.JSX.Element {
       }`}
     >
       {copied ? '✓ copiado' : 'copiar'}
+    </button>
+  )
+}
+
+interface ExtractState {
+  onExtract: (path: string) => void
+  /** Solo se ofrece extraer si la ruta apunta de verdad a ese valor */
+  canExtract: (path: string, value: unknown) => boolean
+}
+const ExtractContext = createContext<ExtractState | null>(null)
+
+function ExtractButton({
+  path,
+  value
+}: {
+  path: string
+  value: unknown
+}): React.JSX.Element | null {
+  const ctx = useContext(ExtractContext)
+  const [added, setAdded] = useState(false)
+  if (!ctx || !ctx.canExtract(path, value)) return null
+
+  return (
+    <button
+      onClick={() => {
+        ctx.onExtract(path)
+        setAdded(true)
+      }}
+      title="Guardar este valor en una variable (queda en la pestaña Extraer)"
+      className={`ml-2 transition-opacity focus:opacity-100 ${
+        added
+          ? 'text-emerald-300'
+          : 'text-zinc-500 opacity-0 hover:text-zinc-200 group-hover/row:opacity-100'
+      }`}
+    >
+      {added ? '✓ en Extraer' : '→ variable'}
     </button>
   )
 }
@@ -135,6 +172,7 @@ function Node({
         {label}
         <Primitive value={value} path={path} />
         <CopyValue value={value} />
+        <ExtractButton path={path} value={value} />
       </div>
     )
   }
@@ -182,29 +220,38 @@ function Node({
 
 export function JsonTree({
   value,
-  search
+  search,
+  onExtract
 }: {
   value: unknown
   search?: SearchState
+  /** Si se pasa, cada valor ofrece "→ variable". Solo debe usarse con el body completo (sin filtrar) */
+  onExtract?: (path: string) => void
 }): React.JSX.Element {
   // Cada cambio de `version` remonta los nodos, y así vuelven a leer la profundidad inicial
   const [view, setView] = useState({ depth: 2, version: 0 })
   const apply = (depth: number): void => setView((v) => ({ depth, version: v.version + 1 }))
 
+  const extract: ExtractState | null = onExtract
+    ? { onExtract, canExtract: (path, v) => pathReaches(value, path, v) }
+    : null
+
   return (
     <SearchContext.Provider value={search ?? null}>
       <DepthContext.Provider value={view.depth}>
-        <div className="mb-1 flex justify-end gap-3 text-[11px] text-zinc-500">
-          <button onClick={() => apply(MAX_EXPAND_DEPTH)} className="hover:text-zinc-200">
-            Expandir todo
-          </button>
-          <button onClick={() => apply(1)} className="hover:text-zinc-200">
-            Colapsar todo
-          </button>
-        </div>
-        <div className="selectable -ml-4 font-mono text-xs text-zinc-200">
-          <Node key={view.version} value={value} depth={0} path="" />
-        </div>
+        <ExtractContext.Provider value={extract}>
+          <div className="mb-1 flex justify-end gap-3 text-[11px] text-zinc-500">
+            <button onClick={() => apply(MAX_EXPAND_DEPTH)} className="hover:text-zinc-200">
+              Expandir todo
+            </button>
+            <button onClick={() => apply(1)} className="hover:text-zinc-200">
+              Colapsar todo
+            </button>
+          </div>
+          <div className="selectable -ml-4 font-mono text-xs text-zinc-200">
+            <Node key={view.version} value={value} depth={0} path="" />
+          </div>
+        </ExtractContext.Provider>
       </DepthContext.Provider>
     </SearchContext.Provider>
   )
