@@ -44,6 +44,7 @@ import { ToolboxModal } from './components/ToolboxModal'
 import { EnvCompareModal } from './components/EnvCompareModal'
 import { cancelInFlight } from './lib/inFlight'
 import { nextEnvironmentId } from '../../shared/envCycle'
+import { ShortcutsModal } from './components/ShortcutsModal'
 
 type ModalType =
   | 'import'
@@ -68,6 +69,7 @@ type ModalType =
   | 'compare'
   | 'toolbox'
   | 'datagen'
+  | 'shortcuts'
   | null
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -225,6 +227,12 @@ function App(): React.JSX.Element {
       if (e.key.toLowerCase() === 'e' && !e.altKey) {
         e.preventDefault()
         cycleEnvironment(e.shiftKey ? -1 : 1)
+        return
+      }
+      // Ctrl/Cmd+/ (o ?): lista de atajos
+      if (e.key === '/' || e.key === '?') {
+        e.preventDefault()
+        setModal((m) => (m === 'shortcuts' ? null : 'shortcuts'))
         return
       }
       // Ctrl+1…8 va a esa pestaña; Ctrl+9 va a la última (como en los navegadores)
@@ -417,6 +425,13 @@ function App(): React.JSX.Element {
       label: 'Cerrar las demás pestañas',
       keywords: 'cerrar otras',
       run: () => closeOtherTabs(activeTabId)
+    },
+    {
+      id: 'shortcuts',
+      label: 'Atajos de teclado',
+      hint: `${MOD}/`,
+      keywords: 'ayuda teclas keyboard shortcuts',
+      run: () => setModal('shortcuts')
     },
     {
       id: 'env-next',
@@ -738,6 +753,7 @@ function App(): React.JSX.Element {
       {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
       {modal === 'replace' && <FindReplaceModal onClose={() => setModal(null)} />}
       {modal === 'toolbox' && <ToolboxModal onClose={() => setModal(null)} />}
+      {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal(null)} />}
       {modal === 'datagen' && <DataGenModal onClose={() => setModal(null)} />}
       {modal === 'compare' && <EnvCompareModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
