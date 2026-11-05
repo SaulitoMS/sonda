@@ -20,6 +20,7 @@ import { useMonitorStore } from './store/useMonitorStore'
 import { CommandPalette, type Command } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
 import { TrashModal } from './components/TrashModal'
+import { PollModal } from './components/PollModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
 import { FuzzModal } from './components/FuzzModal'
@@ -59,6 +60,7 @@ type ModalType =
   | 'palette'
   | 'cookies'
   | 'trash'
+  | 'poll'
   | 'settings'
   | 'bench'
   | 'fuzz'
@@ -325,6 +327,13 @@ function App(): React.JSX.Element {
       label: 'Rendimiento',
       description: 'Enviar la petición varias veces y medir tiempos',
       onSelect: () => setModal('bench')
+    },
+    {
+      id: 'poll',
+      icon: 'clock',
+      label: 'Polling',
+      description: 'Repetir la petición hasta que se cumpla una condición',
+      onSelect: () => setModal('poll')
     },
     {
       id: 'fuzz',
@@ -763,6 +772,7 @@ function App(): React.JSX.Element {
       )}
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'bench' && <BenchmarkModal onClose={() => setModal(null)} />}
+      {modal === 'poll' && <PollModal onClose={() => setModal(null)} />}
       {modal === 'fuzz' && <FuzzModal onClose={() => setModal(null)} />}
       {modal === 'snapshot' && <SnapshotModal onClose={() => setModal(null)} />}
       {modal === 'monitor' && <MonitorModal onClose={() => setModal(null)} />}
