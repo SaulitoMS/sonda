@@ -2,6 +2,7 @@ import { dialog, ipcMain } from 'electron'
 import { openAsBlob, readFileSync } from 'fs'
 import { stat } from 'fs/promises'
 import { basename } from 'path'
+import { rootCertificates } from 'tls'
 import type { FormPart, SendRequestInput, SendRequestResult } from '../shared/types'
 import { Agent, ProxyAgent, type Dispatcher } from 'undici'
 import { cookieHeaderFor, storeCookies } from './cookieJar'
@@ -14,20 +15,23 @@ const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
 const dispatchers = new Map<string, Dispatcher>()
 
-/** Reutiliza un cliente por combinación de proxy + verificación TLS + certificado de cliente */
+/** Reutiliza un cliente por combinación de proxy + verificación TLS + certificado de cliente + CA propia */
 function dispatcherFor(
   proxyUrl: string,
   ignoreTls: boolean,
-  clientCert?: { cert: string; key: string }
+  clientCert?: { cert: string; key: string },
+  caPath = ''
 ): Dispatcher {
-  const key = `${proxyUrl}|${ignoreTls}|${clientCert?.cert ?? ''}|${clientCert?.key ?? ''}`
+  const key = `${proxyUrl}|${ignoreTls}|${clientCert?.cert ?? ''}|${clientCert?.key ?? ''}|${caPath}`
   let dispatcher = dispatchers.get(key)
   if (!dispatcher) {
     const tls = {
       rejectUnauthorized: !ignoreTls,
       ...(clientCert
         ? { cert: readFileSync(clientCert.cert), key: readFileSync(clientCert.key) }
-        : {})
+        : {}),
+      // `ca` reemplaza las CA por defecto: se suman las públicas para no perder la confianza en ellas
+      ...(caPath ? { ca: [...rootCertificates, readFileSync(caPath, 'utf-8')] } : {})
     }
     dispatcher = proxyUrl
       ? new ProxyAgent({ uri: proxyUrl, requestTls: tls })
@@ -152,8 +156,7 @@ export function registerHttpHandlers(): void {
 
       const settings = await loadSettings()
 
-      // TLS y proxy se deciden por servidor: una redirección puede llevar a otro host
-      // TLS, proxy y certificado de cliente se deciden por servidor: una redirección puede llevar a otro host
+      // TLS, proxy, certificado de cliente y CA propia se deciden por servidor: una redirección puede llevar a otro host
       const connectionFor = (target: URL): { dispatcher?: Dispatcher } => {
         const loopback = isLoopbackHost(target.hostname)
         // Lo que venga en la petición tiene prioridad sobre los ajustes globales
@@ -173,8 +176,10 @@ export function registerHttpHandlers(): void {
         const clientCert = useClientCert
           ? { cert: settings.clientCertPath, key: settings.clientKeyPath }
           : undefined
-        return ignoreTls || proxyUrl || clientCert
-          ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls, clientCert) }
+        // La CA propia solo tiene sentido en https
+        const caPath = target.protocol === 'https:' ? settings.caCertPath : ''
+        return ignoreTls || proxyUrl || clientCert || caPath
+          ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls, clientCert, caPath) }
           : {}
       }
 

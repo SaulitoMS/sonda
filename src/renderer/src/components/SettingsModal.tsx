@@ -196,6 +196,33 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
           </div>
 
           <div>
+            <label className={label}>CA propia (certificado raíz)</label>
+            <div className="flex gap-2">
+              <input
+                value={draft.caCertPath}
+                onChange={(e) => set('caCertPath', e.target.value)}
+                placeholder="Certificado de la CA (.pem / .crt)"
+                spellCheck={false}
+                className={field}
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  const path = await window.api.pickFile()
+                  if (path) set('caCertPath', path)
+                }}
+                className="shrink-0 rounded bg-zinc-800 px-3 text-xs text-zinc-300 hover:bg-zinc-700"
+              >
+                Elegir
+              </button>
+            </div>
+            <p className={hint}>
+              Para APIs con certificado firmado por una CA interna: se confía en ella además de las
+              públicas, sin desactivar la verificación SSL. Si cambias el archivo, reinicia la app.
+            </p>
+          </div>
+
+          <div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={label}>Reintentos automáticos</label>

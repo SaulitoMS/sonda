@@ -148,7 +148,11 @@ export function HistoryStatsModal({ onClose }: Props): React.JSX.Element {
                     <td className="px-2">{ms(s.p50Ms)}</td>
                     <td
                       className={`px-2 ${
-                        breaks ? 'font-semibold text-red-400' : s.p95Ms >= 1000 ? 'text-amber-400' : ''
+                        breaks
+                          ? 'font-semibold text-red-400'
+                          : s.p95Ms >= 1000
+                            ? 'text-amber-400'
+                            : ''
                       }`}
                       title={breaks ? `Supera el presupuesto de ${ms(budget)}` : undefined}
                     >

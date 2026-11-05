@@ -478,6 +478,8 @@ export interface AppSettings {
   clientKeyPath: string
   /** Si se indica, el certificado solo se envía a ese host (ej: api.banco.com). Vacío = a todos los https */
   clientCertHost: string
+  /** Certificado de una CA propia (PEM) en la que confiar además de las públicas. Vacío = solo las públicas */
+  caCertPath: string
   /** Carpeta donde viven las colecciones y los entornos. Vacío = Documentos/Sonda */
   workspacePath: string
 }

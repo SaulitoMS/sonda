@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   clientCertPath: '',
   clientKeyPath: '',
   clientCertHost: '',
+  caCertPath: '',
   workspacePath: ''
 }
 
@@ -55,6 +56,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
     clientCertPath: toText(r.clientCertPath),
     clientKeyPath: toText(r.clientKeyPath),
     clientCertHost: toText(r.clientCertHost).toLowerCase(),
+    caCertPath: toText(r.caCertPath),
     workspacePath: toText(r.workspacePath)
   }
 }
