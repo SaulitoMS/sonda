@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildFullExport, extensionFor, mimeFor, suggestFileName } from './exportResponse'
+import {
+  buildFullExport,
+  extensionFor,
+  filenameFromDisposition,
+  mimeFor,
+  suggestFileName
+} from './exportResponse'
 
 describe('extensionFor', () => {
   it('usa el Content-Type', () => {
@@ -63,5 +69,28 @@ describe('buildFullExport', () => {
   it('deja el body como texto si no es JSON', () => {
     const out = JSON.parse(buildFullExport({ method: 'GET', url: 'u' }, { ...res, body: 'hola' }))
     expect(out.response.body).toBe('hola')
+  })
+})
+
+describe('filenameFromDisposition', () => {
+  it('lee filename entre comillas y sin comillas', () => {
+    expect(filenameFromDisposition('attachment; filename="reporte.pdf"')).toBe('reporte.pdf')
+    expect(filenameFromDisposition('attachment; filename=datos.csv')).toBe('datos.csv')
+  })
+
+  it('prefiere filename* codificado en UTF-8', () => {
+    expect(
+      filenameFromDisposition("attachment; filename=\"x.txt\"; filename*=UTF-8''informe%20final.pdf")
+    ).toBe('informe final.pdf')
+  })
+
+  it('quita rutas y caracteres peligrosos', () => {
+    expect(filenameFromDisposition('attachment; filename="../../etc/passwd"')).toBe('passwd')
+    expect(filenameFromDisposition('attachment; filename="a:b?.txt"')).toBe('a_b_.txt')
+  })
+
+  it('devuelve null si no hay nombre', () => {
+    expect(filenameFromDisposition(undefined)).toBeNull()
+    expect(filenameFromDisposition('inline')).toBeNull()
   })
 })

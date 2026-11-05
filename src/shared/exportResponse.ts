@@ -114,3 +114,30 @@ export function binaryExtensionFor(contentType: string): string {
   const type = contentType.split(';')[0].trim().toLowerCase()
   return BINARY_EXTENSIONS[type] ?? 'bin'
 }
+
+/** Nombre de archivo que sugiere el servidor en Content-Disposition, ya saneado. null si no hay */
+export function filenameFromDisposition(header: string | undefined): string | null {
+  if (!header) return null
+
+  const star = /filename\*\s*=\s*utf-8''([^;]+)/i.exec(header)
+  const plain = /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i.exec(header)
+  let raw = star ? star[1] : (plain?.[1] ?? plain?.[2])
+  if (!raw) return null
+
+  if (star) {
+    try {
+      raw = decodeURIComponent(raw)
+    } catch {
+      // se queda como venía
+    }
+  }
+
+  const name = [...(raw.trim().split(/[/\\]/).pop() ?? '')]
+    .filter((c) => c.charCodeAt(0) >= 32)
+    .join('')
+    .replace(/[<>:"|?*]/g, '_')
+    .replace(/^\.+/, '')
+    .slice(0, 120)
+
+  return name || null
+}

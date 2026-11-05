@@ -12,6 +12,7 @@ import {
   binaryExtensionFor,
   buildFullExport,
   extensionFor,
+  filenameFromDisposition,
   mimeFor,
   suggestFileName
 } from '../../../shared/exportResponse'
@@ -621,7 +622,9 @@ export function ResponsePanel(): React.JSX.Element {
 
   const exportBody = (): void => {
     if (!response?.ok) return
-    const name = suggestFileName(method, url, bodyExt)
+    const name =
+      filenameFromDisposition(response.headers['content-disposition']) ??
+      suggestFileName(method, url, bodyExt)
     if (response.binary) {
       if (response.binary.base64) {
         downloadBase64(name, response.binary.base64, response.binary.contentType)
