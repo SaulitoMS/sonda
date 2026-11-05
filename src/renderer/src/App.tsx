@@ -25,6 +25,7 @@ import { FuzzModal } from './components/FuzzModal'
 import { SnapshotModal } from './components/SnapshotModal'
 import { MonitorModal } from './components/MonitorModal'
 import { MockModal } from './components/MockModal'
+import { DataGenModal } from './components/DataGenModal'
 import { ThemeToggle } from './components/ThemeToggle'
 import { Splitter } from './components/Splitter'
 import { ToolsMenu, type ToolItem } from './components/ToolsMenu'
@@ -65,6 +66,7 @@ type ModalType =
   | 'replace'
   | 'compare'
   | 'toolbox'
+  | 'datagen'
   | null
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -317,6 +319,13 @@ function App(): React.JSX.Element {
       label: 'Caja de herramientas',
       description: 'Base64, URL, hash y conversión de timestamps',
       onSelect: () => setModal('toolbox')
+    },
+    {
+      id: 'datagen',
+      icon: 'sliders',
+      label: 'Datos de prueba',
+      description: 'Genera CSV o JSON con datos aleatorios para el runner',
+      onSelect: () => setModal('datagen')
     },
     {
       id: 'curl',
@@ -655,6 +664,7 @@ function App(): React.JSX.Element {
       {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
       {modal === 'replace' && <FindReplaceModal onClose={() => setModal(null)} />}
       {modal === 'toolbox' && <ToolboxModal onClose={() => setModal(null)} />}
+      {modal === 'datagen' && <DataGenModal onClose={() => setModal(null)} />}
       {modal === 'compare' && <EnvCompareModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
