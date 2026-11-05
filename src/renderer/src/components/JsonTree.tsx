@@ -1,6 +1,7 @@
 import { createContext, useContext, useState } from 'react'
 import { childPath, type TreeSearch } from '../lib/search'
 import { Highlight } from './Highlight'
+import { timestampHint } from '../../../shared/timestampHint'
 
 const isContainer = (v: unknown): v is object => v !== null && typeof v === 'object'
 
@@ -32,7 +33,22 @@ function Primitive({ value, path }: { value: unknown; path: string }): React.JSX
         {'"'}
       </span>
     )
-  if (typeof value === 'number') return <span className="text-amber-300">{hl(String(value))}</span>
+  if (typeof value === 'number') {
+    // El nombre del campo es el último tramo de la ruta (en arrays termina en "]" y no aplica)
+    const key = /([^.[\]]+)$/.exec(path)?.[1]
+    const hint = timestampHint(value, key)
+    return (
+      <span className="text-amber-300">
+        {hl(String(value))}
+        {hint && (
+          <span className="ml-2 text-zinc-500">
+            {'// '}
+            {hint}
+          </span>
+        )}
+      </span>
+    )
+  }
   if (typeof value === 'boolean') return <span className="text-sky-300">{hl(String(value))}</span>
   return <span className="text-zinc-500">{hl('null')}</span>
 }
