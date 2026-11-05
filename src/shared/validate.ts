@@ -11,6 +11,7 @@ interface Schema {
   nullable?: boolean
   readOnly?: boolean
   enum?: unknown[]
+  const?: unknown
   format?: string
   pattern?: string
   minLength?: number
@@ -31,6 +32,7 @@ interface Schema {
   anyOf?: Schema[]
   oneOf?: Schema[]
   not?: Schema
+  discriminator?: { propertyName: string }
 }
 
 export interface ValidateInput {
@@ -159,6 +161,47 @@ const closest = (subs: Ctx[]): Ctx =>
 
 function merge(ctx: Ctx, sub: Ctx): void {
   for (const issue of sub.issues) report(ctx, issue.path, issue.message, issue.severity)
+}
+
+/** ¿Esta variante declara (en enum o const) el valor del discriminador? Sin `tag`, basta con que declare alguno */
+function declaresTag(schema: Schema, prop: string, tag?: string): boolean {
+  const p = schema.properties?.[prop]
+  const allowed = p?.enum ?? (p?.const !== undefined ? [p.const] : undefined)
+  if (allowed) return tag === undefined || allowed.includes(tag)
+  return (schema.allOf ?? []).some((sub) => declaresTag(sub, prop, tag))
+}
+
+/**
+ * Con `discriminator`, el valor de esa propiedad decide qué variante se valida.
+ * Devuelve false si no se puede decidir (sin discriminator, sin valor, o la spec no
+ * declara qué valor corresponde a cada variante); entonces se valida como siempre.
+ */
+function checkDiscriminated(
+  schema: Schema,
+  variants: Schema[],
+  value: unknown,
+  path: string,
+  ctx: Ctx,
+  depth: number
+): boolean {
+  const prop = schema.discriminator?.propertyName
+  const tag = prop && isPlainObject(value) ? value[prop] : undefined
+  if (!prop || typeof tag !== 'string') return false
+  if (!variants.some((v) => declaresTag(v, prop))) return false
+
+  const chosen = variants.filter((v) => declaresTag(v, prop, tag))
+  if (chosen.length === 0) {
+    report(
+      ctx,
+      join(path, prop),
+      `El valor "${tag}" no corresponde a ninguna variante (discriminator)`
+    )
+    return true
+  }
+
+  const subs = runVariants(chosen, value, path, depth)
+  merge(ctx, subs.find((s) => s.errors === 0) ?? closest(subs))
+  return true
 }
 
 /**
@@ -309,26 +352,30 @@ function check(
   }
 
   if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
-    const subs = runVariants(schema.anyOf, value, path, depth)
-    const match = subs.find((s) => s.errors === 0)
-    if (match) {
-      merge(ctx, match)
-    } else {
-      report(ctx, path, `No coincide con ninguna de las ${subs.length} variantes (anyOf)`)
-      merge(ctx, closest(subs))
+    if (!checkDiscriminated(schema, schema.anyOf, value, path, ctx, depth)) {
+      const subs = runVariants(schema.anyOf, value, path, depth)
+      const match = subs.find((s) => s.errors === 0)
+      if (match) {
+        merge(ctx, match)
+      } else {
+        report(ctx, path, `No coincide con ninguna de las ${subs.length} variantes (anyOf)`)
+        merge(ctx, closest(subs))
+      }
     }
   }
 
   if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
-    const subs = runVariants(schema.oneOf, value, path, depth)
-    const matches = subs.filter((s) => s.errors === 0)
-    if (matches.length === 1) {
-      merge(ctx, matches[0])
-    } else if (matches.length > 1) {
-      report(ctx, path, `Coincide con ${matches.length} variantes y oneOf exige exactamente una`)
-    } else {
-      report(ctx, path, `No coincide con ninguna de las ${subs.length} variantes (oneOf)`)
-      merge(ctx, closest(subs))
+    if (!checkDiscriminated(schema, schema.oneOf, value, path, ctx, depth)) {
+      const subs = runVariants(schema.oneOf, value, path, depth)
+      const matches = subs.filter((s) => s.errors === 0)
+      if (matches.length === 1) {
+        merge(ctx, matches[0])
+      } else if (matches.length > 1) {
+        report(ctx, path, `Coincide con ${matches.length} variantes y oneOf exige exactamente una`)
+      } else {
+        report(ctx, path, `No coincide con ninguna de las ${subs.length} variantes (oneOf)`)
+        merge(ctx, closest(subs))
+      }
     }
   }
 

@@ -464,7 +464,7 @@ Los reportes JUnit del runner permiten, además, usar Sonda como paso de verific
 ## Limitaciones conocidas
 
 - OAuth 2.0 soporta los flujos `client_credentials` y `password`; no hay flujos que requieran abrir un navegador (como `authorization_code`).
-- La validación de schemas cubre el subconjunto de JSON Schema que usa OpenAPI; todavía no interpreta `discriminator`.
+- La validación de schemas cubre el subconjunto de JSON Schema que usa OpenAPI. Con `discriminator` elige la variante por el `enum` o `const` de la propiedad; no interpreta el `mapping` ni los nombres implícitos de los schemas.
 - Las cookies con fecha de caducidad se guardan cifradas con el keychain del sistema; las cookies de sesión se descartan al cerrar la app.
 - Digest Auth no soporta `qop=auth-int`, y el CLI y la exportación a cURL todavía no lo aplican.
 - El importador de Insomnia solo lee el formato JSON v4 (no el YAML de las versiones nuevas) y no importa los sub-entornos.

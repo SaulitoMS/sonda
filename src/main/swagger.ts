@@ -126,8 +126,7 @@ const SCHEMA_NOISE = new Set([
   'xml',
   'externalDocs',
   'deprecated',
-  'writeOnly',
-  'discriminator'
+  'writeOnly'
 ])
 const MAX_SCHEMA_DEPTH = 12
 
@@ -146,6 +145,12 @@ function cleanSchema(schema: any, stack: object[] = []): any {
   for (const [key, value] of Object.entries<any>(schema)) {
     if (key === 'x-nullable') {
       if (value === true) out.nullable = true
+      continue
+    }
+    if (key === 'discriminator') {
+      // Solo importa qué propiedad decide la variante (en Swagger 2 es un string)
+      const propertyName = typeof value === 'string' ? value : value?.propertyName
+      if (typeof propertyName === 'string') out.discriminator = { propertyName }
       continue
     }
     if (key.startsWith('x-') || SCHEMA_NOISE.has(key)) continue

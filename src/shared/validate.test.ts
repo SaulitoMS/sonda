@@ -326,3 +326,70 @@ describe('validateResponse: límites', () => {
     expect(r?.truncated).toBe(true)
   })
 })
+
+describe('validateResponse: discriminator', () => {
+  const cat = {
+    type: 'object',
+    required: ['kind', 'lives'],
+    properties: { kind: { type: 'string', enum: ['cat'] }, lives: { type: 'integer' } }
+  }
+  const dog = {
+    type: 'object',
+    required: ['kind', 'bark'],
+    properties: { kind: { type: 'string', enum: ['dog'] }, bark: { type: 'boolean' } }
+  }
+  const schemas: ResponseSchemas = {
+    '200': { oneOf: [cat, dog], discriminator: { propertyName: 'kind' } }
+  }
+
+  it('valida solo la variante que indica el discriminador', () => {
+    expect(run(schemas, { kind: 'dog', bark: true })?.verdict).toBe('valid')
+    expect(run(schemas, { kind: 'cat', lives: 9 })?.verdict).toBe('valid')
+  })
+
+  it('reporta solo los errores de la variante elegida, sin error raíz genérico', () => {
+    const r = run(schemas, { kind: 'dog', bark: 'sí' })
+    expect(r?.verdict).toBe('invalid')
+    expect(paths(r)).toEqual(['$.bark'])
+  })
+
+  it('avisa si el valor no corresponde a ninguna variante', () => {
+    const r = run(schemas, { kind: 'bird' })
+    expect(r?.verdict).toBe('invalid')
+    expect(paths(r)).toEqual(['$.kind'])
+    expect(r?.issues[0].message).toContain('discriminator')
+  })
+
+  it('reconoce el valor declarado dentro de allOf', () => {
+    const base = { type: 'object', required: ['kind'], properties: { name: { type: 'string' } } }
+    const withAllOf: ResponseSchemas = {
+      '200': {
+        oneOf: [
+          {
+            allOf: [
+              base,
+              { type: 'object', properties: { kind: { enum: ['dog'] }, bark: { type: 'boolean' } } }
+            ]
+          },
+          { allOf: [base, { type: 'object', properties: { kind: { enum: ['cat'] } } }] }
+        ],
+        discriminator: { propertyName: 'kind' }
+      }
+    }
+    expect(run(withAllOf, { kind: 'dog', name: 'Rex', bark: true })?.verdict).toBe('valid')
+    expect(paths(run(withAllOf, { kind: 'dog', bark: 1 }))).toEqual(['$.bark'])
+  })
+
+  it('si las variantes no declaran el valor, valida como un oneOf normal', () => {
+    const plain: ResponseSchemas = {
+      '200': {
+        oneOf: [
+          { type: 'object', required: ['cat'], properties: { cat: { type: 'string' } } },
+          { type: 'object', required: ['dog', 'age'], properties: { dog: { type: 'string' } } }
+        ],
+        discriminator: { propertyName: 'kind' }
+      }
+    }
+    expect(paths(run(plain, { kind: 'x', cat: 5 }))).toEqual(['$', '$.cat'])
+  })
+})
