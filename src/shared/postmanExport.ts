@@ -1,4 +1,5 @@
 import type { AuthConfig, FormFieldData, KeyValueData, SavedRequest } from './types'
+import { BINARY_FIELD } from './bodyForm'
 
 export interface ExportFile {
   /** Ruta relativa a la colección, con "/" (ej: "pet/get-pet.json" o "get-pet.json") */
@@ -87,6 +88,10 @@ const looksLikeJson = (text: string): boolean => {
 function exportBody(req: SavedRequest): Json | undefined {
   const form = req.bodyForm
   if (form && form.mode !== 'raw') {
+    if (form.mode === 'binary') {
+      const file = form.fields.find((f) => f.key.trim() === BINARY_FIELD && f.value.trim())
+      return file ? { mode: 'file', file: { src: file.value } } : undefined
+    }
     return form.mode === 'urlencoded'
       ? { mode: 'urlencoded', urlencoded: exportFields(form.fields, false) }
       : { mode: 'formdata', formdata: exportFields(form.fields, true) }

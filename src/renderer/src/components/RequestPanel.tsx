@@ -21,6 +21,7 @@ import { Icon } from './Icon'
 import { ScriptsPanel } from './ScriptsPanel'
 import { OverridesPanel } from './OverridesPanel'
 import { hasOverrides } from '../../../shared/requestOverrides'
+import { BinaryBodyEditor } from './BinaryBodyEditor'
 
 type Tab =
   'params' | 'auth' | 'headers' | 'body' | 'tests' | 'scripts' | 'extract' | 'notes' | 'config'
@@ -265,6 +266,11 @@ export function RequestPanel(): React.JSX.Element {
                 />
                 {bodyCheck && <RequestSchemaStatus validation={bodyCheck} />}
               </>
+            ) : bodyForm.mode === 'binary' ? (
+              <BinaryBodyEditor
+                fields={bodyForm.fields}
+                onChange={(fields) => setBodyForm({ ...bodyForm, fields })}
+              />
             ) : (
               <BodyFormEditor
                 mode={bodyForm.mode}

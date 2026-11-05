@@ -126,6 +126,14 @@ async function buildFormData(parts: FormPart[]): Promise<FormData> {
   return form
 }
 
+/** Lee el archivo que se envía como body crudo (modo binary) */
+async function readBinaryBody(path: string): Promise<Blob> {
+  const info = await stat(path).catch(() => null)
+  if (!info?.isFile()) throw new Error(`No se encontró el archivo del body: ${path}`)
+  if (info.size > MAX_UPLOAD_BYTES) throw new Error('El archivo del body supera los 100 MB')
+  return openAsBlob(path)
+}
+
 export function registerHttpHandlers(): void {
   ipcMain.handle(
     'http:send',
@@ -192,8 +200,10 @@ export function registerHttpHandlers(): void {
         }
 
         const canHaveBody = !['GET', 'HEAD'].includes(input.method)
-        let body: string | FormData | undefined
-        if (canHaveBody && input.formData) {
+        let body: string | FormData | Blob | undefined
+        if (canHaveBody && input.bodyFile) {
+          body = await readBinaryBody(input.bodyFile)
+        } else if (canHaveBody && input.formData) {
           body = await buildFormData(input.formData)
           // fetch pone su propio Content-Type con el boundary; uno escrito a mano lo rompería
           headers.delete('content-type')

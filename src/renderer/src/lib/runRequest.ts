@@ -1,7 +1,7 @@
 import { evaluateAssertions } from '../../../shared/assertions'
 import { buildAuth } from '../../../shared/auth'
 import { clearOAuthCache, getOAuthToken } from './oauth'
-import { formDataParts, urlencodedBody } from '../../../shared/bodyForm'
+import { binaryBodyPath, formDataParts, urlencodedBody } from '../../../shared/bodyForm'
 import { evaluateExtractions } from '../../../shared/extract'
 import { appendQuery } from '../../../shared/params'
 import { resolveAuthForPath } from './inheritedAuth'
@@ -164,6 +164,8 @@ export async function executeRequest(
         : undefined
   // En form-data no hay body de texto: el proceso principal arma el multipart
   const formParts = mode === 'form-data' ? formDataParts(formFields, resolve) : undefined
+  // Modo archivo: la ruta puede llevar {{variables}} y el proceso principal lee el archivo
+  const binaryFile = mode === 'binary' ? binaryBodyPath(formFields, resolve) : undefined
   const headers = draft.headers
     .filter((h) => h.enabled && h.key.trim())
     .map((h) => ({ key: resolve(h.key), value: resolve(h.value) }))
@@ -219,6 +221,10 @@ export async function executeRequest(
     return failed(`Variables sin definir: ${names}. ${hint}`)
   }
 
+  if (mode === 'binary' && !binaryFile) {
+    return failed('Modo archivo: elige el archivo que se enviará como body (pestaña Body).')
+  }
+
   // OAuth 2.0: pide el token (o reutiliza el que sigue vigente) y lo manda como Bearer
   let oauthFromCache = false
   if (oauth) {
@@ -245,14 +251,20 @@ export async function executeRequest(
     }
   }
 
+  if (binaryFile && !hasContentType) {
+    headers.push({ key: 'Content-Type', value: 'application/octet-stream' })
+  }
+
   // AWS Signature V4: se firma al final, cuando URL, headers y body ya son los definitivos
   if (aws) {
     if (!aws.accessKey || !aws.secretKey || !aws.region || !aws.service) {
       warnings.push(
         'Auth AWS: faltan Access Key, Secret Key, región o servicio, no se firmó la petición.'
       )
-    } else if (formParts) {
-      warnings.push('Auth AWS: no se puede firmar un body form-data, no se firmó la petición.')
+    } else if (formParts || binaryFile) {
+      warnings.push(
+        'Auth AWS: no se puede firmar un body form-data o de archivo, no se firmó la petición.'
+      )
     } else {
       try {
         const signedHeaders = await signAwsV4({
@@ -299,6 +311,7 @@ export async function executeRequest(
     headers,
     body: finalBody,
     formData: formParts,
+    bodyFile: binaryFile,
     requestId: options.requestId,
     live: options.live,
     timeoutMs: draft.overrides?.timeoutSeconds ? draft.overrides.timeoutSeconds * 1000 : undefined,

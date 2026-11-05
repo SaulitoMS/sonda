@@ -3,8 +3,12 @@ import type { BodyForm, BodyFormData, BodyMode, FormField, FormFieldData, FormPa
 export const BODY_MODES: { id: BodyMode; label: string }[] = [
   { id: 'raw', label: 'Texto / JSON' },
   { id: 'urlencoded', label: 'x-www-form-urlencoded' },
-  { id: 'form-data', label: 'form-data' }
+  { id: 'form-data', label: 'form-data' },
+  { id: 'binary', label: 'Archivo (binary)' }
 ]
+
+/** Nombre reservado del campo que guarda la ruta del archivo en el modo binary */
+export const BINARY_FIELD = '@binary'
 
 export const newField = (): FormField => ({
   id: crypto.randomUUID(),
@@ -57,7 +61,17 @@ export function formDataParts(
   }))
 }
 
-const BODY_MODE_IDS: string[] = ['raw', 'urlencoded', 'form-data']
+/** Ruta del archivo que se envía como body crudo (modo binary), con {{variables}} ya resueltas */
+export function binaryBodyPath(
+  fields: FormFieldData[],
+  resolve: (text: string) => string
+): string | undefined {
+  const field = fields.find((f) => isUsed(f) && f.key.trim() === BINARY_FIELD)
+  const path = field ? resolve(field.value).trim() : ''
+  return path || undefined
+}
+
+const BODY_MODE_IDS: string[] = ['raw', 'urlencoded', 'form-data', 'binary']
 
 /** Lee un bodyForm guardado en disco o localStorage ignorando datos corruptos */
 export function parseBodyFormData(x: unknown): BodyFormData | undefined {

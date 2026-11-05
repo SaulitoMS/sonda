@@ -22,6 +22,8 @@ export interface SendRequestInput {
   /** Si es false, no sigue redirecciones y devuelve el 3xx tal cual */
   followRedirects?: boolean
   formData?: FormPart[]
+  /** Ruta de un archivo que se envía tal cual como body (modo binary) */
+  bodyFile?: string
   bodyForm?: BodyFormData
   /** Identificador para poder cancelar esta petición con cancelRequest */
   requestId?: string
@@ -591,7 +593,7 @@ export type SyncResult =
 
 // ---------- Body de formulario ----------
 
-export type BodyMode = 'raw' | 'urlencoded' | 'form-data'
+export type BodyMode = 'raw' | 'urlencoded' | 'form-data' | 'binary'
 
 export interface FormFieldData {
   key: string

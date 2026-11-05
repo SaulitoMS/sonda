@@ -15,7 +15,7 @@ const BODY_HEADERS = [
 /** Credenciales que no deben viajar a otro sitio al seguir una redirección */
 const CROSS_ORIGIN_STRIPPED = ['authorization', 'cookie', 'proxy-authorization']
 
-type RequestBody = string | FormData
+type RequestBody = string | FormData | Blob
 
 export interface FollowOptions {
   url: URL

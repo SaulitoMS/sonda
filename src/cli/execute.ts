@@ -215,6 +215,10 @@ export async function executeRequest(
     return failed(`Variables sin definir: ${names}. ${hint}`)
   }
 
+  if (mode === 'binary') {
+    return failed('El modo archivo (binary) todavía no se puede ejecutar desde la CLI.')
+  }
+
   if (oauth) {
     const result = await getOAuthToken(options.send, oauth)
     if (!result.ok) return failed(result.error)
