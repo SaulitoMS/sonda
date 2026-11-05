@@ -212,6 +212,98 @@ describe('evaluateAssertions · tipo y longitud', () => {
   })
 })
 
+describe('evaluateAssertions · in / notIn', () => {
+  it('status dentro de una lista', () => {
+    expect(run({ kind: 'status', op: 'in', expected: '200,201,204' }).passed).toBe(true)
+    expect(run({ kind: 'status', op: 'in', expected: '201, 204' }).passed).toBe(false)
+    expect(run({ kind: 'status', op: 'notIn', expected: '500,502' }).passed).toBe(true)
+  })
+
+  it('tolera espacios alrededor de cada valor', () => {
+    expect(
+      run({
+        kind: 'header',
+        target: 'content-type',
+        op: 'in',
+        expected: 'text/html , application/json; charset=utf-8'
+      }).passed
+    ).toBe(true)
+  })
+
+  it('compara números y textos del body', () => {
+    expect(run({ kind: 'body', target: 'id', op: 'in', expected: '7, 8' }).passed).toBe(true)
+    expect(run({ kind: 'body', target: 'name', op: 'in', expected: 'Sonda,Otro' }).passed).toBe(
+      true
+    )
+    expect(run({ kind: 'body', target: 'name', op: 'notIn', expected: 'Sonda' }).passed).toBe(false)
+  })
+
+  it('una lista vacía falla con mensaje claro', () => {
+    const r = run({ kind: 'status', op: 'in', expected: ' , ' })
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('vacía')
+  })
+
+  it('la descripción usa el nombre legible', () => {
+    expect(run({ kind: 'status', op: 'in', expected: '200,201' }).label).toBe(
+      'Status es uno de 200,201'
+    )
+  })
+})
+
+describe('evaluateAssertions · JSON Schema', () => {
+  const schema = (s: unknown): Partial<Assertion> => ({
+    kind: 'schema',
+    op: 'validates',
+    expected: JSON.stringify(s)
+  })
+
+  it('pasa cuando el body cumple el schema', () => {
+    const r = run(
+      schema({
+        type: 'object',
+        required: ['id', 'name'],
+        properties: { id: { type: 'number' }, tags: { type: 'array', items: { type: 'string' } } }
+      })
+    )
+    expect(r.passed).toBe(true)
+  })
+
+  it('falla y señala la ruta del campo incorrecto', () => {
+    const r = run(schema({ type: 'object', properties: { id: { type: 'string' } } }))
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('$.id')
+  })
+
+  it('falla si falta un campo requerido', () => {
+    const r = run(schema({ type: 'object', required: ['telefono'] }))
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('telefono')
+  })
+
+  it('un schema que no es JSON falla con mensaje claro', () => {
+    const r = run({ kind: 'schema', op: 'validates', expected: '{ type: ' })
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('no es JSON válido')
+  })
+
+  it('un schema que no es un objeto falla con mensaje claro', () => {
+    const r = run({ kind: 'schema', op: 'validates', expected: '[1,2]' })
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('objeto JSON')
+  })
+
+  it('un body que no es JSON falla', () => {
+    const r = run(schema({ type: 'object' }), res({ body: 'hola' }))
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('no es JSON')
+  })
+
+  it('la descripción no incluye el schema completo', () => {
+    expect(run(schema({ type: 'object' })).label).toBe('Body cumple el JSON Schema')
+  })
+})
+
 describe('evaluateAssertions · general', () => {
   it('omite las desactivadas y conserva el orden', () => {
     const list = [
