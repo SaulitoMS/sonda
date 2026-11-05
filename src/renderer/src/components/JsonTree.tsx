@@ -13,6 +13,35 @@ interface SearchState {
 }
 const SearchContext = createContext<SearchState | null>(null)
 
+/** Hasta qué profundidad se abren los nodos al montarse. Al cambiar la `key` del árbol se reinician */
+const DepthContext = createContext(2)
+
+/** Tope de "Expandir todo" para no congelar la interfaz con respuestas enormes */
+const MAX_EXPAND_DEPTH = 12
+
+function CopyValue({ value }: { value: unknown }): React.JSX.Element {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async (): Promise<void> => {
+    const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1200)
+  }
+
+  return (
+    <button
+      onClick={copy}
+      title="Copiar valor"
+      className={`ml-2 opacity-0 transition-opacity focus:opacity-100 group-hover/row:opacity-100 ${
+        copied ? 'text-emerald-300' : 'text-zinc-500 hover:text-zinc-200'
+      }`}
+    >
+      {copied ? '✓ copiado' : 'copiar'}
+    </button>
+  )
+}
+
 function Primitive({ value, path }: { value: unknown; path: string }): React.JSX.Element {
   const search = useContext(SearchContext)
   const start = search?.tree.starts.get(`${path}|v`)
@@ -65,8 +94,9 @@ function Node({
   path: string
 }): React.JSX.Element {
   const search = useContext(SearchContext)
-  // Los primeros 2 niveles abiertos; el resto colapsado para respuestas grandes
-  const [open, setOpen] = useState(depth < 2)
+  const openDepth = useContext(DepthContext)
+  // Por defecto los primeros 2 niveles abiertos; "Expandir/Colapsar todo" cambian esa profundidad
+  const [open, setOpen] = useState(depth < openDepth)
   const [copied, setCopied] = useState(false)
   // Mientras se busca, las ramas con coincidencias dentro se mantienen abiertas
   const isOpen = open || (search?.tree.open.has(path) ?? false)
@@ -101,9 +131,10 @@ function Node({
 
   if (!isContainer(value)) {
     return (
-      <div className="pl-4">
+      <div className="group/row pl-4">
         {label}
         <Primitive value={value} path={path} />
+        <CopyValue value={value} />
       </div>
     )
   }
@@ -116,15 +147,21 @@ function Node({
 
   return (
     <div className="pl-4">
-      <button onClick={() => setOpen(!isOpen)} className="mr-1 text-zinc-500 hover:text-white">
-        {isOpen ? '▾' : '▸'}
-      </button>
-      {label}
-      <button onClick={() => setOpen(!isOpen)} className="text-left text-zinc-400 hover:text-white">
-        {openBr}
-        {!isOpen && ` ${entries.length} ${isArray ? 'items' : 'campos'} `}
-        {!isOpen && closeBr}
-      </button>
+      <div className="group/row">
+        <button onClick={() => setOpen(!isOpen)} className="mr-1 text-zinc-500 hover:text-white">
+          {isOpen ? '▾' : '▸'}
+        </button>
+        {label}
+        <button
+          onClick={() => setOpen(!isOpen)}
+          className="text-left text-zinc-400 hover:text-white"
+        >
+          {openBr}
+          {!isOpen && ` ${entries.length} ${isArray ? 'items' : 'campos'} `}
+          {!isOpen && closeBr}
+        </button>
+        <CopyValue value={value} />
+      </div>
       {isOpen && (
         <>
           {entries.map(([k, v]) => (
@@ -150,11 +187,25 @@ export function JsonTree({
   value: unknown
   search?: SearchState
 }): React.JSX.Element {
+  // Cada cambio de `version` remonta los nodos, y así vuelven a leer la profundidad inicial
+  const [view, setView] = useState({ depth: 2, version: 0 })
+  const apply = (depth: number): void => setView((v) => ({ depth, version: v.version + 1 }))
+
   return (
     <SearchContext.Provider value={search ?? null}>
-      <div className="selectable -ml-4 font-mono text-xs text-zinc-200">
-        <Node value={value} depth={0} path="" />
-      </div>
+      <DepthContext.Provider value={view.depth}>
+        <div className="mb-1 flex justify-end gap-3 text-[11px] text-zinc-500">
+          <button onClick={() => apply(MAX_EXPAND_DEPTH)} className="hover:text-zinc-200">
+            Expandir todo
+          </button>
+          <button onClick={() => apply(1)} className="hover:text-zinc-200">
+            Colapsar todo
+          </button>
+        </div>
+        <div className="selectable -ml-4 font-mono text-xs text-zinc-200">
+          <Node key={view.version} value={value} depth={0} path="" />
+        </div>
+      </DepthContext.Provider>
     </SearchContext.Provider>
   )
 }
