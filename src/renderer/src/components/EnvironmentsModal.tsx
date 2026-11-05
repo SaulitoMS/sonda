@@ -1,6 +1,12 @@
 import { useRef, useState } from 'react'
 import type { EnvVariable, Environment, EnvironmentsData } from '../../../shared/types'
-import { exportDotenv, exportEnvironment, parseEnvironmentFile } from '../../../shared/envTransfer'
+import {
+  exportDotenv,
+  exportEnvironment,
+  parseDotenv,
+  parseEnvironmentFile
+} from '../../../shared/envTransfer'
+import { mergeVariables } from '../../../shared/envMerge'
 import { downloadText } from '../lib/download'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'
@@ -46,6 +52,12 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
   const [onlyDiff, setOnlyDiff] = useState(false)
 
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Pegar variables en bloque (formato .env)
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+  const [pasteOverwrite, setPasteOverwrite] = useState(true)
+  const [pasteMsg, setPasteMsg] = useState('')
 
   const isGlobals = selectedId === GLOBALS_ID
   const selected: Environment | null = isGlobals
@@ -180,6 +192,29 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
       exportEnvironment(selected, includeSecrets),
       'application/json'
     )
+  }
+
+  const applyPaste = (): void => {
+    if (!selected) return
+    try {
+      const { environments, warnings } = parseDotenv(pasteText, 'pegado')
+      const result = mergeVariables(selected.variables, environments[0].variables, pasteOverwrite)
+      setVars([...result.variables, newVar()])
+      const summary = `${result.added} nuevas, ${result.updated} actualizadas, ${result.skipped} sin cambios`
+      setPasteMsg(warnings.length ? `${summary} · ${warnings.join(' · ')}` : summary)
+      setPasteText('')
+    } catch (err) {
+      setPasteMsg(err instanceof Error ? err.message : 'No se pudo leer el texto')
+    }
+  }
+
+  const readClipboard = async (): Promise<void> => {
+    try {
+      setPasteText(await navigator.clipboard.readText())
+      setPasteMsg('')
+    } catch {
+      setPasteMsg('No se pudo leer el portapapeles. Pega el texto con Cmd/Ctrl + V.')
+    }
   }
 
   const importEnv = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
@@ -480,6 +515,61 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
                     Úsalas como <code>{'{{nombre}}'}</code> en la URL, los headers o el body. Las
                     marcadas como secreto se cifran en el keychain.
                   </p>
+
+                  <div className="mb-2">
+                    <button
+                      onClick={() => {
+                        setPasteOpen((o) => !o)
+                        setPasteMsg('')
+                      }}
+                      className="rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+                    >
+                      {pasteOpen ? 'Cerrar pegado' : 'Pegar variables…'}
+                    </button>
+                  </div>
+
+                  {pasteOpen && (
+                    <div className="mb-3 rounded-md border border-zinc-800 p-2">
+                      <textarea
+                        value={pasteText}
+                        onChange={(e) => setPasteText(e.target.value)}
+                        rows={5}
+                        spellCheck={false}
+                        placeholder={'API_URL=https://api.ejemplo.com\nAPI_TOKEN=abc123'}
+                        className={`${inputClass} w-full`}
+                      />
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+                        <label className="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            checked={pasteOverwrite}
+                            onChange={(e) => setPasteOverwrite(e.target.checked)}
+                            className="accent-blue-500"
+                          />
+                          Sobrescribir las que ya existen
+                        </label>
+                        <button
+                          onClick={() => void readClipboard()}
+                          className="rounded-md bg-zinc-800 px-2 py-1 text-zinc-200 hover:bg-zinc-700"
+                        >
+                          Leer portapapeles
+                        </button>
+                        <button
+                          onClick={applyPaste}
+                          disabled={!pasteText.trim()}
+                          className="ml-auto rounded-md bg-blue-600 px-3 py-1 font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                        >
+                          Importar
+                        </button>
+                      </div>
+                      {pasteMsg && <p className="mt-2 text-[11px] text-zinc-400">{pasteMsg}</p>}
+                      <p className="mt-1 text-[11px] text-zinc-500">
+                        Formato .env: una variable por línea (CLAVE=valor). Las que parecen
+                        credenciales (token, password, api key…) se marcan como secreto. Los cambios
+                        se guardan al pulsar «Guardar».
+                      </p>
+                    </div>
+                  )}
 
                   <div className="min-h-0 flex-1 overflow-auto">
                     <div className="flex flex-col gap-2">
