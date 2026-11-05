@@ -181,14 +181,14 @@ export function ToolboxModal({ onClose }: { onClose: () => void }): React.JSX.El
             setMode(SWAP[mode] ?? mode)
           }}
           disabled={!result.text || result.error}
-          className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200 disabled:opacity-40"
+          className="btn btn-ghost disabled:opacity-40"
         >
           Usar resultado como entrada
         </button>
         <button
           onClick={copy}
           disabled={!result.text || result.error}
-          className="rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          className="btn btn-primary"
         >
           {copied ? '¡Copiado!' : 'Copiar resultado'}
         </button>

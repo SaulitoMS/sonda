@@ -663,14 +663,14 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
       <div className="mt-4 flex justify-end gap-2">
         <button
           onClick={onClose}
-          className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200"
+          className="btn btn-ghost"
         >
           Cancelar
         </button>
         <button
           onClick={submit}
           disabled={saving}
-          className="rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          className="btn btn-primary"
         >
           Guardar
         </button>

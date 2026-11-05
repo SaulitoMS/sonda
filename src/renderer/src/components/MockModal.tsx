@@ -198,7 +198,7 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
           <button
             onClick={start}
             disabled={busy || !collectionId}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+            className="btn btn-primary btn-sm"
           >
             Iniciar
           </button>
@@ -364,7 +364,7 @@ export function MockModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
                                 onClick={() =>
                                   saveOverride({ status: Number(editStatus), body: editBody })
                                 }
-                                className="rounded-md bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-500"
+                                className="btn btn-primary btn-sm"
                               >
                                 Guardar
                               </button>

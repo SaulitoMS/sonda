@@ -72,7 +72,7 @@ export function ScopeVariablesModal({
         <button
           onClick={save}
           disabled={saving}
-          className="rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          className="btn btn-primary"
         >
           Guardar
         </button>

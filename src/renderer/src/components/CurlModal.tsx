@@ -138,14 +138,14 @@ function ImportTab({
       <div className="mt-4 flex justify-end gap-2">
         <button
           onClick={onClose}
-          className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200"
+          className="btn btn-ghost"
         >
           Cancelar
         </button>
         <button
           onClick={submit}
           disabled={!parsed?.ok}
-          className="rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          className="btn btn-primary"
         >
           Importar
         </button>
@@ -311,13 +311,13 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       <div className="mt-4 flex justify-end gap-2">
         <button
           onClick={onClose}
-          className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200"
+          className="btn btn-ghost"
         >
           Cerrar
         </button>
         <button
           onClick={copy}
-          className="rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
+          className="btn btn-primary"
         >
           {copied ? '¡Copiado!' : 'Copiar código'}
         </button>

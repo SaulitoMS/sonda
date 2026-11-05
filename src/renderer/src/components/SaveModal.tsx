@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
+import { Icon } from './Icon'
 import { Modal } from './Modal'
 
 const NEW = '__new__'
@@ -26,8 +27,10 @@ export function SaveModal({ onClose, onSaved }: Props): React.JSX.Element {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const canSave = !!name.trim() && (target !== NEW || !!newName.trim()) && !saving
+
   const submit = async (): Promise<void> => {
-    if (!name.trim() || (target === NEW && !newName.trim())) return
+    if (!canSave) return
     setSaving(true)
     setError('')
     try {
@@ -46,55 +49,80 @@ export function SaveModal({ onClose, onSaved }: Props): React.JSX.Element {
     }
   }
 
-  const inputClass =
-    'w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs outline-none focus:border-blue-500'
-
   return (
-    <Modal title="Guardar petición" onClose={onClose}>
-      <label className="mb-1 block text-xs text-zinc-400">Nombre</label>
+    <Modal
+      title="Guardar petición"
+      description="Se guardará en una colección de tu carpeta de trabajo"
+      onClose={onClose}
+      footer={
+        <>
+          <button onClick={onClose} className="btn btn-ghost">
+            Cancelar
+          </button>
+          <button onClick={submit} disabled={!canSave} className="btn btn-primary">
+            <Icon name="save" size={14} />
+            {saving ? 'Guardando…' : 'Guardar'}
+          </button>
+        </>
+      }
+    >
+      <label className="field-label">Nombre</label>
       <input
         autoFocus
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className={inputClass}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') void submit()
+        }}
+        spellCheck={false}
+        className="field"
       />
 
-      <label className="mb-1 mt-3 block text-xs text-zinc-400">Colección</label>
-      <select value={target} onChange={(e) => setTarget(e.target.value)} className={inputClass}>
-        {collections.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-        <option value={NEW}>+ Nueva colección…</option>
-      </select>
+      <label className="field-label mt-4">Colección</label>
+      <div className="relative">
+        <Icon
+          name="folderOpen"
+          size={14}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+        />
+        <select
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          className="field appearance-none pl-9 pr-8"
+        >
+          {collections.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+          <option value={NEW}>+ Nueva colección…</option>
+        </select>
+        <Icon
+          name="chevronDown"
+          size={13}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500"
+        />
+      </div>
 
       {target === NEW && (
         <input
+          autoFocus
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void submit()
+          }}
           placeholder="Nombre de la colección"
-          className={`${inputClass} mt-2`}
+          className="field mt-2"
         />
       )}
 
-      {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
-
-      <div className="mt-4 flex justify-end gap-2">
-        <button
-          onClick={onClose}
-          className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200"
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={submit}
-          disabled={saving}
-          className="rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-        >
-          Guardar
-        </button>
-      </div>
+      {error && (
+        <p className="mt-3 flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-2.5 text-xs text-red-400">
+          <Icon name="alert" size={14} />
+          {error}
+        </p>
+      )}
     </Modal>
   )
 }

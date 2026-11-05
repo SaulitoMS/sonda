@@ -175,7 +175,7 @@ export function GraphQLModal({ onClose }: Props): React.JSX.Element {
         </button>
         <button
           onClick={apply}
-          className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+          className="btn btn-primary btn-sm"
         >
           Aplicar al body
         </button>

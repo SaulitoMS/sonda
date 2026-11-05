@@ -718,7 +718,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
               </label>
               <button
                 onClick={() => void saveConnection()}
-                className="rounded bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-500"
+                className="btn btn-primary btn-sm"
               >
                 Guardar
               </button>
@@ -764,7 +764,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
         ) : (
           <button
             onClick={() => void connect()}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+            className="btn btn-primary btn-sm"
           >
             Conectar
           </button>
@@ -968,7 +968,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
           onClick={() => void sendMessage()}
           disabled={status !== 'open' || !draft}
           title="Enviar (Ctrl/⌘ + Enter)"
-          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
+          className="flex items-center gap-1.5 btn btn-primary btn-sm"
         >
           <Icon name="send" size={13} />
           Enviar

@@ -288,7 +288,7 @@ export function CookiesModal({ onClose }: { onClose: () => void }): React.JSX.El
             </button>
             <button
               onClick={() => void save()}
-              className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+              className="btn btn-primary btn-sm"
             >
               Guardar cookie
             </button>

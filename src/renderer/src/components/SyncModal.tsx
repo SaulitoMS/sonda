@@ -166,7 +166,7 @@ export function SyncModal({ collectionId, collectionName, onClose }: Props): Rea
   const closeBtn = (
     <button
       onClick={onClose}
-      className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200"
+      className="btn btn-ghost"
     >
       Cerrar
     </button>
@@ -308,7 +308,7 @@ export function SyncModal({ collectionId, collectionName, onClose }: Props): Rea
           <button
             onClick={apply}
             disabled={applying || selected === 0}
-            className="rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+            className="btn btn-primary"
           >
             {applying ? 'Aplicando…' : `Aplicar (${selected})`}
           </button>

@@ -310,7 +310,7 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
         </button>
         <button
           onClick={onClose}
-          className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200"
+          className="btn btn-ghost"
         >
           Cerrar
         </button>

@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { RequestItem } from '../../../shared/types'
-import { METHOD_COLORS } from '../lib/methodColors'
+import type { HttpMethod, RequestItem } from '../../../shared/types'
+import { METHOD_BADGE } from '../lib/methodColors'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useTabsStore } from '../store/useTabsStore'
 import { useQuickAccess } from '../lib/quickAccess'
+import { Icon } from './Icon'
+
+const SHORT: Record<HttpMethod, string> = {
+  GET: 'GET',
+  POST: 'POST',
+  PUT: 'PUT',
+  PATCH: 'PAT',
+  DELETE: 'DEL',
+  HEAD: 'HEAD',
+  OPTIONS: 'OPT'
+}
 
 /** Una acción que se puede lanzar desde la paleta (abrir un modal, cambiar de tema…) */
 export interface Command {
@@ -121,8 +132,9 @@ export function CommandPalette({ onClose, commands }: Props): React.JSX.Element 
 
   // Mantiene visible la fila seleccionada
   useEffect(() => {
-    const el = listRef.current?.children[index] as HTMLElement | undefined
-    el?.scrollIntoView({ block: 'nearest' })
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-index="${index}"]`)
+      ?.scrollIntoView({ block: 'nearest' })
   }, [index])
 
   const choose = async (row: Row | undefined): Promise<void> => {
@@ -151,70 +163,132 @@ export function CommandPalette({ onClose, commands }: Props): React.JSX.Element 
     }
   }
 
+  // Sin texto de búsqueda se agrupa en secciones; con texto, lista única ordenada por relevancia
+  const sectionOf = (row: Row): string =>
+    row.kind === 'command'
+      ? 'Acciones'
+      : row.entry.tag === 'pinned'
+        ? 'Fijadas'
+        : row.entry.tag === 'recent'
+          ? 'Recientes'
+          : 'Peticiones'
+  const grouped = !text.trim() && !commandsOnly
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh]"
+      className="anim-fade fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[12vh] backdrop-blur-sm"
       onMouseDown={onClose}
     >
       <div
-        className="w-[600px] max-w-[92vw] overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl"
+        className="anim-pop w-[640px] max-w-[92vw] overflow-hidden rounded-2xl border border-zinc-700/70 bg-zinc-900 shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <input
-          autoFocus
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            setIndex(0)
-          }}
-          onKeyDown={onKeyDown}
-          placeholder="Buscar peticiones o acciones…  (escribe > para ver solo acciones)"
-          className="w-full border-b border-zinc-800 bg-transparent px-4 py-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
-        />
-        <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-1">
-          {rows.length === 0 && (
-            <p className="px-4 py-6 text-center text-xs text-zinc-500">Sin resultados</p>
+        <div className="flex items-center gap-3 border-b border-zinc-800 px-4">
+          <Icon name="search" size={16} className="text-zinc-500" />
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setIndex(0)
+            }}
+            onKeyDown={onKeyDown}
+            placeholder="Buscar peticiones o acciones…"
+            spellCheck={false}
+            className="h-12 min-w-0 flex-1 bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+          />
+          {commandsOnly && (
+            <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+              Solo acciones
+            </span>
           )}
-          {rows.map((row, i) => (
-            <div
-              key={row.kind === 'command' ? `c:${row.command.id}` : `r:${row.entry.item.path}`}
-              onMouseEnter={() => setIndex(i)}
-              onClick={() => void choose(row)}
-              className={`flex cursor-pointer items-center gap-3 px-4 py-1.5 text-xs ${
-                i === index ? 'bg-blue-500/15 text-zinc-100' : 'text-zinc-300'
-              }`}
-            >
-              {row.kind === 'command' ? (
-                <>
-                  <span className="w-10 shrink-0 font-bold text-zinc-500">›</span>
-                  <span className="truncate">{row.command.label}</span>
-                  {row.command.hint && (
-                    <span className="ml-auto shrink-0 truncate text-zinc-500">
-                      {row.command.hint}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <span
-                    className={`w-10 shrink-0 font-bold ${METHOD_COLORS[row.entry.item.method]}`}
-                  >
-                    {row.entry.item.method === 'PATCH' ? 'PAT' : row.entry.item.method.slice(0, 4)}
-                  </span>
-                  <span className="truncate">{row.entry.item.name}</span>
-                  <span className="ml-auto shrink-0 truncate text-zinc-500">
-                    {row.entry.tag === 'pinned' ? '★ ' : row.entry.tag === 'recent' ? '⏱ ' : ''}
-                    {row.entry.where}
-                  </span>
-                </>
-              )}
-            </div>
-          ))}
+          <kbd className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-500">
+            Esc
+          </kbd>
         </div>
-        <div className="flex gap-4 border-t border-zinc-800 px-4 py-1.5 text-[10px] text-zinc-500">
-          <span>↑↓ navegar</span>
-          <span>Enter abrir</span>
-          <span>Esc cerrar</span>
+
+        <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
+          {rows.length === 0 && (
+            <div className="flex flex-col items-center gap-2 px-4 py-10 text-zinc-500">
+              <Icon name="search" size={20} />
+              <p className="text-xs">Sin resultados para «{text.trim()}»</p>
+            </div>
+          )}
+
+          {rows.map((row, i) => {
+            const section = sectionOf(row)
+            const showHeading = grouped && (i === 0 || sectionOf(rows[i - 1]) !== section)
+            const selected = i === index
+
+            return (
+              <div key={row.kind === 'command' ? `c:${row.command.id}` : `r:${row.entry.item.path}`}>
+                {showHeading && (
+                  <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                    {section}
+                  </p>
+                )}
+                <div
+                  data-index={i}
+                  onMouseEnter={() => setIndex(i)}
+                  onClick={() => void choose(row)}
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-xs transition-colors ${
+                    selected ? 'bg-blue-500/15 text-zinc-100' : 'text-zinc-300'
+                  }`}
+                >
+                  {row.kind === 'command' ? (
+                    <>
+                      <span className="flex h-5 w-12 shrink-0 items-center justify-center rounded bg-zinc-800 text-zinc-400">
+                        <Icon name="zap" size={12} />
+                      </span>
+                      <span className="truncate">{row.command.label}</span>
+                      {row.command.hint && (
+                        <span className="ml-auto shrink-0 truncate text-zinc-500">
+                          {row.command.hint}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span
+                        className={`w-12 shrink-0 rounded py-0.5 text-center text-[10px] font-bold ${METHOD_BADGE[row.entry.item.method]}`}
+                      >
+                        {SHORT[row.entry.item.method]}
+                      </span>
+                      <span className="truncate">{row.entry.item.name}</span>
+                      <span className="ml-auto flex shrink-0 items-center gap-1.5 truncate text-zinc-500">
+                        {row.entry.tag === 'pinned' && (
+                          <Icon name="star" size={11} className="text-amber-400" />
+                        )}
+                        {row.entry.tag === 'recent' && <Icon name="clock" size={11} />}
+                        {row.entry.where}
+                      </span>
+                    </>
+                  )}
+                  {selected && (
+                    <kbd className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                      ↵
+                    </kbd>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex items-center gap-4 border-t border-zinc-800 bg-zinc-950/40 px-4 py-2 text-[10px] text-zinc-500">
+          <span className="flex items-center gap-1">
+            <kbd className="rounded border border-zinc-700 px-1">↑</kbd>
+            <kbd className="rounded border border-zinc-700 px-1">↓</kbd>
+            navegar
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="rounded border border-zinc-700 px-1">↵</kbd>
+            abrir
+          </span>
+          <span className="ml-auto flex items-center gap-1">
+            <kbd className="rounded border border-zinc-700 px-1">&gt;</kbd>
+            solo acciones
+          </span>
         </div>
       </div>
     </div>

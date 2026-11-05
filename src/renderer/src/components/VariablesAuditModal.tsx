@@ -189,7 +189,7 @@ export function VariablesAuditModal({ onClose }: { onClose: () => void }): React
       <div className="mt-4 flex justify-end">
         <button
           onClick={onClose}
-          className="rounded-md px-4 py-2 text-xs text-zinc-400 hover:text-zinc-200"
+          className="btn btn-ghost"
         >
           Cerrar
         </button>

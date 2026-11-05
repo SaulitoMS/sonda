@@ -613,7 +613,7 @@ export function RunnerModal({
           <button
             onClick={() => void run()}
             disabled={jobs.length === 0}
-            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
+            className="btn btn-primary btn-sm"
           >
             {finished ? 'Ejecutar de nuevo' : 'Ejecutar'}
           </button>

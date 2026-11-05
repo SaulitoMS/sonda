@@ -299,7 +299,7 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             <button
               onClick={save}
               disabled={saving}
-              className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+              className="btn btn-primary btn-sm"
             >
               Guardar
             </button>
