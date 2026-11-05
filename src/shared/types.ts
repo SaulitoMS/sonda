@@ -207,6 +207,10 @@ export type AssertionOp =
   | 'matches'
   | 'exists'
   | 'notExists'
+  | 'isType'
+  | 'lenEq'
+  | 'lenGt'
+  | 'lenLt'
 
 export interface Assertion {
   id: string

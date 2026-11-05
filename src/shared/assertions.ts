@@ -27,7 +27,11 @@ export const OP_LABELS: Record<AssertionOp, string> = {
   notContains: 'no contiene',
   matches: 'coincide con (regex)',
   exists: 'existe',
-  notExists: 'no existe'
+  notExists: 'no existe',
+  isType: 'es del tipo',
+  lenEq: 'tiene longitud igual a',
+  lenGt: 'tiene longitud mayor que',
+  lenLt: 'tiene longitud menor que'
 }
 
 const NUMERIC_OPS: AssertionOp[] = ['eq', 'neq', 'lt', 'lte', 'gt', 'gte']
@@ -40,7 +44,17 @@ const TEXT_OPS: AssertionOp[] = [
   'exists',
   'notExists'
 ]
-const BODY_OPS: AssertionOp[] = [...TEXT_OPS, 'lt', 'lte', 'gt', 'gte']
+const BODY_OPS: AssertionOp[] = [
+  ...TEXT_OPS,
+  'lt',
+  'lte',
+  'gt',
+  'gte',
+  'isType',
+  'lenEq',
+  'lenGt',
+  'lenLt'
+]
 
 /** Operadores que tienen sentido para cada tipo de aserción */
 export function opsForKind(kind: AssertionKind): AssertionOp[] {
@@ -157,6 +171,20 @@ interface Check {
   message: string
 }
 
+/** Tipo "JSON" de un valor: distingue array y null, que typeof mezcla con object */
+function jsonType(v: unknown): string {
+  if (v === null) return 'null'
+  if (Array.isArray(v)) return 'array'
+  return typeof v
+}
+
+/** Longitud de un array o string, o cantidad de claves de un objeto; null si no aplica */
+function lengthOf(v: unknown): number | null {
+  if (Array.isArray(v) || typeof v === 'string') return v.length
+  if (v !== null && typeof v === 'object') return Object.keys(v).length
+  return null
+}
+
 function check(op: AssertionOp, target: Found, expected: string): Check {
   if (op === 'exists') {
     const ok = target.found && target.value !== undefined
@@ -211,6 +239,21 @@ function check(op: AssertionOp, target: Found, expected: string): Check {
         return miss(`la regex "${expected}" no es válida`)
       }
       return result(re.test(text), `se obtuvo ${actual}`)
+    }
+    case 'isType': {
+      const want = expected.trim().toLowerCase()
+      const got = jsonType(target.value)
+      return result(got === want, `es de tipo ${got}`)
+    }
+    case 'lenEq':
+    case 'lenGt':
+    case 'lenLt': {
+      const len = lengthOf(target.value)
+      if (len === null) return miss(`${actual} no tiene longitud`)
+      if (!isNumeric(expected)) return miss(`"${expected}" no es un número`)
+      const b = Number(expected)
+      const ok = op === 'lenEq' ? len === b : op === 'lenGt' ? len > b : len < b
+      return result(ok, `la longitud es ${len}`)
     }
   }
 }

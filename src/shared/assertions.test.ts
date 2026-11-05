@@ -137,6 +137,81 @@ describe('evaluateAssertions · body', () => {
   })
 })
 
+describe('evaluateAssertions · tipo y longitud', () => {
+  it('isType reconoce string, number, array y object', () => {
+    expect(run({ kind: 'body', target: 'name', op: 'isType', expected: 'string' }).passed).toBe(
+      true
+    )
+    expect(run({ kind: 'body', target: 'id', op: 'isType', expected: 'number' }).passed).toBe(true)
+    expect(run({ kind: 'body', target: 'tags', op: 'isType', expected: 'array' }).passed).toBe(true)
+    expect(run({ kind: 'body', target: 'owner', op: 'isType', expected: 'object' }).passed).toBe(
+      true
+    )
+  })
+
+  it('isType distingue array de object y null de object', () => {
+    expect(run({ kind: 'body', target: 'tags', op: 'isType', expected: 'object' }).passed).toBe(
+      false
+    )
+    const withNull = res({ body: JSON.stringify({ nada: null }) })
+    expect(
+      run({ kind: 'body', target: 'nada', op: 'isType', expected: 'null' }, withNull).passed
+    ).toBe(true)
+    expect(
+      run({ kind: 'body', target: 'nada', op: 'isType', expected: 'object' }, withNull).passed
+    ).toBe(false)
+  })
+
+  it('isType ignora mayúsculas y espacios, y explica el fallo', () => {
+    expect(run({ kind: 'body', target: 'id', op: 'isType', expected: ' Number ' }).passed).toBe(
+      true
+    )
+    const bad = run({ kind: 'body', target: 'id', op: 'isType', expected: 'string' })
+    expect(bad.passed).toBe(false)
+    expect(bad.message).toContain('number')
+  })
+
+  it('lenEq, lenGt y lenLt sobre arrays', () => {
+    expect(run({ kind: 'body', target: 'tags', op: 'lenEq', expected: '2' }).passed).toBe(true)
+    expect(run({ kind: 'body', target: 'tags', op: 'lenGt', expected: '0' }).passed).toBe(true)
+    expect(run({ kind: 'body', target: 'tags', op: 'lenLt', expected: '2' }).passed).toBe(false)
+  })
+
+  it('la longitud también aplica a strings y a objetos (cantidad de claves)', () => {
+    expect(run({ kind: 'body', target: 'name', op: 'lenEq', expected: '5' }).passed).toBe(true)
+    expect(run({ kind: 'body', target: 'owner', op: 'lenEq', expected: '1' }).passed).toBe(true)
+  })
+
+  it('el mensaje de fallo incluye la longitud real', () => {
+    const r = run({ kind: 'body', target: 'tags', op: 'lenEq', expected: '9' })
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('2')
+  })
+
+  it('un número no tiene longitud', () => {
+    const r = run({ kind: 'body', target: 'id', op: 'lenEq', expected: '1' })
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('no tiene longitud')
+  })
+
+  it('un valor esperado no numérico falla con mensaje claro', () => {
+    const r = run({ kind: 'body', target: 'tags', op: 'lenGt', expected: 'muchos' })
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('no es un número')
+  })
+
+  it('si la ruta no existe, falla con "no existe"', () => {
+    const r = run({ kind: 'body', target: 'nada', op: 'lenGt', expected: '0' })
+    expect(r.passed).toBe(false)
+    expect(r.message).toContain('no existe')
+  })
+
+  it('la descripción de la regla usa el nombre legible del operador', () => {
+    const r = run({ kind: 'body', target: 'tags', op: 'lenGt', expected: '0' })
+    expect(r.label).toBe('Body tags tiene longitud mayor que 0')
+  })
+})
+
 describe('evaluateAssertions · general', () => {
   it('omite las desactivadas y conserva el orden', () => {
     const list = [
