@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   noProxy: '',
   retries: 0,
   retryDelayMs: 500,
+  http2: false,
   clientCertPath: '',
   clientKeyPath: '',
   clientCertHost: '',
@@ -55,6 +56,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
       MIN_RETRY_DELAY_MS,
       MAX_RETRY_DELAY_MS
     ),
+    http2: typeof r.http2 === 'boolean' ? r.http2 : DEFAULT_SETTINGS.http2,
     clientCertPath: toText(r.clientCertPath),
     clientKeyPath: toText(r.clientKeyPath),
     clientCertHost: toText(r.clientCertHost).toLowerCase(),

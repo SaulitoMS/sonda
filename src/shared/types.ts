@@ -498,6 +498,8 @@ export interface AppSettings {
   retries: number
   /** Espera base entre reintentos en ms (se duplica en cada intento) */
   retryDelayMs: number
+  /** Negocia HTTP/2 en conexiones https (sin proxy). Si el servidor no lo soporta, usa HTTP/1.1 */
+  http2: boolean
   /** Ruta al certificado de cliente (PEM). Vacío = sin mTLS */
   clientCertPath: string
   /** Ruta a la llave privada del certificado de cliente (PEM, sin contraseña) */

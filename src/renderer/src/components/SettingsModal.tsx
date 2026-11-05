@@ -122,6 +122,21 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
           </label>
 
           <div>
+            <label className="flex items-center gap-2 text-xs text-zinc-300">
+              <input
+                type="checkbox"
+                checked={draft.http2}
+                onChange={(e) => set('http2', e.target.checked)}
+              />
+              Usar HTTP/2 cuando el servidor lo soporte
+            </label>
+            <p className={hint}>
+              Solo en https y sin proxy. Si el servidor no negocia HTTP/2, la petición sigue por
+              HTTP/1.1 sin errores.
+            </p>
+          </div>
+
+          <div>
             <label className={label}>Certificados SSL</label>
             <select
               value={draft.sslMode}

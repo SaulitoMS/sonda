@@ -16,13 +16,15 @@ const MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 const dispatchers = new Map<string, Dispatcher>()
 
 /** Reutiliza un cliente por combinación de proxy + verificación TLS + certificado de cliente + CA propia */
+/** Reutiliza un cliente por combinación de proxy + verificación TLS + certificado de cliente + CA propia + HTTP/2 */
 function dispatcherFor(
   proxyUrl: string,
   ignoreTls: boolean,
   clientCert?: { cert: string; key: string },
-  caPath = ''
+  caPath = '',
+  http2 = false
 ): Dispatcher {
-  const key = `${proxyUrl}|${ignoreTls}|${clientCert?.cert ?? ''}|${clientCert?.key ?? ''}|${caPath}`
+  const key = `${proxyUrl}|${ignoreTls}|${clientCert?.cert ?? ''}|${clientCert?.key ?? ''}|${caPath}|${http2}`
   let dispatcher = dispatchers.get(key)
   if (!dispatcher) {
     const tls = {
@@ -35,7 +37,7 @@ function dispatcherFor(
     }
     dispatcher = proxyUrl
       ? new ProxyAgent({ uri: proxyUrl, requestTls: tls })
-      : new Agent({ connect: tls })
+      : new Agent({ connect: tls, allowH2: http2 })
     dispatchers.set(key, dispatcher)
   }
   return dispatcher
@@ -183,8 +185,10 @@ export function registerHttpHandlers(): void {
           : undefined
         // La CA propia solo tiene sentido en https
         const caPath = target.protocol === 'https:' ? settings.caCertPath : ''
-        return ignoreTls || proxyUrl || clientCert || caPath
-          ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls, clientCert, caPath) }
+        // HTTP/2 solo por https y sin proxy (a través de un proxy se mantiene HTTP/1.1)
+        const useH2 = settings.http2 && target.protocol === 'https:' && !proxyUrl
+        return ignoreTls || proxyUrl || clientCert || caPath || useH2
+          ? { dispatcher: dispatcherFor(proxyUrl, ignoreTls, clientCert, caPath, useH2) }
           : {}
       }
 
