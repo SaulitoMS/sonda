@@ -1,7 +1,8 @@
 import { app, ipcMain, safeStorage } from 'electron'
 import { promises as fs } from 'fs'
 import { join } from 'path'
-import type { CookieInfo } from '../shared/types'
+import type { CookieInfo, CookieInput } from '../shared/types'
+import { parseCookieInput } from '../shared/cookieInput'
 
 interface StoredCookie {
   name: string
@@ -161,6 +162,19 @@ export function clearCookies(): void {
   schedulePersist()
 }
 
+/** Crea o reemplaza una cookie escrita a mano. Devuelve el error, o null si salió bien */
+export function setCookie(input: CookieInput): string | null {
+  const parsed = parseCookieInput(input)
+  if (!parsed.ok) return parsed.error
+
+  const { name, value, domain, hostOnly, path, secure, expiresAt } = parsed.cookie
+  // Si se editó el nombre, dominio o ruta, la cookie anterior se va
+  if (input.replaceId) jar.delete(input.replaceId)
+  jar.set(`${domain}|${path}|${name}`, { name, value, domain, hostOnly, path, secure, expiresAt })
+  schedulePersist()
+  return null
+}
+
 export function listCookies(): CookieInfo[] {
   const now = Date.now()
   const out: CookieInfo[] = []
@@ -175,6 +189,7 @@ export function listCookies(): CookieInfo[] {
       name: c.name,
       value: c.value,
       domain: c.domain,
+      hostOnly: c.hostOnly,
       path: c.path,
       secure: c.secure,
       expiresAt: c.expiresAt
@@ -190,4 +205,5 @@ export function registerCookieHandlers(): void {
     schedulePersist()
   })
   ipcMain.handle('cookies:clear', (): void => clearCookies())
+  ipcMain.handle('cookies:set', (_event, input: CookieInput): string | null => setCookie(input))
 }

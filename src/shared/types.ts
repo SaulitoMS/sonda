@@ -323,10 +323,26 @@ export interface CookieInfo {
   name: string
   value: string
   domain: string
+  /** true = solo aplica al host exacto; false = también a sus subdominios */
+  hostOnly: boolean
   path: string
   secure: boolean
   /** Marca de tiempo en ms. null = cookie de sesión */
   expiresAt: number | null
+}
+
+/** Cookie escrita a mano en el modal de cookies */
+export interface CookieInput {
+  name: string
+  value: string
+  /** Con punto inicial (.ejemplo.com) aplica también a los subdominios */
+  domain: string
+  path: string
+  secure: boolean
+  /** Marca de tiempo en ms. null = cookie de sesión */
+  expiresAt: number | null
+  /** Id de la cookie que se está editando: se reemplaza aunque cambie su nombre, dominio o ruta */
+  replaceId?: string
 }
 
 export interface OAuthAuthorizeInput {
@@ -403,6 +419,8 @@ export interface SondaApi {
   listCookies: () => Promise<CookieInfo[]>
   deleteCookie: (id: string) => Promise<void>
   clearCookies: () => Promise<void>
+  /** Crea o reemplaza una cookie. Devuelve el error de validación, o null si salió bien */
+  setCookie: (input: CookieInput) => Promise<string | null>
   loadSettings: () => Promise<AppSettings>
   saveSettings: (settings: AppSettings) => Promise<AppSettings>
   /** Levanta un servidor local que responde con datos de ejemplo según los schemas de la colección */
