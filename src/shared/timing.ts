@@ -11,7 +11,7 @@ export interface TimingStats {
 }
 
 /** Percentil por rango más cercano sobre una lista ya ordenada */
-const percentile = (sorted: number[], p: number): number =>
+export const percentile = (sorted: number[], p: number): number =>
   sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1))]
 
 /**

@@ -510,3 +510,17 @@ export function validateRequestBody(input: ValidateRequestInput): SchemaValidati
     )
   }
 }
+
+/** Valida un valor ya parseado contra un schema suelto (el que se escribe en una aserción) */
+export function validateAgainstSchema(schema: JsonSchema, value: unknown): SchemaValidation {
+  try {
+    const ctx = newCtx()
+    check(schema as unknown as Schema, value, '$', ctx)
+    return summarize(ctx, 'aserción')
+  } catch (err) {
+    return skipped(
+      'aserción',
+      `No se pudo validar: ${err instanceof Error ? err.message : 'error desconocido'}`
+    )
+  }
+}

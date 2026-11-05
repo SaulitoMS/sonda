@@ -193,7 +193,7 @@ export interface AuthConfig {
 // ---------- Aserciones ----------
 
 /** Qué parte de la respuesta se revisa */
-export type AssertionKind = 'status' | 'time' | 'size' | 'header' | 'body'
+export type AssertionKind = 'status' | 'time' | 'size' | 'header' | 'body' | 'schema'
 
 export type AssertionOp =
   | 'eq'
@@ -211,6 +211,9 @@ export type AssertionOp =
   | 'lenEq'
   | 'lenGt'
   | 'lenLt'
+  | 'in'
+  | 'notIn'
+  | 'validates'
 
 export interface Assertion {
   id: string

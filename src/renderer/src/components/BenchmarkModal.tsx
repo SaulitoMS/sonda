@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  evaluateBenchmark,
+  parseLimit,
   summarizeBenchmark,
   type BenchmarkRun,
   type BenchmarkSummary
@@ -37,6 +39,10 @@ export function BenchmarkModal({ onClose }: Props): React.JSX.Element {
 
   const [count, setCount] = useState(20)
   const [concurrency, setConcurrency] = useState(2)
+  const [avgLimit, setAvgLimit] = useState('')
+  const [p95Limit, setP95Limit] = useState('')
+  const [p99Limit, setP99Limit] = useState('')
+  const [rateLimit, setRateLimit] = useState('')
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState(0)
   const [total, setTotal] = useState(0)
@@ -108,6 +114,17 @@ export function BenchmarkModal({ onClose }: Props): React.JSX.Element {
 
   const t = summary?.timing
 
+  // Se recalcula en cada render: si cambias un límite después de la prueba, el veredicto se actualiza
+  const checks = summary
+    ? evaluateBenchmark(summary, {
+        maxAvgMs: parseLimit(avgLimit),
+        maxP95Ms: parseLimit(p95Limit),
+        maxP99Ms: parseLimit(p99Limit),
+        minSuccessRate: parseLimit(rateLimit)
+      })
+    : []
+  const allPassed = checks.every((c) => c.passed)
+
   return (
     <Modal title="Prueba de rendimiento" onClose={onClose} wide>
       <p className="mb-3 truncate text-xs text-zinc-400">
@@ -141,6 +158,57 @@ export function BenchmarkModal({ onClose }: Props): React.JSX.Element {
         </div>
       </div>
 
+      <p className="mb-1 mt-3 text-xs font-medium text-zinc-400">
+        Límites (opcional, déjalos vacíos para no revisarlos)
+      </p>
+      <div className="grid grid-cols-4 gap-3">
+        <div>
+          <label className={label}>Promedio máx. (ms)</label>
+          <input
+            type="number"
+            min={0}
+            value={avgLimit}
+            onChange={(e) => setAvgLimit(e.target.value)}
+            placeholder="300"
+            className={field}
+          />
+        </div>
+        <div>
+          <label className={label}>p95 máx. (ms)</label>
+          <input
+            type="number"
+            min={0}
+            value={p95Limit}
+            onChange={(e) => setP95Limit(e.target.value)}
+            placeholder="500"
+            className={field}
+          />
+        </div>
+        <div>
+          <label className={label}>p99 máx. (ms)</label>
+          <input
+            type="number"
+            min={0}
+            value={p99Limit}
+            onChange={(e) => setP99Limit(e.target.value)}
+            placeholder="800"
+            className={field}
+          />
+        </div>
+        <div>
+          <label className={label}>Éxito mín. (%)</label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={rateLimit}
+            onChange={(e) => setRateLimit(e.target.value)}
+            placeholder="99"
+            className={field}
+          />
+        </div>
+      </div>
+
       <p className="mt-2 text-[11px] text-amber-400">
         Cada envío es una petición real. Si es POST, PUT o DELETE se ejecutará N veces: no la uses
         contra producción.
@@ -164,6 +232,34 @@ export function BenchmarkModal({ onClose }: Props): React.JSX.Element {
 
       {summary && (
         <div className="mt-4 space-y-3">
+          {checks.length > 0 && (
+            <div
+              className={`rounded-md border p-2 ${
+                allPassed
+                  ? 'border-emerald-700/60 bg-emerald-950/30'
+                  : 'border-red-700/60 bg-red-950/30'
+              }`}
+            >
+              <p
+                className={`mb-1 text-xs font-semibold ${
+                  allPassed ? 'text-emerald-300' : 'text-red-300'
+                }`}
+              >
+                {allPassed
+                  ? 'Cumple todos los límites'
+                  : `No cumple ${checks.filter((c) => !c.passed).length} de ${checks.length} límites`}
+              </p>
+              <ul className="space-y-0.5 text-[11px]">
+                {checks.map((c) => (
+                  <li key={c.label} className={c.passed ? 'text-emerald-300' : 'text-red-300'}>
+                    {c.passed ? '✔' : '✘'} {c.label}{' '}
+                    <span className="text-zinc-400">(se obtuvo {c.actual})</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="grid grid-cols-4 gap-2">
             <Stat name="Éxito" value={`${summary.successRate}%`} />
             <Stat name="Enviadas" value={`${summary.total}`} />
@@ -172,11 +268,12 @@ export function BenchmarkModal({ onClose }: Props): React.JSX.Element {
           </div>
 
           {t ? (
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-6 gap-2">
               <Stat name="Mínimo" value={`${t.min} ms`} />
               <Stat name="Promedio" value={`${t.avg} ms`} />
               <Stat name="p50" value={`${t.p50} ms`} />
               <Stat name="p95" value={`${t.p95} ms`} />
+              <Stat name="p99" value={summary.p99Ms === null ? '—' : `${summary.p99Ms} ms`} />
               <Stat name="Máximo" value={`${t.max} ms`} />
             </div>
           ) : (

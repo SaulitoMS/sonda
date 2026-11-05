@@ -29,7 +29,7 @@ const field =
   'w-full rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500 disabled:opacity-50'
 const label = 'mb-1 block text-xs font-medium text-zinc-400'
 
-const KINDS = Object.keys(KIND_LABELS) as AssertionKind[]
+const KINDS = (Object.keys(KIND_LABELS) as AssertionKind[]).filter((k) => k !== 'schema')
 const BODY_PREVIEW_CHARS = 2000
 
 /** Espera `ms` pero se corta enseguida si el usuario detiene el polling */

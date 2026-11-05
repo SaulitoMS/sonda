@@ -93,15 +93,25 @@ export function AssertionsPanel(): React.JSX.Element {
             ))}
           </select>
 
-          {needsExpected(a.op) && (
-            <input
-              value={a.expected}
-              onChange={(e) => patch(a, { expected: e.target.value })}
-              placeholder="Valor esperado"
-              spellCheck={false}
-              className={inputClass}
-            />
-          )}
+          {needsExpected(a.op) &&
+            (a.kind === 'schema' ? (
+              <textarea
+                value={a.expected}
+                onChange={(e) => patch(a, { expected: e.target.value })}
+                placeholder='{ "type": "object", "required": ["id"] }'
+                spellCheck={false}
+                rows={5}
+                className={`${inputClass} resize-y`}
+              />
+            ) : (
+              <input
+                value={a.expected}
+                onChange={(e) => patch(a, { expected: e.target.value })}
+                placeholder={a.op === 'in' || a.op === 'notIn' ? '200,201,204' : 'Valor esperado'}
+                spellCheck={false}
+                className={inputClass}
+              />
+            ))}
 
           <button
             onClick={() => remove(a.id)}

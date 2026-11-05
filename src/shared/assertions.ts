@@ -3,8 +3,10 @@ import type {
   AssertionKind,
   AssertionOp,
   AssertionResult,
+  JsonSchema,
   SendRequestResult
 } from './types'
+import { validateAgainstSchema } from './validate'
 
 type OkResponse = Extract<SendRequestResult, { ok: true }>
 
@@ -13,7 +15,8 @@ export const KIND_LABELS: Record<AssertionKind, string> = {
   time: 'Tiempo (ms)',
   size: 'Tamaño (bytes)',
   header: 'Header',
-  body: 'Body (JSON)'
+  body: 'Body (JSON)',
+  schema: 'Body (JSON Schema)'
 }
 
 export const OP_LABELS: Record<AssertionOp, string> = {
@@ -31,10 +34,14 @@ export const OP_LABELS: Record<AssertionOp, string> = {
   isType: 'es del tipo',
   lenEq: 'tiene longitud igual a',
   lenGt: 'tiene longitud mayor que',
-  lenLt: 'tiene longitud menor que'
+  lenLt: 'tiene longitud menor que',
+  in: 'es uno de',
+  notIn: 'no es uno de',
+  validates: 'cumple el JSON Schema'
 }
 
 const NUMERIC_OPS: AssertionOp[] = ['eq', 'neq', 'lt', 'lte', 'gt', 'gte']
+const IN_OPS: AssertionOp[] = ['in', 'notIn']
 const TEXT_OPS: AssertionOp[] = [
   'eq',
   'neq',
@@ -53,13 +60,16 @@ const BODY_OPS: AssertionOp[] = [
   'isType',
   'lenEq',
   'lenGt',
-  'lenLt'
+  'lenLt',
+  ...IN_OPS
 ]
 
 /** Operadores que tienen sentido para cada tipo de aserción */
 export function opsForKind(kind: AssertionKind): AssertionOp[] {
-  if (kind === 'status' || kind === 'time' || kind === 'size') return NUMERIC_OPS
-  if (kind === 'header') return TEXT_OPS
+  if (kind === 'status') return [...NUMERIC_OPS, ...IN_OPS]
+  if (kind === 'time' || kind === 'size') return NUMERIC_OPS
+  if (kind === 'header') return [...TEXT_OPS, ...IN_OPS]
+  if (kind === 'schema') return ['validates']
   return BODY_OPS
 }
 
@@ -73,7 +83,8 @@ export function emptyAssertion(kind: AssertionKind = 'status'): Assertion {
     time: { op: 'lt', expected: '500' },
     size: { op: 'lt', expected: '1000000' },
     header: { op: 'exists', expected: '' },
-    body: { op: 'exists', expected: '' }
+    body: { op: 'exists', expected: '' },
+    schema: { op: 'validates', expected: '{\n  "type": "object"\n}' }
   }
   return { id: crypto.randomUUID(), enabled: true, kind, target: '', ...defaults[kind] }
 }
@@ -97,6 +108,8 @@ export function describeAssertion(a: Assertion): string {
       return `Header "${a.target.trim()}" ${op}${value}`
     case 'body':
       return `Body ${a.target.trim() || '$'} ${op}${value}`
+    case 'schema':
+      return `Body ${op}`
   }
 }
 
@@ -255,6 +268,22 @@ function check(op: AssertionOp, target: Found, expected: string): Check {
       const ok = op === 'lenEq' ? len === b : op === 'lenGt' ? len > b : len < b
       return result(ok, `la longitud es ${len}`)
     }
+    case 'in':
+    case 'notIn': {
+      const list = expected
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item !== '')
+      if (list.length === 0) return miss('la lista de valores está vacía')
+      const inList = list.some((item) =>
+        typeof target.value === 'number' && isNumeric(item)
+          ? target.value === Number(item)
+          : text === item
+      )
+      return result(op === 'in' ? inList : !inList, `se obtuvo ${actual}`)
+    }
+    case 'validates':
+      return miss('solo aplica al tipo Body (JSON Schema)')
   }
 }
 
@@ -326,6 +355,31 @@ export function evaluateAssertions(
             return done(check(a.op, { found: true, value: response.body }, a.expected))
           }
           return done(check(a.op, getByPath(body.value, tokens), a.expected))
+        }
+        case 'schema': {
+          let schema: unknown
+          try {
+            schema = JSON.parse(a.expected)
+          } catch {
+            return fail('el schema no es JSON válido')
+          }
+          if (schema === null || typeof schema !== 'object' || Array.isArray(schema)) {
+            return fail('el schema debe ser un objeto JSON')
+          }
+          const body = parseBody()
+          if (!body.ok) return fail('el body no es JSON')
+
+          const v = validateAgainstSchema(schema as JsonSchema, body.value)
+          if (v.verdict === 'valid') return done({ passed: true, message: '' })
+          if (v.verdict === 'skipped') return fail(v.message ?? 'no se pudo validar')
+
+          const errors = v.issues.filter((i) => i.severity === 'error')
+          const shown = errors
+            .slice(0, 3)
+            .map((i) => `${i.path}: ${i.message}`)
+            .join(' · ')
+          const more = errors.length > 3 ? ` (+${errors.length - 3} más)` : ''
+          return fail(`${shown}${more}`)
         }
       }
     })
