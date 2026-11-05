@@ -43,6 +43,7 @@ import {
 } from '../../../shared/scriptApply'
 import { buildDigestAuthorization, findDigestChallenge } from '../../../shared/digest'
 import { signAwsV4 } from '../../../shared/awsSigV4'
+import { decodeJwt, describeExpiry } from '../../../shared/jwt'
 
 export interface RequestDraft {
   method: HttpMethod
@@ -239,6 +240,20 @@ export async function executeRequest(
     if (!headers.some((x) => x.key.toLowerCase() === h.key.toLowerCase())) headers.push(h)
   }
   finalUrl = appendQuery(finalUrl, authParts.query)
+
+  // Avisa si el Bearer que se va a enviar es un JWT ya vencido (la petición se envía igual)
+  const bearer = headers.find((h) => h.key.toLowerCase() === 'authorization')?.value ?? ''
+  if (/^Bearer\s/i.test(bearer)) {
+    const jwt = decodeJwt(bearer)
+    if (jwt?.expiresAt) {
+      const { expired, label } = describeExpiry(jwt.expiresAt)
+      if (expired) {
+        warnings.push(
+          `El token JWT de Authorization ya venció (${label.toLowerCase()}). Renuévalo antes de enviar.`
+        )
+      }
+    }
+  }
 
   const hasContentType = headers.some((h) => h.key.toLowerCase() === 'content-type')
   if (finalBody && !hasContentType) {
