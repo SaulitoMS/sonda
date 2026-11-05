@@ -45,6 +45,7 @@ import { EnvCompareModal } from './components/EnvCompareModal'
 import { cancelInFlight } from './lib/inFlight'
 import { nextEnvironmentId } from '../../shared/envCycle'
 import { ShortcutsModal } from './components/ShortcutsModal'
+import { HistoryStatsModal } from './components/HistoryStatsModal'
 
 type ModalType =
   | 'import'
@@ -70,6 +71,7 @@ type ModalType =
   | 'toolbox'
   | 'datagen'
   | 'shortcuts'
+  | 'stats'
   | null
 
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -293,6 +295,13 @@ function App(): React.JSX.Element {
       label: 'Historial',
       description: 'Peticiones enviadas recientemente',
       onSelect: () => setModal('history')
+    },
+    {
+      id: 'stats',
+      icon: 'gauge',
+      label: 'Salud de la API',
+      description: 'Endpoints más lentos y con más errores según tu historial',
+      onSelect: () => setModal('stats')
     },
     {
       id: 'cookies',
@@ -755,6 +764,7 @@ function App(): React.JSX.Element {
       {modal === 'toolbox' && <ToolboxModal onClose={() => setModal(null)} />}
       {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal(null)} />}
       {modal === 'datagen' && <DataGenModal onClose={() => setModal(null)} />}
+      {modal === 'stats' && <HistoryStatsModal onClose={() => setModal(null)} />}
       {modal === 'compare' && <EnvCompareModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
