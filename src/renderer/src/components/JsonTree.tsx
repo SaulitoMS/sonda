@@ -3,6 +3,7 @@ import { childPath, type TreeSearch } from '../lib/search'
 import { Highlight } from './Highlight'
 import { timestampHint } from '../../../shared/timestampHint'
 import { pathReaches } from '../../../shared/extractFromTree'
+import { decodeJwt, describeExpiry } from '../../../shared/jwt'
 
 const isContainer = (v: unknown): v is object => v !== null && typeof v === 'object'
 
@@ -91,14 +92,27 @@ function Primitive({ value, path }: { value: unknown; path: string }): React.JSX
     />
   )
 
-  if (typeof value === 'string')
+  if (typeof value === 'string') {
+    // Un JWT siempre empieza por "eyJ" (el header {"… codificado en base64)
+    const jwt = value.startsWith('eyJ') ? decodeJwt(value) : null
+    const alg = jwt && typeof jwt.header.alg === 'string' ? jwt.header.alg : null
+    const exp = jwt?.expiresAt
+    const expiry = exp !== undefined ? describeExpiry(exp) : null
     return (
       <span className="text-emerald-300">
         {'"'}
         {hl(value)}
         {'"'}
+        {jwt && (
+          <span className={`ml-2 ${expiry?.expired ? 'text-red-400' : 'text-zinc-500'}`}>
+            {'// JWT'}
+            {alg && ` · ${alg}`}
+            {expiry && ` · ${expiry.label}`}
+          </span>
+        )}
       </span>
     )
+  }
   if (typeof value === 'number') {
     // El nombre del campo es el último tramo de la ruta (en arrays termina en "]" y no aplica)
     const key = /([^.[\]]+)$/.exec(path)?.[1]
