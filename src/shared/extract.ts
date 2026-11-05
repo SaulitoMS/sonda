@@ -1,4 +1,5 @@
 import { getByPath, parsePath } from './assertions'
+import { parseJsonOrXml } from './xmlBody'
 import type {
   Environment,
   Extraction,
@@ -10,7 +11,7 @@ import type {
 type OkResponse = Extract<SendRequestResult, { ok: true }>
 
 export const SOURCE_LABELS: Record<ExtractionSource, string> = {
-  body: 'Body (JSON)',
+  body: 'Body (JSON/XML)',
   header: 'Header'
 }
 
@@ -43,16 +44,10 @@ export function evaluateExtractions(
 ): ExtractionResult[] {
   if (!extractions?.length) return []
 
-  // El body solo se parsea si alguna regla lo necesita, y una sola vez
+  // El body solo se parsea si alguna regla lo necesita, y una sola vez (JSON o, si no, XML)
   let json: { ok: true; value: unknown } | { ok: false } | undefined
   const parseBody = (): NonNullable<typeof json> => {
-    if (!json) {
-      try {
-        json = { ok: true, value: JSON.parse(response.body) }
-      } catch {
-        json = { ok: false }
-      }
-    }
+    if (!json) json = parseJsonOrXml(response.body)
     return json
   }
 

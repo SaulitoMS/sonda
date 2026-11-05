@@ -7,6 +7,7 @@ import type {
   SendRequestResult
 } from './types'
 import { validateAgainstSchema } from './validate'
+import { parseJsonOrXml, type ParsedBody } from './xmlBody'
 
 type OkResponse = Extract<SendRequestResult, { ok: true }>
 
@@ -15,7 +16,7 @@ export const KIND_LABELS: Record<AssertionKind, string> = {
   time: 'Tiempo (ms)',
   size: 'Tamaño (bytes)',
   header: 'Header',
-  body: 'Body (JSON)',
+  body: 'Body (JSON/XML)',
   schema: 'Body (JSON Schema)'
 }
 
@@ -312,6 +313,13 @@ export function evaluateAssertions(
     return json
   }
 
+  // Para las rutas del body: JSON o, si no lo es, XML convertido a objeto
+  let anyBody: ParsedBody | undefined
+  const parseBodyAny = (): ParsedBody => {
+    if (!anyBody) anyBody = parseJsonOrXml(response.body)
+    return anyBody
+  }
+
   return assertions
     .filter((a) => a.enabled)
     .map((a): AssertionResult => {
@@ -348,9 +356,9 @@ export function evaluateAssertions(
         case 'body': {
           const tokens = parsePath(a.target)
           if (!tokens) return fail(`la ruta "${a.target}" no es válida`)
-          const body = parseBody()
+          const body = parseBodyAny()
           if (!body.ok) {
-            // Sin JSON solo se puede revisar el texto completo
+            // Sin JSON ni XML solo se puede revisar el texto completo
             if (tokens.length > 0) return fail('el body no es JSON')
             return done(check(a.op, { found: true, value: response.body }, a.expected))
           }
