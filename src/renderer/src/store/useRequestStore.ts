@@ -21,12 +21,13 @@ import { persistExtractions } from '../lib/persistExtractions'
 import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from './useEnvironmentStore'
 import { useHistoryStore } from './useHistoryStore'
-import { useStreamStore } from './useStreamStore' // ← NUEVO
+import { useStreamStore } from './useStreamStore'
 import { useTabsStore } from './useTabsStore'
 import { finishInFlight, startInFlight } from '../lib/inFlight'
 import { resolveAuthForPath } from '../lib/inheritedAuth'
 import { cleanOverrides, hasOverrides } from '../../../shared/requestOverrides'
 import { confirmSendMessage } from '../../../shared/writeGuard'
+import { notifyIfSlow } from '../lib/notifySlow'
 
 export interface KeyValue {
   id: string
@@ -329,6 +330,7 @@ export const useRequestStore = create<RequestState>((set, get) => ({
         type: 'none' as const
       }
       useHistoryStore.getState().add({ method, url, headers, body, bodyForm, auth: sent, response })
+      notifyIfSlow(method, url, response)
     }
   },
 
