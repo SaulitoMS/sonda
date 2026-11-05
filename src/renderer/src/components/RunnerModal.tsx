@@ -3,6 +3,7 @@ import { classifyResult, type RunStatus } from '../../../shared/classify'
 import {
   buildReport,
   reportFileName,
+  reportToCsv,
   reportToHtml,
   reportToJson,
   reportToJunit
@@ -295,7 +296,7 @@ export function RunnerModal({
     onClose()
   }
 
-  const exportReport = (format: 'json' | 'html' | 'xml'): void => {
+  const exportReport = (format: 'json' | 'html' | 'xml' | 'csv'): void => {
     const report = buildReport({
       collection:
         (collection?.name ?? '') +
@@ -318,6 +319,8 @@ export function RunnerModal({
       downloadText(reportFileName(report, 'json'), reportToJson(report), 'application/json')
     } else if (format === 'xml') {
       downloadText(reportFileName(report, 'xml'), reportToJunit(report), 'application/xml')
+    } else if (format === 'csv') {
+      downloadText(reportFileName(report, 'csv'), reportToCsv(report), 'text/csv')
     } else {
       downloadText(reportFileName(report, 'html'), reportToHtml(report), 'text/html')
     }
@@ -583,6 +586,14 @@ export function RunnerModal({
                 Repetir fallidas
               </button>
             )}
+
+            <button
+              onClick={() => exportReport('csv')}
+              className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              title="Para abrir en Excel o Google Sheets"
+            >
+              Exportar CSV
+            </button>
           </div>
         )}
         <button

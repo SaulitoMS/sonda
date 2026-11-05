@@ -263,8 +263,57 @@ export function reportToJunit(report: RunReport): string {
   )
 }
 
+type CsvCell = string | number | null
+
+/** Celda CSV: entre comillas si hace falta, y neutraliza fórmulas (= + - @) para que Excel no las ejecute */
+const csvCell = (value: CsvCell): string => {
+  let text = value === null ? '' : String(value)
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
+
+/** Reporte en CSV, pensado para abrirlo en Excel o Google Sheets */
+export function reportToCsv(report: RunReport): string {
+  const header = [
+    'Carpeta',
+    'Petición',
+    'Método',
+    'Ruta',
+    'Estado',
+    'HTTP',
+    'Tiempo (ms)',
+    'Aserciones OK',
+    'Aserciones fallidas',
+    'Qué falló',
+    'Errores de schema',
+    'Detalle'
+  ]
+
+  const rows: CsvCell[][] = report.results.map((r) => [
+    r.group,
+    r.name,
+    r.method,
+    r.path,
+    r.status,
+    r.httpStatus,
+    r.timeMs,
+    r.assertions.filter((a) => a.passed).length,
+    r.assertions.filter((a) => !a.passed).length,
+    r.assertions
+      .filter((a) => !a.passed)
+      .map((a) => a.label)
+      .join('; '),
+    r.schema?.issues.filter((i) => i.severity === 'error').length ?? 0,
+    r.detail
+  ])
+
+  // El BOM hace que Excel abra el archivo en UTF-8 y respete los acentos
+  const lines = [header, ...rows].map((row) => row.map(csvCell).join(','))
+  return '\uFEFF' + lines.join('\r\n') + '\r\n'
+}
+
 /** Nombre de archivo tipo sonda-petstore-20261029-123456.html */
-export function reportFileName(report: RunReport, ext: 'json' | 'html' | 'xml'): string {
+export function reportFileName(report: RunReport, ext: 'json' | 'html' | 'xml' | 'csv'): string {
   const stamp = report.generatedAt.slice(0, 19).replace(/[-:]/g, '').replace('T', '-')
   return `sonda-${slug(report.collection)}-${stamp}.${ext}`
 }

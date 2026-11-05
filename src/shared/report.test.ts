@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildReport, reportFileName, reportToHtml, reportToJson, type ReportInput } from './report'
+import {
+  buildReport,
+  reportFileName,
+  reportToCsv,
+  reportToHtml,
+  reportToJson,
+  type ReportInput
+} from './report'
 
 const now = new Date('2026-10-29T12:34:56.000Z')
 
@@ -124,5 +131,59 @@ describe('reportFileName', () => {
     expect(reportFileName(named, 'json')).toBe('sonda-coleccion-nandu-20261029-123456.json')
     const empty = buildReport({ collection: '***', environment: null, rows: [], now })
     expect(reportFileName(empty, 'json')).toBe('sonda-coleccion-20261029-123456.json')
+  })
+})
+
+describe('reportToCsv', () => {
+  const csvRows: ReportInput[] = [
+    {
+      group: 'pet',
+      name: 'Listar, mascotas',
+      method: 'GET',
+      path: 'p/get.json',
+      status: 'pass',
+      detail: '',
+      httpStatus: 200,
+      timeMs: 120,
+      assertionResults: [{ id: 'a', label: 'Status es igual a 200', passed: true, message: '' }]
+    },
+    {
+      group: '',
+      name: '=HYPERLINK("x")',
+      method: 'POST',
+      path: 'p/post.json',
+      status: 'fail',
+      detail: 'dijo "no"',
+      httpStatus: 500,
+      timeMs: 80,
+      assertionResults: [{ id: 'b', label: 'Tiempo menor a 50', passed: false, message: 'fue 80' }]
+    }
+  ]
+  const csv = reportToCsv(buildReport({ collection: 'petstore', environment: null, rows: csvRows, now }))
+  const lines = csv.slice(1).trim().split('\r\n')
+
+  it('empieza con BOM y trae encabezado más una línea por petición', () => {
+    expect(csv.charCodeAt(0)).toBe(0xfeff)
+    expect(lines).toHaveLength(3)
+    expect(lines[0]).toBe(
+      'Carpeta,Petición,Método,Ruta,Estado,HTTP,Tiempo (ms),Aserciones OK,Aserciones fallidas,Qué falló,Errores de schema,Detalle'
+    )
+  })
+
+  it('pone entre comillas las celdas con comas', () => {
+    expect(lines[1]).toBe('pet,"Listar, mascotas",GET,p/get.json,pass,200,120,1,0,,0,')
+  })
+
+  it('escapa comillas y neutraliza fórmulas', () => {
+    expect(lines[2]).toContain('"\'=HYPERLINK(""x"")"')
+    expect(lines[2]).toContain('Tiempo menor a 50')
+    expect(lines[2]).toContain('"dijo ""no"""')
+  })
+})
+
+describe('reportFileName csv', () => {
+  it('acepta la extensión csv', () => {
+    const report = buildReport({ collection: 'petstore', environment: null, rows: [], now })
+    expect(reportFileName(report, 'csv')).toBe('sonda-petstore-20261029-123456.csv')
   })
 })
