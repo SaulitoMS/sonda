@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   followRedirects: true,
   sslMode: 'auto',
   proxyUrl: '',
+  noProxy: '',
   retries: 0,
   retryDelayMs: 500,
   clientCertPath: '',
@@ -46,6 +47,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
         ? r.sslMode
         : DEFAULT_SETTINGS.sslMode,
     proxyUrl: toText(r.proxyUrl),
+    noProxy: toText(r.noProxy),
     retries: toInt(r.retries, DEFAULT_SETTINGS.retries, MIN_RETRIES, MAX_RETRIES),
     retryDelayMs: toInt(
       r.retryDelayMs,
@@ -72,4 +74,22 @@ export function proxyError(proxyUrl: string): string | null {
   } catch {
     return 'URL de proxy inválida (ejemplo: http://localhost:8080)'
   }
+}
+
+/**
+ * ¿Este host debe saltarse el proxy? La lista va separada por comas o espacios:
+ * "example.com" (incluye subdominios), ".interna.local", "*.corp.net", "10.0.0.5" o "*" (todos).
+ * No soporta rangos CIDR ni puertos.
+ */
+export function bypassesProxy(hostname: string, noProxy: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  return noProxy
+    .split(/[,\s]+/)
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+    .some((entry) => {
+      if (entry === '*') return true
+      const domain = entry.replace(/^\*?\./, '')
+      return host === domain || host.endsWith(`.${domain}`)
+    })
 }

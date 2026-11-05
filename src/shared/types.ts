@@ -492,6 +492,8 @@ export interface AppSettings {
   sslMode: SslMode
   /** Proxy http(s) para todas las peticiones salvo las de localhost. Vacío = sin proxy */
   proxyUrl: string
+  /** Hosts que no pasan por el proxy, separados por coma. Ej: "api.interna.local, .corp.net, 10.0.0.5". "*" = todos */
+  noProxy: string
   /** Reintentos automáticos ante errores de red / 429 / 502 / 503 / 504. 0 = desactivado */
   retries: number
   /** Espera base entre reintentos en ms (se duplica en cada intento) */

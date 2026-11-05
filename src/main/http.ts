@@ -6,7 +6,7 @@ import { rootCertificates } from 'tls'
 import type { FormPart, SendRequestInput, SendRequestResult } from '../shared/types'
 import { Agent, ProxyAgent, type Dispatcher } from 'undici'
 import { cookieHeaderFor, storeCookies } from './cookieJar'
-import { proxyError } from '../shared/settings'
+import { bypassesProxy, proxyError } from '../shared/settings'
 import { loadSettings } from './settings'
 import { collectEventStream, isEventStream } from '../shared/sse'
 import { sendFollowingRedirects } from '../shared/redirects'
@@ -164,9 +164,14 @@ export function registerHttpHandlers(): void {
           input.insecure ??
           (settings.sslMode === 'ignore' || (settings.sslMode === 'auto' && loopback))
         const ignoreTls = insecure && target.protocol === 'https:'
-        // localhost nunca pasa por el proxy
+        // localhost y los hosts de la lista de exclusión nunca pasan por el proxy
         const proxyUrl =
-          settings.proxyUrl && !proxyError(settings.proxyUrl) && !loopback ? settings.proxyUrl : ''
+          settings.proxyUrl &&
+          !proxyError(settings.proxyUrl) &&
+          !loopback &&
+          !bypassesProxy(target.hostname, settings.noProxy)
+            ? settings.proxyUrl
+            : ''
         // El certificado solo viaja por https y, si se configuró un host, solo a ese host
         const useClientCert =
           target.protocol === 'https:' &&

@@ -153,6 +153,22 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
           </div>
 
           <div>
+            <label className={label}>Excluir del proxy</label>
+            <input
+              value={draft.noProxy}
+              onChange={(e) => set('noProxy', e.target.value)}
+              placeholder="api.interna.local, .corp.net, 10.0.0.5"
+              spellCheck={false}
+              disabled={!draft.proxyUrl}
+              className={`${field} disabled:opacity-50`}
+            />
+            <p className={hint}>
+              Hosts separados por coma que van directo, sin proxy. Un dominio incluye sus
+              subdominios.
+            </p>
+          </div>
+
+          <div>
             <label className={label}>Certificado de cliente (mTLS)</label>
             <div className="space-y-2">
               {(
