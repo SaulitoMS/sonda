@@ -37,6 +37,7 @@ import { describeStatus } from '../../../shared/httpStatus'
 import { timeTrend } from '../../../shared/responseTrend'
 import { useHistoryStore } from '../store/useHistoryStore'
 import { TimeTrendChart } from './TimeTrendChart'
+import { HeadersTable } from './HeadersTable'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -1017,19 +1018,8 @@ export function ResponsePanel(): React.JSX.Element {
           </>
         )}
 
-        {current === 'headers' && (
-          <table className="selectable w-full text-left font-mono text-xs">
-            <tbody>
-              {Object.entries(response.headers).map(([key, value]) => (
-                <tr key={key} className="border-b border-zinc-800">
-                  <td className="py-1.5 pr-4 align-top font-semibold text-blue-300">{key}</td>
-                  <td className="break-all py-1.5 text-zinc-300">{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
+        {current === 'headers' && <HeadersTable headers={response.headers} />}
+        
         {current === 'schema' && validation && <SchemaReport validation={validation} />}
 
         {current === 'tests' && hasTests && <TestsReport results={assertionResults} />}
