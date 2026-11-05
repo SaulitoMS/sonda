@@ -254,9 +254,169 @@ const RUNNER = `
     }
   }
 
+  // ---------- Compatibilidad con Postman (pm.*) ----------
+  const pmVars = {
+    get: (k) => sonda.env.get(k),
+    set: (k, v) => sonda.env.set(k, v),
+    has: (k) => sonda.env.get(k) !== undefined,
+    // No hay forma de borrar una variable: se deja vacía
+    unset: (k) => { if (sonda.env.get(k) !== undefined) sonda.env.set(k, '') },
+    toObject: () => Object.assign({}, vars)
+  }
+
+  const pmExpect = (actual) => {
+    const state = { negate: false, deep: false }
+    const check = (ok, msg) => {
+      if (state.negate ? ok : !ok) fail((state.negate ? 'no debía cumplirse: ' : '') + msg)
+    }
+    const isNum = (n) => typeof actual === 'number' && typeof n === 'number'
+    const expected = (e) => 'se esperaba ' + show(e) + ' y llegó ' + show(actual)
+    const api = {}
+
+    api.equal = api.equals = api.eq = (e) =>
+      check(state.deep ? deepEqual(actual, e) : Object.is(actual, e), expected(e))
+    api.eql = api.eqls = (e) => check(deepEqual(actual, e), expected(e))
+    api.a = api.an = (t) =>
+      check(typeOf(actual) === String(t).toLowerCase(), 'se esperaba tipo ' + show(t) + ' y llegó ' + typeOf(actual))
+    api.include = api.includes = api.contain = api.contains = (e) => {
+      let ok = false
+      if (typeof actual === 'string') ok = actual.includes(String(e))
+      else if (Array.isArray(actual)) ok = actual.some((x) => (state.deep ? deepEqual(x, e) : Object.is(x, e)))
+      else if (actual !== null && typeof actual === 'object') ok = e !== null && typeof e === 'object' && isSubset(actual, e)
+      check(ok, show(actual) + ' debía incluir ' + show(e))
+    }
+    api.property = (name, ...rest) => {
+      const present = actual != null && typeof actual === 'object' && name in actual
+      const same = rest.length === 0 || (state.deep ? deepEqual(actual[name], rest[0]) : Object.is(actual[name], rest[0]))
+      check(present && same, 'se esperaba la propiedad ' + show(name) + (rest.length ? ' con valor ' + show(rest[0]) : ''))
+    }
+    api.above = api.greaterThan = api.gt = (n) => check(isNum(n) && actual > n, show(actual) + ' debía ser mayor que ' + show(n))
+    api.least = api.gte = (n) => check(isNum(n) && actual >= n, show(actual) + ' debía ser mayor o igual que ' + show(n))
+    api.below = api.lessThan = api.lt = (n) => check(isNum(n) && actual < n, show(actual) + ' debía ser menor que ' + show(n))
+    api.most = api.lte = (n) => check(isNum(n) && actual <= n, show(actual) + ' debía ser menor o igual que ' + show(n))
+    api.within = (a, b) => check(isNum(a) && actual >= a && actual <= b, show(actual) + ' debía estar entre ' + show(a) + ' y ' + show(b))
+    api.lengthOf = api.length = (n) =>
+      check(actual != null && actual.length === n, 'se esperaba longitud ' + show(n) + ' y llegó ' + (actual == null ? show(actual) : actual.length))
+    api.match = (re) => check(new RegExp(re).test(String(actual)), show(actual) + ' no coincide con ' + show(re))
+    api.string = (s) => check(typeof actual === 'string' && actual.includes(String(s)), show(actual) + ' debía contener ' + show(s))
+    api.oneOf = (list) => check(Array.isArray(list) && list.some((x) => Object.is(x, actual)), show(actual) + ' no está en ' + show(list))
+    api.satisfy = (fn) => check(!!fn(actual), show(actual) + ' no cumple la condición')
+
+    // Como en chai, cada aserción devuelve el objeto para poder encadenar: .include('b').and.have.lengthOf(2)
+    for (const name of Object.keys(api)) {
+      const run = api[name]
+      api[name] = (...args) => { run(...args); return api }
+    }
+
+    const getters = {
+      not: () => { state.negate = true },
+      deep: () => { state.deep = true },
+      true: () => check(actual === true, expected(true)),
+      false: () => check(actual === false, expected(false)),
+      null: () => check(actual === null, expected(null)),
+      undefined: () => check(actual === undefined, expected(undefined)),
+      ok: () => check(!!actual, 'se esperaba un valor verdadero y llegó ' + show(actual)),
+      exist: () => check(actual != null, 'se esperaba que existiera, y llegó ' + show(actual)),
+      empty: () => {
+        const n = typeof actual === 'string' || Array.isArray(actual) ? actual.length : actual !== null && typeof actual === 'object' ? Object.keys(actual).length : -1
+        check(n === 0, show(actual) + ' debía estar vacío')
+      }
+    }
+    for (const w of ['to', 'be', 'been', 'is', 'that', 'which', 'and', 'has', 'have', 'with', 'at', 'of', 'same', 'but', 'does', 'still', 'also']) {
+      getters[w] = () => {}
+    }
+    for (const name of Object.keys(getters)) {
+      Object.defineProperty(api, name, { get: () => { getters[name](); return api } })
+    }
+    return api
+  }
+
+  const pm = {
+    environment: pmVars,
+    collectionVariables: pmVars,
+    globals: pmVars,
+    variables: pmVars,
+    info: { eventName: input.phase === 'pre' ? 'prerequest' : 'test' },
+    test: (name, fn) => sonda.test(name, fn),
+    expect: pmExpect,
+    sendRequest: () => fail('pm.sendRequest no está soportado en Sonda')
+  }
+
+  if (input.phase === 'pre') {
+    const hs = sonda.request.headers
+    const keyOf = (name) => Object.keys(hs).find((k) => k.toLowerCase() === String(name).toLowerCase())
+    pm.request = {
+      method: sonda.request.method,
+      url: { raw: sonda.request.url, toString: () => sonda.request.url },
+      headers: {
+        get: (n) => { const k = keyOf(n); return k === undefined ? undefined : hs[k] },
+        has: (n) => keyOf(n) !== undefined,
+        add: (h) => { hs[String(h.key)] = String(h.value) },
+        upsert: (h) => { const k = keyOf(h.key); if (k !== undefined) delete hs[k]; hs[String(h.key)] = String(h.value) },
+        remove: (n) => { const k = keyOf(n); if (k !== undefined) delete hs[k] }
+      },
+      body: { raw: sonda.request.body }
+    }
+  } else {
+    const r = sonda.response
+    const status = (test) => ({ get: () => { if (!test(r.status)) fail('el status ' + r.status + ' no es el esperado'); return true } })
+    const be = {}
+    Object.defineProperties(be, {
+      ok: status((s) => s === 200),
+      success: status((s) => s >= 200 && s < 300),
+      redirection: status((s) => s >= 300 && s < 400),
+      clientError: status((s) => s >= 400 && s < 500),
+      serverError: status((s) => s >= 500 && s < 600),
+      error: status((s) => s >= 400 && s < 600),
+      badRequest: status((s) => s === 400),
+      unauthorized: status((s) => s === 401),
+      forbidden: status((s) => s === 403),
+      notFound: status((s) => s === 404)
+    })
+    pm.response = {
+      code: r.status,
+      status: r.statusText,
+      responseTime: r.timeMs,
+      text: () => r.text,
+      json: () => r.json(),
+      headers: {
+        get: (n) => r.header(n),
+        has: (n) => r.header(n) !== undefined,
+        toObject: () => Object.assign({}, r.headers)
+      },
+      to: {
+        be,
+        have: {
+          status: (c) => {
+            const ok = typeof c === 'number' ? r.status === c : String(r.statusText).toLowerCase() === String(c).toLowerCase()
+            if (!ok) fail('se esperaba el status ' + show(c) + ' y llegó ' + r.status)
+          },
+          header: (n, v) => {
+            const got = r.header(n)
+            if (got === undefined) fail('falta el header ' + show(n))
+            if (v !== undefined && got !== v) fail('el header ' + show(n) + ' vale ' + show(got) + ', no ' + show(v))
+          },
+          body: (b) => {
+            const ok = b instanceof RegExp ? b.test(r.text) : r.text.includes(String(b))
+            if (!ok) fail('el body no contiene ' + show(String(b)))
+          }
+        }
+      }
+    }
+  }
+
+  // API antigua de Postman
+  const postman = {
+    setEnvironmentVariable: (k, v) => sonda.env.set(k, v),
+    getEnvironmentVariable: (k) => sonda.env.get(k),
+    setGlobalVariable: (k, v) => sonda.env.set(k, v),
+    getGlobalVariable: (k) => sonda.env.get(k),
+    clearEnvironmentVariable: (k) => pmVars.unset(k)
+  }
+
   let error = ''
   try {
-    new Function('sonda', 'console', __CODE__)(sonda, sandboxConsole)
+    new Function('sonda', 'console', 'pm', 'postman', __CODE__)(sonda, sandboxConsole, pm, postman)
   } catch (e) {
     error = String((e && e.message) || e)
   }

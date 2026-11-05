@@ -164,17 +164,37 @@ function parseBody(
   }
 }
 
+/** Scripts de una petición de Postman: `event` con listen "prerequest" (pre-script) y "test" (post-script) */
+function parseEvents(events: unknown): { preScript?: string; postScript?: string } {
+  const out: { preScript?: string; postScript?: string } = {}
+  if (!Array.isArray(events)) return out
+  for (const event of events) {
+    if (!isObj(event) || !isObj(event.script)) continue
+    const exec = event.script.exec
+    const code = (Array.isArray(exec) ? exec.map(str).join('\n') : str(exec)).trim()
+    if (!code) continue
+    if (event.listen === 'prerequest') out.preScript = code
+    else if (event.listen === 'test') out.postScript = code
+  }
+  return out
+}
+
 interface Ctx {
   requests: PostmanEndpoint[]
   warnings: string[]
+  /** Carpetas o colecciones con scripts: esos no se importan */
   scripts: number
+  /** Peticiones a las que sí se les importó algún script */
+  imported: number
 }
 
 function walk(items: unknown[], path: string[], inherited: AuthConfig | null, ctx: Ctx): void {
   for (const item of items) {
     if (!isObj(item)) continue
 
-    if (Array.isArray(item.event) && item.event.length > 0) ctx.scripts++
+    // Los scripts de una carpeta no se importan; los de una petición sí (más abajo)
+    const hasEvents = Array.isArray(item.event) && item.event.length > 0
+    if (Array.isArray(item.item) && hasEvents) ctx.scripts++
     // Auth propia del folder o de la petición; si no hay, hereda la del nivel superior
     const own = parseAuth(item.auth, ctx.warnings)
     const auth = own === undefined ? inherited : own
@@ -203,6 +223,9 @@ function walk(items: unknown[], path: string[], inherited: AuthConfig | null, ct
     const requestAuth = parseAuth(req.auth, ctx.warnings)
     const finalAuth = requestAuth === undefined ? auth : requestAuth
 
+    const { preScript, postScript } = parseEvents(item.event)
+    if (preScript || postScript) ctx.imported++
+
     const request: SavedRequest = {
       name,
       method: (METHODS.has(method) ? method : 'GET') as HttpMethod,
@@ -211,7 +234,9 @@ function walk(items: unknown[], path: string[], inherited: AuthConfig | null, ct
       body,
       ...(bodyForm ? { bodyForm } : {}),
       ...(description ? { description } : {}),
-      ...(finalAuth ? { auth: finalAuth } : {})
+      ...(finalAuth ? { auth: finalAuth } : {}),
+      ...(preScript ? { preScript } : {}),
+      ...(postScript ? { postScript } : {})
     }
     ctx.requests.push({ folder, request })
   }
@@ -223,14 +248,19 @@ export function parsePostmanCollection(data: unknown): ParsedPostman {
     throw new Error('El archivo no parece una colección de Postman (v2.0 o v2.1)')
   }
 
-  const ctx: Ctx = { requests: [], warnings: [], scripts: 0 }
+  const ctx: Ctx = { requests: [], warnings: [], scripts: 0, imported: 0 }
   const rootAuth = parseAuth(data.auth, ctx.warnings) ?? null
   if (Array.isArray(data.event) && data.event.length > 0) ctx.scripts++
   walk(data.item, [], rootAuth, ctx)
 
+  if (ctx.imported > 0) {
+    ctx.warnings.push(
+      `${ctx.imported} petición(es) traen scripts de Postman. Sonda entiende pm.test, pm.expect, pm.response, pm.environment, pm.collectionVariables y pm.request.headers; pm.sendRequest y las librerías (CryptoJS, require) no funcionan. Revisa la pestaña Scripts.`
+    )
+  }
   if (ctx.scripts > 0) {
     ctx.warnings.push(
-      'Los scripts de Postman (pre-request y tests) no se importan; usa Aserciones y Extracciones.'
+      'Los scripts de colección o de carpeta de Postman no se importan; muévelos a las peticiones o usa Aserciones y Extracciones.'
     )
   }
 
