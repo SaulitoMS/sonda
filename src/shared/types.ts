@@ -356,6 +356,19 @@ export interface OAuthAuthorizeInput {
 export type OAuthAuthorizeResult =
   { ok: true; code: string; verifier: string; redirectUri: string } | { ok: false; error: string }
 
+// ---------- Papelera ----------
+
+export type TrashKind = 'request' | 'collection'
+
+export interface TrashItem {
+  id: string
+  kind: TrashKind
+  name: string
+  /** Ruta que tenía dentro del workspace: "petstore/pet/get-pet.json" o "petstore" */
+  originalPath: string
+  deletedAt: number
+}
+
 /** Contrato de window.api (lo implementa preload, lo usa el renderer) */
 export interface SondaApi {
   sendRequest: (input: SendRequestInput) => Promise<SendRequestResult>
@@ -456,6 +469,10 @@ export interface SondaApi {
     path?: string
   ) => Promise<SaveWebSocketResult>
   deleteSavedWebSocket: (path: string) => Promise<void>
+  listTrash: () => Promise<TrashItem[]>
+  /** Devuelve la ruta donde quedó lo restaurado (puede cambiar si ya existía otra igual) */
+  restoreFromTrash: (id: string) => Promise<string>
+  emptyTrash: () => Promise<void>
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'

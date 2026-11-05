@@ -472,7 +472,8 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   }
 
   const removeRequest = async (item: RequestItem): Promise<void> => {
-    if (!confirm(`¿Eliminar "${item.name}"?`)) return
+    if (!confirm(`¿Eliminar "${item.name}"? Podrás recuperarla desde Herramientas → Papelera.`))
+      return
     await window.api.deleteRequest(item.path)
     useTabsStore.getState().detachMatching((file) => file === item.path)
     await refresh()
@@ -501,7 +502,12 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   }
 
   const removeCollection = async (id: string, name: string): Promise<void> => {
-    if (!confirm(`¿Eliminar la colección "${name}" y todas sus peticiones?`)) return
+    if (
+      !confirm(
+        `¿Eliminar la colección "${name}" y todas sus peticiones? Podrás recuperarla desde Herramientas → Papelera.`
+      )
+    )
+      return
     await window.api.deleteCollection(id)
     useTabsStore.getState().detachMatching((file) => file.startsWith(`${id}/`))
     await refresh()

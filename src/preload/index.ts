@@ -71,6 +71,9 @@ const api: SondaApi = {
   saveWebSocket: (collectionId, data, path) =>
     ipcRenderer.invoke('wsSaved:save', collectionId, data, path),
   deleteSavedWebSocket: (path) => ipcRenderer.invoke('wsSaved:delete', path),
+  listTrash: () => ipcRenderer.invoke('trash:list'),
+  restoreFromTrash: (id) => ipcRenderer.invoke('trash:restore', id),
+  emptyTrash: () => ipcRenderer.invoke('trash:empty'),
   onWsEvent: (listener) => {
     const handler = (_event: IpcRendererEvent, msg: WsEvent): void => listener(msg)
     ipcRenderer.on('ws:event', handler)

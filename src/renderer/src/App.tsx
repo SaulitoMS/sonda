@@ -19,6 +19,7 @@ import { useTabsStore } from './store/useTabsStore'
 import { useMonitorStore } from './store/useMonitorStore'
 import { CommandPalette, type Command } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
+import { TrashModal } from './components/TrashModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
 import { FuzzModal } from './components/FuzzModal'
@@ -57,6 +58,7 @@ type ModalType =
   | 'sync'
   | 'palette'
   | 'cookies'
+  | 'trash'
   | 'settings'
   | 'bench'
   | 'fuzz'
@@ -309,6 +311,13 @@ function App(): React.JSX.Element {
       label: 'Cookies',
       description: 'Cookies guardadas de las respuestas',
       onSelect: () => setModal('cookies')
+    },
+    {
+      id: 'trash',
+      icon: 'trash',
+      label: 'Papelera',
+      description: 'Recupera peticiones y colecciones eliminadas',
+      onSelect: () => setModal('trash')
     },
     {
       id: 'bench',
@@ -767,6 +776,7 @@ function App(): React.JSX.Element {
       {modal === 'stats' && <HistoryStatsModal onClose={() => setModal(null)} />}
       {modal === 'compare' && <EnvCompareModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
+      {modal === 'trash' && <TrashModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
           onClose={() => setModal(null)}

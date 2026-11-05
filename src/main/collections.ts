@@ -29,6 +29,7 @@ import {
 } from '../shared/specSync'
 import { importFromUrl } from './swagger'
 import { getWorkspacePath } from './settings'
+import { moveToTrash } from './trash'
 import { parsePostmanCollection } from '../shared/postman'
 import { buildPostmanCollection } from '../shared/postmanExport'
 import { buildMarkdownDocs } from '../shared/docsExport'
@@ -341,7 +342,7 @@ export function registerCollectionHandlers(): void {
   })
 
   ipcMain.handle('collections:delete', async (_e, id: string): Promise<void> => {
-    await fs.rm(safePath(id), { recursive: true, force: true })
+    await moveToTrash('collection', safePath(id), id)
   })
 
   ipcMain.handle('collections:readRequest', async (_e, relPath: string): Promise<SavedRequest> => {
@@ -371,7 +372,7 @@ export function registerCollectionHandlers(): void {
   )
 
   ipcMain.handle('collections:deleteRequest', async (_e, relPath: string): Promise<void> => {
-    await fs.rm(safeRequestPath(relPath), { force: true })
+    await moveToTrash('request', safeRequestPath(relPath), relPath)
   })
 
   ipcMain.handle(

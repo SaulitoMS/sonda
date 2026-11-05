@@ -14,6 +14,7 @@ import { runScript } from './scriptEngine'
 import type { ScriptInput } from '../shared/types'
 import { registerOAuthHandlers } from './oauthFlow'
 import { registerWebhookHandlers } from './webhook'
+import { registerTrashHandlers } from './trash'
 
 registerHttpHandlers()
 registerCollectionHandlers()
@@ -24,6 +25,7 @@ registerWebSocketHandlers()
 registerSavedWebSocketHandlers()
 registerOAuthHandlers()
 registerWebhookHandlers()
+registerTrashHandlers()
 
 ipcMain.handle('script:run', (_e, input: ScriptInput) => runScript(input))
 
