@@ -22,6 +22,7 @@ import { ScriptsPanel } from './ScriptsPanel'
 import { OverridesPanel } from './OverridesPanel'
 import { hasOverrides } from '../../../shared/requestOverrides'
 import { BinaryBodyEditor } from './BinaryBodyEditor'
+import { transformJson, type BodyTransform } from '../../../shared/jsonBodyTools'
 
 type Tab =
   'params' | 'auth' | 'headers' | 'body' | 'tests' | 'scripts' | 'extract' | 'notes' | 'config'
@@ -109,12 +110,10 @@ export function RequestPanel(): React.JSX.Element {
     }
   }, [body])
 
-  const formatBody = (): void => {
-    try {
-      setBody(JSON.stringify(JSON.parse(body), null, 2))
-    } catch {
-      /* si no es JSON, no se toca */
-    }
+  const transformBody = (mode: BodyTransform): void => {
+    const next = transformJson(body, mode)
+    // Si no es JSON válido (o tiene {{variables}} sin comillas), no se toca
+    if (next !== null) setBody(next)
   }
 
   // Sangría y cierre automático de {, [ y " mientras se escribe JSON
@@ -249,7 +248,23 @@ export function RequestPanel(): React.JSX.Element {
                       GraphQL
                     </button>
                     <button
-                      onClick={formatBody}
+                      onClick={() => transformBody('sort')}
+                      disabled={!body.trim()}
+                      className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                      title="Ordenar las claves alfabéticamente"
+                    >
+                      Ordenar
+                    </button>
+                    <button
+                      onClick={() => transformBody('minify')}
+                      disabled={!body.trim()}
+                      className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                      title="Quitar espacios y saltos de línea"
+                    >
+                      Minificar
+                    </button>
+                    <button
+                      onClick={() => transformBody('format')}
                       disabled={!body.trim()}
                       className="rounded bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
                     >
