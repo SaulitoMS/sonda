@@ -17,7 +17,7 @@ import { RequestSchemaStatus } from './RequestSchemaStatus'
 import { editForKey } from '../../../shared/jsonEditing'
 import { applyEdit } from '../lib/applyEdit'
 import { VariableTextarea } from './VariableTextarea'
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
 import { ScriptsPanel } from './ScriptsPanel'
 import { OverridesPanel } from './OverridesPanel'
 import { hasOverrides } from '../../../shared/requestOverrides'
@@ -26,6 +26,18 @@ import { transformJson, type BodyTransform } from '../../../shared/jsonBodyTools
 
 type Tab =
   'params' | 'auth' | 'headers' | 'body' | 'tests' | 'scripts' | 'extract' | 'notes' | 'config'
+
+const TABS: { id: Tab; label: string; icon: IconName }[] = [
+  { id: 'params', label: 'Params', icon: 'hash' },
+  { id: 'auth', label: 'Auth', icon: 'key' },
+  { id: 'headers', label: 'Headers', icon: 'list' },
+  { id: 'body', label: 'Body', icon: 'braces' },
+  { id: 'tests', label: 'Tests', icon: 'checkCircle' },
+  { id: 'scripts', label: 'Scripts', icon: 'fileCode' },
+  { id: 'extract', label: 'Extraer', icon: 'filter' },
+  { id: 'notes', label: 'Notas', icon: 'fileText' },
+  { id: 'config', label: 'Ajustes', icon: 'settings' }
+]
 
 export function RequestPanel(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('params')
@@ -137,52 +149,55 @@ export function RequestPanel(): React.JSX.Element {
   const activeHeaders = headers.filter((h) => h.enabled && h.key.trim()).length
   const bodyDisabled = method === 'GET' || method === 'HEAD'
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex overflow-x-auto border-b border-zinc-800 px-2 [scrollbar-width:none]">
-        <button className={tabClass('params')} onClick={() => setTab('params')}>
-          Params {paramCount > 0 && <span className={pill}>{paramCount}</span>}
-        </button>
-        <button className={tabClass('auth')} onClick={() => setTab('auth')}>
-          Auth
-          {auth.type !== 'inherit' && auth.type !== 'none' && (
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-          )}
-        </button>
-        <button className={tabClass('headers')} onClick={() => setTab('headers')}>
-          Headers {activeHeaders > 0 && <span className={pill}>{activeHeaders}</span>}
-        </button>
-        <button className={tabClass('body')} onClick={() => setTab('body')}>
-          Body
-          {bodyCheck?.verdict === 'valid' && (
-            <Icon name="check" size={12} className="text-emerald-400" />
-          )}
-          {bodyCheck?.verdict === 'invalid' && (
+  const dot = <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+  const count = (n: number): React.ReactNode => (n > 0 ? <span className={pill}>{n}</span> : null)
+  const tabBadge = (id: Tab): React.ReactNode => {
+    switch (id) {
+      case 'params':
+        return count(paramCount)
+      case 'auth':
+        return auth.type !== 'inherit' && auth.type !== 'none' ? dot : null
+      case 'headers':
+        return count(activeHeaders)
+      case 'body':
+        if (bodyCheck?.verdict === 'valid')
+          return <Icon name="check" size={12} className="text-emerald-400" />
+        if (bodyCheck?.verdict === 'invalid')
+          return (
             <span className="rounded-full bg-red-500/15 px-1.5 text-[10px] font-semibold leading-4 text-red-400">
               {bodyCheck.issues.filter((i) => i.severity === 'error').length}
             </span>
-          )}
-        </button>
-        <button className={tabClass('tests')} onClick={() => setTab('tests')}>
-          Tests {assertions.length > 0 && <span className={pill}>{assertions.length}</span>}
-        </button>
-        <button className={tabClass('scripts')} onClick={() => setTab('scripts')}>
-          Scripts
-          {(preScript.trim() || postScript.trim()) && (
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-          )}
-        </button>
-        <button className={tabClass('extract')} onClick={() => setTab('extract')}>
-          Extraer {extractions.length > 0 && <span className={pill}>{extractions.length}</span>}
-        </button>
-        <button className={tabClass('notes')} onClick={() => setTab('notes')}>
-          Notas
-          {description.trim() && <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />}
-        </button>
-        <button className={tabClass('config')} onClick={() => setTab('config')}>
-          Ajustes
-          {hasOverrides(overrides) && <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />}
-        </button>
+          )
+        return null
+      case 'tests':
+        return count(assertions.length)
+      case 'scripts':
+        return preScript.trim() || postScript.trim() ? dot : null
+      case 'extract':
+        return count(extractions.length)
+      case 'notes':
+        return description.trim() ? dot : null
+      case 'config':
+        return hasOverrides(overrides) ? dot : null
+    }
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="@container flex overflow-x-auto border-b border-zinc-800 px-2 [scrollbar-width:none]">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={tabClass(t.id)}
+            onClick={() => setTab(t.id)}
+            title={t.label}
+            aria-label={t.label}
+          >
+            <Icon name={t.icon} size={15} className={tab === t.id ? 'text-blue-400' : ''} />
+            <span className="hidden @3xl:inline">{t.label}</span>
+            {tabBadge(t.id)}
+          </button>
+        ))}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
@@ -217,15 +232,15 @@ export function RequestPanel(): React.JSX.Element {
               </p>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="inline-flex w-fit items-center gap-0.5 rounded-lg bg-zinc-800 p-0.5">
               {BODY_MODES.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => setBodyForm({ ...bodyForm, mode: m.id })}
-                  className={`rounded px-2 py-1 text-xs ${
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                     bodyForm.mode === m.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                      ? 'bg-zinc-900 text-zinc-100 shadow-sm'
+                      : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
                   {m.label}

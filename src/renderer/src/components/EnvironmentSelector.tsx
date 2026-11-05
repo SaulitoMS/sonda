@@ -26,7 +26,7 @@ export function EnvironmentSelector({ onManage }: { onManage: () => void }): Rea
         <select
           value={data.activeId ?? ''}
           onChange={(e) => setActive(e.target.value || null)}
-          className={`max-w-28 appearance-none rounded-md border bg-zinc-800 py-1 pl-7 pr-6 text-xs outline-none transition-colors sm:max-w-44 ${selectClass}`}
+          className={`max-w-28 appearance-none rounded-lg border bg-zinc-800 py-1.5 pl-7 pr-6 text-xs outline-none transition-colors sm:max-w-44 ${selectClass}`}
           title={
             guarded ? 'Entorno protegido: pide confirmación al modificar datos' : 'Entorno activo'
           }
@@ -52,18 +52,20 @@ export function EnvironmentSelector({ onManage }: { onManage: () => void }): Rea
       )}
       {guarded && (
         <span
-          className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-400"
+          className="flex items-center gap-1 rounded-md bg-red-500/15 px-1.5 py-1 text-[10px] font-bold uppercase text-red-400"
           title="Las peticiones que modifican datos piden confirmación"
         >
-          Protegido
+          <Icon name="shield" size={11} />
+          <span className="hidden lg:inline">Protegido</span>
         </span>
       )}
       <button
         onClick={onManage}
-        className="hidden rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100 sm:block"
+        className="rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
         title="Gestionar entornos"
+        aria-label="Gestionar entornos"
       >
-        Entornos
+        <Icon name="settings" size={15} />
       </button>
     </div>
   )

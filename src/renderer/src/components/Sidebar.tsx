@@ -4,7 +4,7 @@ import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useTabsStore } from '../store/useTabsStore'
-import { useEnvironmentStore } from '../store/useEnvironmentStore'
+
 import { ScopeAuthModal, type AuthScope } from './ScopeAuthModal'
 import { ScopeHeadersModal, type HeadersScope } from './ScopeHeadersModal'
 import { ScopeScriptsModal, type ScriptsScope } from './ScopeScriptsModal'
@@ -522,20 +522,6 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
     await refresh()
   }
 
-  const importPostman = async (): Promise<void> => {
-    const result = await window.api.importPostman()
-    if (!result) return
-    if (!result.ok) {
-      alert(result.error)
-      return
-    }
-    await Promise.all([refresh(), useEnvironmentStore.getState().load()])
-    setExpanded((e) => ({ ...e, [result.collectionId]: true }))
-    if (result.warnings?.length) {
-      alert(`Se importaron ${result.count} peticiones.\n\n${result.warnings.join('\n')}`)
-    }
-  }
-
   const exportPostman = async (id: string): Promise<void> => {
     const result = await window.api.exportPostman(id)
     if (!result) return
@@ -888,34 +874,28 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
 
   return (
     <aside className="flex w-full min-w-0 flex-col bg-zinc-950/40">
-      <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-2.5">
+        <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+          <Icon name="folderOpen" size={14} />
           Colecciones
         </span>
-        <div className="flex gap-0.5">
+        <div className="flex items-center gap-0.5">
           <button
             onClick={onImport}
-            className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
-            title="Importar Swagger / OpenAPI"
+            className="rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+            title="Importar (Swagger, Postman, Insomnia, HAR)"
+            aria-label="Importar colección"
           >
-            <Icon name="download" size={13} />
-            Swagger
+            <Icon name="download" size={15} />
           </button>
-          <button
-            onClick={importPostman}
-            className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
-            title="Importar colección de Postman o Insomnia (.json) o captura HAR (.har)"
-          >
-            <Icon name="download" size={13} />
-            Postman
-          </button>
+
           <button
             onClick={() => setCreating(true)}
-            className="rounded-md bg-blue-500/15 p-1 text-blue-400 transition-colors hover:bg-blue-500/25"
+            className="ml-0.5 rounded-md bg-blue-500/15 p-1.5 text-blue-400 transition-colors hover:bg-blue-500/25"
             title="Nueva colección"
             aria-label="Nueva colección"
           >
-            <Icon name="plus" size={14} />
+            <Icon name="plus" size={15} />
           </button>
         </div>
       </div>
@@ -983,14 +963,17 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
             </span>
             <div>
               <p className="text-xs font-medium text-zinc-300">Aún no tienes colecciones</p>
-              <p className="mt-1 text-xs text-zinc-500">Importa un Swagger o crea una nueva.</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Importa desde Swagger, Postman, Insomnia o HAR, o crea una nueva.
+              </p>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={onImport}
-                className="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
+                className="flex items-center gap-1.5 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-500"
               >
-                Importar Swagger
+                <Icon name="download" size={13} />
+                Importar
               </button>
               <button
                 onClick={() => setCreating(true)}

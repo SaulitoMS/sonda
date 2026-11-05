@@ -681,6 +681,10 @@ export function ResponsePanel(): React.JSX.Element {
         : 'text-zinc-500 after:bg-transparent hover:text-zinc-300'
     }`
 
+  // La pestaña activa muestra su nombre; las demás solo el icono (en pantallas grandes, todas)
+  const tabLabel = (t: Tab): string => (current === t ? '' : 'hidden 2xl:inline')
+  const tabIcon = (t: Tab): string => (current === t ? 'text-blue-400' : '')
+
   if (loading) {
     if (live) return <LiveStreamView stream={live} />
     return (
@@ -747,23 +751,30 @@ export function ResponsePanel(): React.JSX.Element {
 
       <div className="flex flex-wrap items-center justify-between border-b border-zinc-800 px-2">
         <div className="flex min-w-0 overflow-x-auto [scrollbar-width:none]">
-          <button className={tabClass('body')} onClick={() => setTab('body')}>
-            Body
+          <button className={tabClass('body')} onClick={() => setTab('body')} title="Body">
+            <Icon name="braces" size={15} className={tabIcon('body')} />
+            <span className={tabLabel('body')}>Body</span>
           </button>
-          <button className={tabClass('headers')} onClick={() => setTab('headers')}>
-            Headers ({Object.keys(response.headers).length})
+          <button className={tabClass('headers')} onClick={() => setTab('headers')} title="Headers">
+            <Icon name="list" size={15} className={tabIcon('headers')} />
+            <span className={tabLabel('headers')}>Headers</span>
+            <span className="rounded-full bg-zinc-800 px-1.5 text-[10px] font-semibold leading-4 text-zinc-400">
+              {Object.keys(response.headers).length}
+            </span>
           </button>
           {validation && (
-            <button className={tabClass('schema')} onClick={() => setTab('schema')}>
-              Schema{' '}
+            <button className={tabClass('schema')} onClick={() => setTab('schema')} title="Schema">
+              <Icon name="fileCheck" size={15} className={tabIcon('schema')} />
+              <span className={tabLabel('schema')}>Schema</span>
               <span className={verdictBadge(validation).color}>
                 {verdictBadge(validation).label}
               </span>
             </button>
           )}
           {hasTests && (
-            <button className={tabClass('tests')} onClick={() => setTab('tests')}>
-              Tests{' '}
+            <button className={tabClass('tests')} onClick={() => setTab('tests')} title="Tests">
+              <Icon name="checkCircle" size={15} className={tabIcon('tests')} />
+              <span className={tabLabel('tests')}>Tests</span>
               <span
                 className={
                   summarizeAssertions(assertionResults).passed === assertionResults.length
@@ -775,40 +786,44 @@ export function ResponsePanel(): React.JSX.Element {
               </span>
             </button>
           )}
-          <button className={tabClass('changes')} onClick={() => setTab('changes')}>
-            Cambios
+          <button className={tabClass('changes')} onClick={() => setTab('changes')} title="Cambios">
+            <Icon name="gitCompare" size={15} className={tabIcon('changes')} />
+            <span className={tabLabel('changes')}>Cambios</span>
             {diff.state === 'ready' && (
-              <span
-                className={`ml-1 ${diff.changes.length === 0 ? 'text-emerald-400' : 'text-amber-400'}`}
-              >
+              <span className={diff.changes.length === 0 ? 'text-emerald-400' : 'text-amber-400'}>
                 {diff.changes.length === 0 ? '✓' : diff.changes.length}
               </span>
             )}
           </button>
-
-          <button className={tabClass('security')} onClick={() => setTab('security')}>
-            Seguridad
+          <button
+            className={tabClass('security')}
+            onClick={() => setTab('security')}
+            title="Seguridad"
+          >
+            <Icon name="shield" size={15} className={tabIcon('security')} />
+            <span className={tabLabel('security')}>Seguridad</span>
             <span
-              className={`ml-1 ${
+              className={
                 securityFindings.length === 0
                   ? 'text-emerald-400'
                   : securityFindings.some((f) => f.severity === 'high')
                     ? 'text-red-400'
                     : 'text-amber-400'
-              }`}
+              }
             >
               {securityFindings.length === 0 ? '✓' : securityFindings.length}
             </span>
           </button>
-          <button className={tabClass('limits')} onClick={() => setTab('limits')}>
-            Límites
+          <button className={tabClass('limits')} onClick={() => setTab('limits')} title="Límites">
+            <Icon name="gauge" size={15} className={tabIcon('limits')} />
+            <span className={tabLabel('limits')}>Límites</span>
             {limitInsights.length > 0 && (
               <span
-                className={`ml-1 ${
+                className={
                   limitInsights.some((i) => i.level === 'warn')
                     ? 'text-amber-400'
                     : 'text-emerald-400'
-                }`}
+                }
               >
                 {limitInsights.some((i) => i.level === 'warn') ? '!' : '✓'}
               </span>

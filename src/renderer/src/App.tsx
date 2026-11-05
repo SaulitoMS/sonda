@@ -542,7 +542,11 @@ function App(): React.JSX.Element {
         ]
       : []),
     { id: 'envs', label: 'Gestionar entornos', run: () => setModal('envs') },
-    { id: 'import', label: 'Importar Swagger / OpenAPI', run: () => setModal('import') },
+    {
+      id: 'import',
+      label: 'Importar (Swagger, Postman, Insomnia, HAR)',
+      run: () => setModal('import')
+    },
     {
       id: 'sidebar',
       label: (isNarrow ? drawerOpen : layout.sidebarOpen)
@@ -620,8 +624,8 @@ function App(): React.JSX.Element {
         </button>
 
         <div className="flex select-none items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-linear-to-br from-blue-500 to-violet-500 text-white">
-            <Icon name="zap" size={13} />
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-linear-to-br from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/30">
+            <Icon name="zap" size={14} />
           </span>
           <span className="hidden text-sm font-bold tracking-tight text-zinc-100 sm:inline">
             Sonda
@@ -631,12 +635,12 @@ function App(): React.JSX.Element {
         {/* Buscador global: barra en pantallas anchas, botón de lupa en estrechas */}
         <button
           onClick={() => setModal('palette')}
-          className="mx-auto hidden h-8 w-full max-w-md items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-left text-xs text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-400 md:flex"
+          className="mx-auto hidden h-8 w-full max-w-md items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-left text-xs text-zinc-500 transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-400 md:flex"
           title="Buscar peticiones y acciones"
         >
           <Icon name="search" size={13} />
           <span className="flex-1 truncate">Buscar peticiones y acciones…</span>
-          <kbd className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
+          <kbd className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-zinc-400">
             {MOD}K
           </kbd>
         </button>
@@ -651,11 +655,12 @@ function App(): React.JSX.Element {
 
         <div className="flex shrink-0 items-center gap-1">
           <EnvironmentSelector onManage={() => setModal('envs')} />
-          <span className="mx-1 hidden h-4 w-px bg-zinc-800 sm:block" />
+          <span className="mx-1 hidden h-4 w-px bg-zinc-700 sm:block" />
           <button
-            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-500 sm:px-3"
+            className="flex items-center gap-1.5 rounded-lg bg-linear-to-b from-blue-500 to-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-indigo-500/20 transition hover:from-blue-400 hover:to-blue-500 active:scale-[0.98] sm:px-3"
             onClick={save}
             title={`Guardar (${MOD}S)`}
+            aria-label="Guardar"
           >
             <Icon name="save" size={14} />
             <span className="hidden sm:inline">Guardar</span>
