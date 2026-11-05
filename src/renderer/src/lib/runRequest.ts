@@ -21,7 +21,13 @@ import type {
   SendRequestResult
 } from '../../../shared/types'
 import { validateRequestBody, validateResponse } from '../../../shared/validate'
-import { buildVarMap, interpolate, withCollectionVariables } from '../../../shared/variables'
+import {
+  buildVarMap,
+  interpolate,
+  withCollectionVariables,
+  withGlobalVariables
+} from '../../../shared/variables'
+import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { looksLikeXml } from '../../../shared/bodyType'
 import { collectionVarsForPath } from './collectionVariables'
 import { resolveHeadersForPath } from './inheritedHeaders'
@@ -92,7 +98,12 @@ export async function executeRequest(
   options: { requestId?: string; path?: string | null; live?: boolean } = {}
 ): Promise<ExecuteResult> {
   // Las variables de la colección valen solo si el entorno no define la misma clave
-  const vars = buildVarMap(withCollectionVariables(env, collectionVarsForPath(options.path)))
+  const vars = buildVarMap(
+    withGlobalVariables(
+      withCollectionVariables(env, collectionVarsForPath(options.path)),
+      useEnvironmentStore.getState().data.globals
+    )
+  )
   const missing = new Set<string>()
   const warnings: string[] = []
   // Variables que asignaron los scripts: se guardan en el entorno igual que las extracciones

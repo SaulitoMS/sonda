@@ -5,6 +5,7 @@ import { downloadText } from '../lib/download'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'
 import { diffEnvironments, type EnvDiffRow, type EnvDiffStatus } from '../../../shared/envDiff'
+import { GLOBALS_ID } from '../../../shared/variables'
 
 const newVar = (): EnvVariable => ({
   id: crypto.randomUUID(),
@@ -28,7 +29,12 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
   const { data, save } = useEnvironmentStore()
 
   // Trabajamos sobre una copia; solo se persiste al pulsar "Guardar"
-  const [draft, setDraft] = useState<EnvironmentsData>(() => structuredClone(data))
+  const [draft, setDraft] = useState<EnvironmentsData>(() => {
+    const copy = structuredClone(data)
+    // Fila vacía al final, como en el resto del editor
+    copy.globals = [...(copy.globals ?? []), newVar()]
+    return copy
+  })
   const [selectedId, setSelectedId] = useState<string | null>(
     data.activeId ?? data.environments[0]?.id ?? null
   )
@@ -41,21 +47,30 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
 
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const selected = draft.environments.find((e) => e.id === selectedId) ?? null
+  const isGlobals = selectedId === GLOBALS_ID
+  const selected: Environment | null = isGlobals
+    ? { id: GLOBALS_ID, name: 'Variables globales', variables: draft.globals ?? [] }
+    : (draft.environments.find((e) => e.id === selectedId) ?? null)
 
-  const other = draft.environments.find((e) => e.id === compareId && e.id !== selected?.id) ?? null
+  const other = isGlobals
+    ? null
+    : (draft.environments.find((e) => e.id === compareId && e.id !== selected?.id) ?? null)
   const diffRows = selected && other ? diffEnvironments(selected, other) : []
 
   const counts = { different: 0, onlyA: 0, onlyB: 0, same: 0 }
   for (const r of diffRows) counts[r.status]++
   const shownRows = onlyDiff ? diffRows.filter((r) => r.status !== 'same') : diffRows
 
-  const updateEnv = (id: string, patch: Partial<Environment>): void =>
+  const updateEnv = (id: string, patch: Partial<Environment>): void => {
+    if (id === GLOBALS_ID) {
+      if (patch.variables) setDraft((d) => ({ ...d, globals: patch.variables }))
+      return
+    }
     setDraft((d) => ({
       ...d,
       environments: d.environments.map((e) => (e.id === id ? { ...e, ...patch } : e))
     }))
-
+  }
   const addEnv = (): void => {
     const env: Environment = {
       id: crypto.randomUUID(),
@@ -80,6 +95,7 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
   const removeEnv = (id: string): void => {
     const rest = draft.environments.filter((e) => e.id !== id)
     setDraft((d) => ({
+      ...d,
       activeId: d.activeId === id ? null : d.activeId,
       environments: rest
     }))
@@ -204,7 +220,10 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
           variables: e.variables
             .filter((v) => v.key.trim())
             .map((v) => ({ ...v, key: v.key.trim() }))
-        }))
+        })),
+        globals: (draft.globals ?? [])
+          .filter((v) => v.key.trim())
+          .map((v) => ({ ...v, key: v.key.trim() }))
       })
       onClose()
     } catch (err) {
@@ -219,6 +238,17 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
         {/* Lista de entornos */}
         <div className="flex w-48 shrink-0 flex-col border-r border-zinc-800 pr-3">
           <div className="min-h-0 flex-1 overflow-auto">
+            <div
+              onClick={() => setSelectedId(GLOBALS_ID)}
+              className={`mb-0.5 flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-xs ${
+                isGlobals ? 'bg-blue-500/15 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800/70'
+              }`}
+              title="Valen en todos los entornos"
+            >
+              <span className="flex-1 truncate">Globales</span>
+              <span className="text-[10px] text-zinc-500">todos</span>
+            </div>
+            <div className="my-1 border-t border-zinc-800" />
             {draft.environments.length === 0 && (
               <p className="text-xs text-zinc-500">Aún no hay entornos.</p>
             )}
@@ -256,7 +286,7 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
               </button>
               <button
                 onClick={duplicateEnv}
-                disabled={!selected}
+                disabled={!selected || isGlobals}
                 className="rounded-md bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
                 title="Duplicar entorno"
               >
@@ -298,23 +328,35 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
             <p className="m-auto text-xs text-zinc-500">Crea un entorno para empezar.</p>
           ) : (
             <>
-              <input
-                value={selected.name}
-                onChange={(e) => updateEnv(selected.id, { name: e.target.value })}
-                placeholder="Nombre del entorno"
-                className={`${inputClass} mb-2 font-sans text-sm font-semibold`}
-              />
+              {isGlobals ? (
+                <p className="mb-3 text-sm font-semibold text-zinc-200">
+                  Variables globales
+                  <span className="mt-1 block text-xs font-normal text-zinc-500">
+                    Valen en todos los entornos. Si un entorno o una colección define la misma
+                    variable, esa tiene prioridad.
+                  </span>
+                </p>
+              ) : (
+                <>
+                  <input
+                    value={selected.name}
+                    onChange={(e) => updateEnv(selected.id, { name: e.target.value })}
+                    placeholder="Nombre del entorno"
+                    className={`${inputClass} mb-2 font-sans text-sm font-semibold`}
+                  />
 
-              <label className="mb-3 flex items-center gap-2 text-xs text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={selected.protected === true}
-                  onChange={(e) => updateEnv(selected.id, { protected: e.target.checked })}
-                />
-                Entorno protegido (confirmar antes de enviar POST, PUT, PATCH y DELETE)
-              </label>
+                  <label className="mb-3 flex items-center gap-2 text-xs text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={selected.protected === true}
+                      onChange={(e) => updateEnv(selected.id, { protected: e.target.checked })}
+                    />
+                    Entorno protegido (confirmar antes de enviar POST, PUT, PATCH y DELETE)
+                  </label>
+                </>
+              )}
 
-              {draft.environments.length > 1 && (
+              {!isGlobals && draft.environments.length > 1 && (
                 <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
                   <span>Comparar con</span>
                   <select

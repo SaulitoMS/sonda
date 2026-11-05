@@ -3,7 +3,7 @@ import { BODY_MODES } from '../../../shared/bodyForm'
 import { applyQuery, parseQuery } from '../../../shared/params'
 import type { SchemaValidation } from '../../../shared/types'
 import { validateRequestBody } from '../../../shared/validate'
-import { buildVarMap, interpolate } from '../../../shared/variables'
+import { buildVarMap, interpolate, withGlobalVariables } from '../../../shared/variables'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore, type KeyValue } from '../store/useRequestStore'
 import { AssertionsPanel } from './AssertionsPanel'
@@ -80,7 +80,10 @@ export function RequestPanel(): React.JSX.Element {
   const bodyCheck = useMemo<SchemaValidation | null>(() => {
     if (!requestSchema || bodyForm.mode !== 'raw') return null
     const env = envData.environments.find((e) => e.id === envData.activeId)
-    const { text, missing } = interpolate(body, buildVarMap(env))
+    const { text, missing } = interpolate(
+      body,
+      buildVarMap(withGlobalVariables(env ?? null, envData.globals))
+    )
     if (missing.length > 0) {
       const names = missing.map((n) => `{{${n}}}`).join(', ')
       return {

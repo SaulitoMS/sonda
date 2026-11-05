@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { decodeJwt, describeExpiry } from '../../../shared/jwt'
-import { buildVarMap, interpolate } from '../../../shared/variables'
+import { buildVarMap, interpolate, withGlobalVariables } from '../../../shared/variables'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 
 const CLAIMS = ['sub', 'iss', 'aud', 'scope'] as const
@@ -12,6 +12,7 @@ export function JwtInfo({ token }: { token: string }): React.JSX.Element | null 
   const env = useEnvironmentStore(
     (s) => s.data.environments.find((e) => e.id === s.data.activeId) ?? null
   )
+  const globals = useEnvironmentStore((s) => s.data.globals)
   const [open, setOpen] = useState(false)
   const [now, setNow] = useState(() => Date.now())
 
@@ -22,8 +23,11 @@ export function JwtInfo({ token }: { token: string }): React.JSX.Element | null 
   }, [])
 
   const jwt = useMemo(
-    () => decodeJwt(interpolate(token, buildVarMap(env), { dynamic: false }).text),
-    [token, env]
+    () =>
+      decodeJwt(
+        interpolate(token, buildVarMap(withGlobalVariables(env, globals)), { dynamic: false }).text
+      ),
+    [token, env, globals]
   )
   if (!jwt) return null
 

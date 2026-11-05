@@ -138,8 +138,12 @@ export async function loadEnvironments(root: string): Promise<EnvironmentsData> 
     const data = JSON.parse(
       await fs.readFile(join(root, '.sonda', 'environments.json'), 'utf-8')
     ) as EnvironmentsData
-    return { activeId: data.activeId ?? null, environments: data.environments ?? [] }
+    return {
+      activeId: data.activeId ?? null,
+      environments: data.environments ?? [],
+      globals: data.globals ?? []
+    }
   } catch {
-    return { activeId: null, environments: [] }
+    return { activeId: null, environments: [], globals: [] }
   }
 }

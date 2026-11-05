@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { buildVarMap, interpolate } from '../../../shared/variables'
+import { buildVarMap, interpolate, withGlobalVariables } from '../../../shared/variables'
 import {
   hexPreview,
   hexToBytes,
@@ -240,7 +240,8 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
 
   /** Reemplaza {{variables}} con el entorno activo. null si falta alguna (y avisa) */
   const resolve = useCallback((text: string): string | null => {
-    const vars = buildVarMap(useEnvironmentStore.getState().getActive())
+    const store = useEnvironmentStore.getState()
+    const vars = buildVarMap(withGlobalVariables(store.getActive(), store.data.globals))
     const { text: out, missing } = interpolate(text, vars)
     if (missing.length > 0) {
       setError(`Faltan variables: ${missing.map((m) => `{{${m}}}`).join(', ')}`)

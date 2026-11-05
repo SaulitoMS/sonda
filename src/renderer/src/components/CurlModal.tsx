@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { buildVarMap, interpolate } from '../../../shared/variables'
+import { buildVarMap, interpolate, withGlobalVariables } from '../../../shared/variables'
 import { appendQuery } from '../../../shared/params'
 import { applyCurl } from '../lib/applyCurl'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
@@ -182,11 +182,10 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
 
   const output = useMemo(() => {
     // Los secretos nunca se resuelven: se quedan como {{nombre}}
+    const merged = withGlobalVariables(activeEnv, envData.globals)
     const vars = resolve
       ? buildVarMap(
-          activeEnv
-            ? { ...activeEnv, variables: activeEnv.variables.filter((v) => !v.secret) }
-            : null
+          merged ? { ...merged, variables: merged.variables.filter((v) => !v.secret) } : null
         )
       : {}
     const r = (text: string): string => interpolate(text, vars, { dynamic: resolve }).text
@@ -232,7 +231,19 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       user: basicUser === ':' ? undefined : basicUser
     }
     return generateCode(lang, redact ? redactRequest(request) : request)
-  }, [method, url, headers, body, bodyForm, auth, resolve, activeEnv, lang, redact])
+  }, [
+    method,
+    url,
+    headers,
+    body,
+    bodyForm,
+    auth,
+    resolve,
+    activeEnv,
+    envData.globals,
+    lang,
+    redact
+  ])
 
   const hasPlaceholders = /\{\{\s*\$?[\w.-]+\s*\}\}/.test(output)
 

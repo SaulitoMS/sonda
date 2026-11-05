@@ -22,6 +22,7 @@ import {
   loadEnvironments,
   readRequest
 } from './workspace'
+import { withGlobalVariables } from '../shared/variables'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -295,7 +296,7 @@ async function main(argv: string[]): Promise<number> {
 
   // ----- Ejecución -----
   // Lo extraído por una petición queda disponible para las siguientes (solo en memoria)
-  let state: Environment | null = env
+  let state: Environment | null = withGlobalVariables(env, envData.globals)
   const rows: ReportInput[] = []
   const ICON: Record<RunStatus, string> = {
     pass: c.green('✓'),

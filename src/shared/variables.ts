@@ -1,5 +1,5 @@
 import { resolveDynamic } from './dynamicVariables'
-import type { Environment, KeyValueData } from './types'
+import type { Environment, EnvVariable, KeyValueData } from './types'
 
 // El $ inicial es opcional: {{nombre}} es del entorno, {{$nombre}} es dinámica
 const VAR_RE = /\{\{\s*(\$?[\w.-]+)\s*\}\}/g
@@ -42,6 +42,32 @@ export function withCollectionVariables(
     name: env?.name ?? 'Colección',
     variables: [...base, ...added]
   }
+}
+
+/** Id reservado para mostrar las variables globales como una entrada más del editor de entornos */
+export const GLOBALS_ID = '__globals__'
+
+/**
+ * Suma las variables globales a un entorno. Tienen la prioridad más baja:
+ * si el entorno (o la colección ya mezclada en él) define la misma clave, gana esa.
+ */
+export function withGlobalVariables(
+  env: Environment | null,
+  globals: EnvVariable[] | undefined
+): Environment | null {
+  const extra = (globals ?? []).filter((v) => v.enabled && v.key.trim())
+  if (extra.length === 0) return env
+
+  const base = env?.variables ?? []
+  const taken = new Set(base.filter((v) => v.enabled && v.key.trim()).map((v) => v.key.trim()))
+  const added = extra
+    .filter((v) => !taken.has(v.key.trim()))
+    .map((v) => ({ ...v, key: v.key.trim() }))
+  if (added.length === 0) return env
+
+  return env
+    ? { ...env, variables: [...base, ...added] }
+    : { id: 'globals', name: 'Globales', variables: added }
 }
 
 export interface InterpolateOptions {

@@ -5,7 +5,7 @@ import {
   type FuzzCase,
   type FuzzVerdict
 } from '../../../shared/fuzz'
-import { buildVarMap, interpolate } from '../../../shared/variables'
+import { buildVarMap, interpolate, withGlobalVariables } from '../../../shared/variables'
 import { executeRequest } from '../lib/runRequest'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { useRequestStore } from '../store/useRequestStore'
@@ -64,7 +64,8 @@ export function FuzzModal({ onClose }: Props): React.JSX.Element {
   }, [])
 
   const plan = useMemo(() => {
-    const env = useEnvironmentStore.getState().getActive()
+    const store = useEnvironmentStore.getState()
+    const env = withGlobalVariables(store.getActive(), store.data.globals)
     return buildFuzzCases({
       schema: requestSchema,
       method,

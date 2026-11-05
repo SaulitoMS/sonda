@@ -484,6 +484,8 @@ export interface Environment {
 export interface EnvironmentsData {
   activeId: string | null
   environments: Environment[]
+  /** Variables que valen en todos los entornos (tienen la prioridad más baja) */
+  globals?: EnvVariable[]
 }
 
 // ---------- Validación de respuestas ----------

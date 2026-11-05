@@ -62,7 +62,7 @@ export function VariablesAuditModal({ onClose }: { onClose: () => void }): React
       ],
       requests: items
     }))
-    return auditVariables(groups, envData.environments)
+    return auditVariables(groups, envData.environments, envData.globals ?? [])
   }, [loaded, envData])
 
   // Crea la variable (vacía) en el entorno activo; el análisis se recalcula solo

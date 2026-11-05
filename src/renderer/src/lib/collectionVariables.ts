@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { withCollectionVariables } from '../../../shared/variables'
+import { withCollectionVariables, withGlobalVariables } from '../../../shared/variables'
 import type { Environment, KeyValueData } from '../../../shared/types'
 import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
@@ -12,7 +12,7 @@ export function collectionVarsForPath(path: string | null | undefined): KeyValue
   return useCollectionsStore.getState().collections.find((c) => c.id === id)?.variables
 }
 
-/** Entorno activo más las variables de la colección de la pestaña abierta (para resaltar en los campos) */
+/** Entorno activo + variables de la colección de la pestaña abierta + globales (para resaltar en los campos) */
 export function useEffectiveEnv(): Environment | null {
   const data = useEnvironmentStore((s) => s.data)
   const currentFile = useRequestStore((s) => s.currentFile)
@@ -21,6 +21,10 @@ export function useEffectiveEnv(): Environment | null {
   return useMemo(() => {
     const env = data.environments.find((e) => e.id === data.activeId) ?? null
     const id = currentFile?.split('/')[0]
-    return withCollectionVariables(env, collections.find((c) => c.id === id)?.variables)
+    const withCollection = withCollectionVariables(
+      env,
+      collections.find((c) => c.id === id)?.variables
+    )
+    return withGlobalVariables(withCollection, data.globals)
   }, [data, currentFile, collections])
 }

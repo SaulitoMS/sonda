@@ -1,4 +1,4 @@
-import type { AuthConfig, Environment, KeyValueData, SavedRequest } from './types'
+import type { AuthConfig, EnvVariable, Environment, KeyValueData, SavedRequest } from './types'
 
 // Solo variables de entorno: las {{$dinámicas}} no se definen en ningún lado
 const VAR_RE = /\{\{\s*([\w.-]+)\s*\}\}/g
@@ -71,8 +71,12 @@ export interface VarAuditResult {
   unusedVars: UnusedVar[]
 }
 
-export function auditVariables(groups: AuditGroup[], environments: Environment[]): VarAuditResult {
-  // Definidas para todos: entornos, extracciones y scripts que hacen env.set
+export function auditVariables(
+  groups: AuditGroup[],
+  environments: Environment[],
+  globals: EnvVariable[] = []
+): VarAuditResult {
+  // Definidas para todos: entornos, globales, extracciones y scripts que hacen env.set
   const globalDefined = new Set<string>()
   const scriptText: string[] = []
   const envDefs = new Map<string, string[]>()
@@ -85,6 +89,13 @@ export function auditVariables(groups: AuditGroup[], environments: Environment[]
       envDefs.set(key, [...(envDefs.get(key) ?? []), env.name])
     }
   }
+  for (const v of globals) {
+    const key = v.key.trim()
+    if (!v.enabled || !key) continue
+    globalDefined.add(key)
+    envDefs.set(key, [...(envDefs.get(key) ?? []), 'Globales'])
+  }
+
   for (const g of groups) {
     for (const { saved } of g.requests) {
       for (const e of saved.extractions ?? []) {

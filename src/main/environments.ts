@@ -2,7 +2,7 @@ import { app, ipcMain, safeStorage } from 'electron'
 import { randomUUID } from 'crypto'
 import { promises as fs } from 'fs'
 import { dirname, join } from 'path'
-import type { Environment, EnvironmentsData } from '../shared/types'
+import type { EnvVariable, Environment, EnvironmentsData } from '../shared/types'
 import { getWorkspacePath } from './settings'
 
 // Valores públicos: dentro del workspace (versionable)
@@ -40,6 +40,12 @@ function decrypt(b64: string | undefined): string {
   }
 }
 
+const revealSecrets = (
+  vars: EnvVariable[] | undefined,
+  secrets: Record<string, string>
+): EnvVariable[] =>
+  (vars ?? []).map((v) => ({ ...v, value: v.secret ? decrypt(secrets[v.id]) : v.value }))
+
 export async function loadEnvironments(): Promise<EnvironmentsData> {
   const data = await readJson<EnvironmentsData>(envFile(), { activeId: null, environments: [] })
   const secrets = await readJson<Record<string, string>>(secretsFile(), {})
@@ -48,11 +54,9 @@ export async function loadEnvironments(): Promise<EnvironmentsData> {
     activeId: data.activeId ?? null,
     environments: (data.environments ?? []).map((env) => ({
       ...env,
-      variables: (env.variables ?? []).map((v) => ({
-        ...v,
-        value: v.secret ? decrypt(secrets[v.id]) : v.value
-      }))
-    }))
+      variables: revealSecrets(env.variables, secrets)
+    })),
+    globals: revealSecrets(data.globals, secrets)
   }
 }
 
@@ -62,16 +66,20 @@ export async function saveEnvironments(data: EnvironmentsData): Promise<void> {
   const secrets: Record<string, string> = {}
 
   // Si el cifrado falla, lanza antes de escribir cualquier archivo
+  const hideSecrets = (vars: EnvVariable[]): EnvVariable[] =>
+    vars.map((v) => {
+      if (!v.secret) return v
+      if (v.value) secrets[v.id] = encrypt(v.value)
+      return { ...v, value: '' }
+    })
+
   const publicData: EnvironmentsData = {
     activeId: data.activeId ?? null,
     environments: data.environments.map((env) => ({
       ...env,
-      variables: env.variables.map((v) => {
-        if (!v.secret) return v
-        if (v.value) secrets[v.id] = encrypt(v.value)
-        return { ...v, value: '' }
-      })
-    }))
+      variables: hideSecrets(env.variables)
+    })),
+    globals: hideSecrets(data.globals ?? [])
   }
 
   await writeJson(secretsFile(), secrets)
@@ -86,7 +94,11 @@ export async function addImportedEnvironment(name: string, baseUrl: string): Pro
     name,
     variables: [{ id: randomUUID(), key: 'baseUrl', value: baseUrl, secret: false, enabled: true }]
   }
-  await saveEnvironments({ activeId: env.id, environments: [...data.environments, env] })
+  await saveEnvironments({
+    activeId: env.id,
+    environments: [...data.environments, env],
+    globals: data.globals
+  })
 }
 
 /** Lo usa el importador de Postman: crea un entorno con las variables de la colección y lo activa */
@@ -106,7 +118,11 @@ export async function addEnvironmentWithVariables(
       enabled: true
     }))
   }
-  await saveEnvironments({ activeId: env.id, environments: [...data.environments, env] })
+  await saveEnvironments({
+    activeId: env.id,
+    environments: [...data.environments, env],
+    globals: data.globals
+  })
 }
 
 export function registerEnvironmentHandlers(): void {
