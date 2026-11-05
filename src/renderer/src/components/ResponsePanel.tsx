@@ -1019,7 +1019,7 @@ export function ResponsePanel(): React.JSX.Element {
         )}
 
         {current === 'headers' && <HeadersTable headers={response.headers} />}
-        
+
         {current === 'schema' && validation && <SchemaReport validation={validation} />}
 
         {current === 'tests' && hasTests && <TestsReport results={assertionResults} />}

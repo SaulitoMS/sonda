@@ -384,8 +384,16 @@ describe('validateResponse: discriminator', () => {
     const plain: ResponseSchemas = {
       '200': {
         oneOf: [
-          { type: 'object', required: ['cat'], properties: { cat: { type: 'string' } } },
-          { type: 'object', required: ['dog', 'age'], properties: { dog: { type: 'string' } } }
+          {
+            type: 'object',
+            required: ['cat'],
+            properties: { kind: { type: 'string' }, cat: { type: 'string' } }
+          },
+          {
+            type: 'object',
+            required: ['dog', 'age'],
+            properties: { kind: { type: 'string' }, dog: { type: 'string' } }
+          }
         ],
         discriminator: { propertyName: 'kind' }
       }

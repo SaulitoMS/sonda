@@ -80,7 +80,9 @@ describe('filenameFromDisposition', () => {
 
   it('prefiere filename* codificado en UTF-8', () => {
     expect(
-      filenameFromDisposition("attachment; filename=\"x.txt\"; filename*=UTF-8''informe%20final.pdf")
+      filenameFromDisposition(
+        'attachment; filename="x.txt"; filename*=UTF-8\'\'informe%20final.pdf'
+      )
     ).toBe('informe final.pdf')
   })
 

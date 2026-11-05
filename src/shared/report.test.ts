@@ -159,7 +159,9 @@ describe('reportToCsv', () => {
       assertionResults: [{ id: 'b', label: 'Tiempo menor a 50', passed: false, message: 'fue 80' }]
     }
   ]
-  const csv = reportToCsv(buildReport({ collection: 'petstore', environment: null, rows: csvRows, now }))
+  const csv = reportToCsv(
+    buildReport({ collection: 'petstore', environment: null, rows: csvRows, now })
+  )
   const lines = csv.slice(1).trim().split('\r\n')
 
   it('empieza con BOM y trae encabezado más una línea por petición', () => {
