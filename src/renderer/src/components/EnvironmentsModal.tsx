@@ -12,6 +12,7 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore'
 import { Modal } from './Modal'
 import { diffEnvironments, type EnvDiffRow, type EnvDiffStatus } from '../../../shared/envDiff'
 import { GLOBALS_ID } from '../../../shared/variables'
+import { ENV_TONES } from '../../../shared/envColor'
 
 const newVar = (): EnvVariable => ({
   id: crypto.randomUUID(),
@@ -388,6 +389,34 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
                     />
                     Entorno protegido (confirmar antes de enviar POST, PUT, PATCH y DELETE)
                   </label>
+
+                  <div className="mb-3 flex items-center gap-2 text-xs text-zinc-400">
+                    <span>Color</span>
+                    <button
+                      onClick={() => updateEnv(selected.id, { color: undefined })}
+                      title="Sin color"
+                      className={`h-5 rounded border px-1.5 text-[10px] ${
+                        !selected.color
+                          ? 'border-blue-500 text-zinc-200'
+                          : 'border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                      }`}
+                    >
+                      Ninguno
+                    </button>
+                    {ENV_TONES.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => updateEnv(selected.id, { color: t.id })}
+                        title={t.label}
+                        aria-label={t.label}
+                        className={`h-5 w-5 rounded-full ${t.dot} ${
+                          selected.color === t.id
+                            ? 'ring-2 ring-white/70 ring-offset-1 ring-offset-zinc-900'
+                            : 'opacity-60 hover:opacity-100'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </>
               )}
 

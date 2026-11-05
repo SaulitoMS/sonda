@@ -499,6 +499,8 @@ export interface Environment {
   variables: EnvVariable[]
   /** Pide confirmación antes de enviar peticiones que modifican datos (POST/PUT/PATCH/DELETE) */
   protected?: boolean
+  /** Color de identificación (ver envColor.ts). Si no existe, el entorno no tiene color */
+  color?: string
 }
 
 export interface EnvironmentsData {
