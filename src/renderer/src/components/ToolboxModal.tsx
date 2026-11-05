@@ -6,7 +6,9 @@ import {
   fromBase64,
   fromHex,
   hashText,
+  jsonToQuery,
   minifyJson,
+  queryToJson,
   toBase64,
   toHex,
   unescapeJsonString,
@@ -21,6 +23,8 @@ const MODES = [
   { id: 'b64-dec', label: 'Base64 · decodificar' },
   { id: 'url-enc', label: 'URL · codificar' },
   { id: 'url-dec', label: 'URL · decodificar' },
+  { id: 'qs-json', label: 'Query string → JSON' },
+  { id: 'json-qs', label: 'JSON → query string' },
   { id: 'json-fmt', label: 'JSON · formatear' },
   { id: 'json-min', label: 'JSON · minificar' },
   { id: 'json-esc', label: 'Texto → string JSON (escapar)' },
@@ -47,6 +51,8 @@ const SWAP: Partial<Record<Mode, Mode>> = {
   'b64-dec': 'b64-enc',
   'url-enc': 'url-dec',
   'url-dec': 'url-enc',
+  'qs-json': 'json-qs',
+  'json-qs': 'qs-json',
   'json-esc': 'json-unesc',
   'json-unesc': 'json-esc',
   'hex-enc': 'hex-dec',
@@ -69,6 +75,10 @@ function convert(mode: Mode, input: string): Result {
         return { text: urlEncode(input), error: false }
       case 'url-dec':
         return { text: urlDecode(input), error: false }
+      case 'qs-json':
+        return { text: queryToJson(input), error: false }
+      case 'json-qs':
+        return { text: jsonToQuery(input), error: false }
       case 'json-fmt':
         return { text: formatJson(input), error: false }
       case 'json-min':

@@ -78,3 +78,34 @@ export function fromHex(input: string): string {
   const bytes = Uint8Array.from(clean.match(/../g) ?? [], (h) => parseInt(h, 16))
   return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
 }
+
+/** "a=1&b=2&b=3", "?a=1" o una URL completa → JSON. Las claves repetidas se vuelven arreglo */
+export function queryToJson(input: string): string {
+  const raw = input.trim().split('#')[0]
+  const query = raw.includes('?') ? raw.slice(raw.indexOf('?') + 1) : raw
+  const out = Object.create(null) as Record<string, string | string[]>
+  for (const [key, value] of new URLSearchParams(query)) {
+    const prev = out[key]
+    if (prev === undefined) out[key] = value
+    else out[key] = Array.isArray(prev) ? [...prev, value] : [prev, value]
+  }
+  if (Object.keys(out).length === 0) throw new Error('No se encontraron parámetros')
+  return JSON.stringify(out, null, 2)
+}
+
+/** Objeto JSON → query string. Los arreglos repiten la clave y los objetos anidados van como JSON */
+export function jsonToQuery(input: string): string {
+  const data: unknown = JSON.parse(input)
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Se esperaba un objeto JSON, por ejemplo {"page": 1}')
+  }
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    const items = Array.isArray(value) ? value : [value]
+    for (const item of items) {
+      if (item === null || item === undefined) continue
+      params.append(key, typeof item === 'object' ? JSON.stringify(item) : String(item))
+    }
+  }
+  return params.toString()
+}
