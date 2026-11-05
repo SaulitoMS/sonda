@@ -6,6 +6,8 @@ import { applyHistory } from '../lib/applyHistory'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useHistoryStore } from '../store/useHistoryStore'
 import { Modal } from './Modal'
+import { buildHar } from '../../../shared/harExport'
+import { downloadText } from '../lib/download'
 
 const statusClass = (e: HistoryEntry): string => {
   if (!e.response.ok) return 'bg-red-500/20 text-red-400'
@@ -184,6 +186,17 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
     if (confirm('¿Borrar todo el historial?')) clear()
   }
 
+  const exportHar = (): void => {
+    const d = new Date()
+    const p = (n: number): string => String(n).padStart(2, '0')
+    const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`
+    downloadText(
+      `sonda-historial-${stamp}.har`,
+      buildHar(filterHistory(entries, query)),
+      'application/json'
+    )
+  }
+
   return (
     <Modal title="Historial" onClose={onClose} wide>
       <div className="mb-3 flex items-center gap-2">
@@ -206,6 +219,14 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
           }`}
         >
           Comparar
+        </button>
+        <button
+          onClick={exportHar}
+          disabled={groups.length === 0}
+          title="Exportar el historial (o lo que filtre la búsqueda) como HAR"
+          className="shrink-0 rounded-md bg-zinc-800 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+        >
+          Exportar HAR
         </button>
       </div>
 
