@@ -43,6 +43,7 @@ import { FindReplaceModal } from './components/FindReplaceModal'
 import { ToolboxModal } from './components/ToolboxModal'
 import { EnvCompareModal } from './components/EnvCompareModal'
 import { cancelInFlight } from './lib/inFlight'
+import { nextEnvironmentId } from '../../shared/envCycle'
 
 type ModalType =
   | 'import'
@@ -90,6 +91,7 @@ function App(): React.JSX.Element {
   const closeOtherTabs = useTabsStore((s) => s.closeOthers)
   const activeTabId = useTabsStore((s) => s.activeId)
   const loadEnvironments = useEnvironmentStore((s) => s.load)
+  const envData = useEnvironmentStore((s) => s.data)
   const monitorActive = useMonitorStore((s) => s.active)
   const monitorFailing = useMonitorStore((s) => (s.runs[0]?.fail ?? 0) > 0)
   const layout = useLayout()
@@ -173,6 +175,34 @@ function App(): React.JSX.Element {
     select(tabs[(index + step + tabs.length) % tabs.length].id)
   }, [])
 
+  // Cambia el entorno activo y avisa cuál quedó (importante con los protegidos)
+  const switchEnvironment = useCallback(
+    async (id: string | null) => {
+      try {
+        await useEnvironmentStore.getState().setActive(id)
+      } catch {
+        showFlash('No se pudo cambiar de entorno')
+        return
+      }
+      const env = useEnvironmentStore.getState().getActive()
+      showFlash(env ? `Entorno: ${env.name}${env.protected ? ' (protegido)' : ''}` : 'Sin entorno')
+    },
+    [showFlash]
+  )
+
+  // Salta al entorno siguiente (1) o anterior (-1), de forma circular
+  const cycleEnvironment = useCallback(
+    (step: 1 | -1) => {
+      const { data } = useEnvironmentStore.getState()
+      if (data.environments.length === 0) {
+        showFlash('No hay entornos. Crea uno en «Entornos»')
+        return
+      }
+      void switchEnvironment(nextEnvironmentId(data.environments, data.activeId, step))
+    },
+    [showFlash, switchEnvironment]
+  )
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       if (!(e.metaKey || e.ctrlKey)) return
@@ -189,6 +219,12 @@ function App(): React.JSX.Element {
       if (e.key === 'Tab') {
         e.preventDefault()
         cycleTab(e.shiftKey ? -1 : 1)
+        return
+      }
+      // Ctrl/Cmd+E: entorno siguiente; con Shift, el anterior
+      if (e.key.toLowerCase() === 'e' && !e.altKey) {
+        e.preventDefault()
+        cycleEnvironment(e.shiftKey ? -1 : 1)
         return
       }
       // Ctrl+1…8 va a esa pestaña; Ctrl+9 va a la última (como en los navegadores)
@@ -229,7 +265,17 @@ function App(): React.JSX.Element {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [send, save, newTab, reopenClosed, closeActiveTab, cycleTab, toggleSidebar, toggleDirection])
+  }, [
+    send,
+    save,
+    newTab,
+    reopenClosed,
+    closeActiveTab,
+    cycleTab,
+    cycleEnvironment,
+    toggleSidebar,
+    toggleDirection
+  ])
 
   // Herramientas: un solo lugar para el menú de la cabecera y la paleta de comandos
   const tools: ToolItem[] = [
@@ -372,6 +418,34 @@ function App(): React.JSX.Element {
       keywords: 'cerrar otras',
       run: () => closeOtherTabs(activeTabId)
     },
+    {
+      id: 'env-next',
+      label: 'Entorno siguiente',
+      hint: `${MOD}E`,
+      keywords: 'cambiar rotar entorno environment',
+      run: () => cycleEnvironment(1)
+    },
+    {
+      id: 'env-prev',
+      label: 'Entorno anterior',
+      hint: `${MOD}⇧E`,
+      keywords: 'cambiar rotar entorno environment',
+      run: () => cycleEnvironment(-1)
+    },
+    {
+      id: 'env-none',
+      label: 'Entorno: sin entorno',
+      hint: envData.activeId === null ? 'activo' : undefined,
+      keywords: 'cambiar quitar entorno environment',
+      run: () => void switchEnvironment(null)
+    },
+    ...envData.environments.map((env): Command => ({
+      id: `env-${env.id}`,
+      label: `Entorno: ${env.name}`,
+      hint: env.id === envData.activeId ? 'activo' : env.protected ? 'protegido' : undefined,
+      keywords: 'cambiar seleccionar entorno environment',
+      run: () => void switchEnvironment(env.id)
+    })),
     {
       id: 'send',
       label: 'Enviar petición',
