@@ -1,4 +1,5 @@
 import { emptyAssertion } from './assertions'
+import { parseJsonOrXml } from './xmlBody'
 import type { Assertion, SendRequestResult } from './types'
 
 type OkResponse = Extract<SendRequestResult, { ok: true }>
@@ -73,14 +74,17 @@ export function generateAssertions(response: OkResponse): Assertion[] {
   }
 
   if (response.body.trim()) {
-    try {
-      const parsed: unknown = JSON.parse(response.body)
+    const parsed = parseJsonOrXml(response.body)
+    if (parsed.ok) {
+      // Un XML llega envuelto (Envelope → Body → …): se empieza 2 niveles antes para
+      // que las reglas lleguen al contenido y no se agoten en el envoltorio
+      const isJson =
+        response.body.trimStart().startsWith('{') || response.body.trimStart().startsWith('[')
       const bodyRules: Assertion[] = []
-      collectBodyRules(parsed, '', 0, bodyRules)
+      collectBodyRules(parsed.value, '', isJson ? 0 : -2, bodyRules)
       rules.push(...bodyRules)
-    } catch {
-      // No es JSON: solo se verifican status, tiempo, tamaño y content-type
     }
+    // Sin JSON ni XML: solo se verifican status, tiempo, tamaño y content-type
   }
 
   return rules
