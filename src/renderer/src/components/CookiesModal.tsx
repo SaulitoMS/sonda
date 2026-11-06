@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { exportCookies, parseCookiesImport } from '../../../shared/cookieTransfer'
 import type { CookieInfo } from '../../../shared/types'
 import { buildVarMap, interpolate } from '../../../shared/variables'
 import { useEffectiveEnv } from '../lib/collectionVariables'
+import { downloadText } from '../lib/download'
 import { useRequestStore } from '../store/useRequestStore'
 import { Modal } from './Modal'
 
@@ -46,6 +48,8 @@ export function CookiesModal({ onClose }: { onClose: () => void }): React.JSX.El
   const [cookies, setCookies] = useState<CookieInfo[] | null>(null)
   const [form, setForm] = useState<Draft | null>(null)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
 
   // El dominio de la petición abierta sirve para rellenar el formulario
   const url = useRequestStore((s) => s.url)
@@ -71,6 +75,32 @@ export function CookiesModal({ onClose }: { onClose: () => void }): React.JSX.El
     if (!confirm('¿Borrar todas las cookies?')) return
     await window.api.clearCookies()
     setCookies([])
+  }
+
+  const exportAll = (): void => {
+    if (!cookies?.length) return
+    downloadText('sonda-cookies.json', exportCookies(cookies), 'application/json')
+    setNotice('Exportadas. El archivo tiene los valores en texto plano: trátalo como un secreto.')
+  }
+
+  const importFile = async (file: File): Promise<void> => {
+    try {
+      const { cookies: items, skipped } = parseCookiesImport(await file.text())
+      let saved = 0
+      let failed = skipped
+      for (const item of items) {
+        const err = await window.api.setCookie(item)
+        if (err) failed++
+        else saved++
+      }
+      setCookies(await window.api.listCookies())
+      setNotice(
+        `Importadas ${saved} cookie(s)` +
+          (failed ? `; ${failed} omitida(s) por inválidas o vencidas.` : '.')
+      )
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'No se pudo importar el archivo')
+    }
   }
 
   const openNew = (): void => {
@@ -293,6 +323,20 @@ export function CookiesModal({ onClose }: { onClose: () => void }): React.JSX.El
         </div>
       )}
 
+      {notice && <p className="mt-3 text-xs text-zinc-400">{notice}</p>}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (file) void importFile(file)
+        }}
+      />
+
       <div className="mt-4 flex justify-between">
         <div className="flex gap-2">
           <button
@@ -300,6 +344,20 @@ export function CookiesModal({ onClose }: { onClose: () => void }): React.JSX.El
             className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
           >
             + Agregar cookie
+          </button>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+            title="Importa un JSON de Sonda o de Cookie-Editor / EditThisCookie"
+          >
+            Importar
+          </button>
+          <button
+            onClick={exportAll}
+            disabled={!cookies?.length}
+            className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+          >
+            Exportar
           </button>
           <button
             onClick={clearAll}
