@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseGitStatus } from './git'
+import { parseDiff, parseGitStatus } from './git'
+
 
 const z = (...parts: string[]): string => parts.join('\0') + '\0'
 
@@ -47,5 +48,39 @@ describe('parseGitStatus', () => {
       { path: 'nuevo.json', change: 'renamed', staged: true, from: 'viejo.json' },
       { path: 'otro.json', change: 'modified', staged: false }
     ])
+  })
+})
+
+describe('parseDiff', () => {
+  const diff = [
+    'diff --git a/x.json b/x.json',
+    'index 111..222 100644',
+    '--- a/x.json',
+    '+++ b/x.json',
+    '@@ -1,3 +1,3 @@',
+    ' {',
+    '-  "a": 1',
+    '+  "a": 2',
+    ' }',
+    ''
+  ].join('\n')
+
+  it('separa cabecera, bloques, líneas añadidas y quitadas', () => {
+    expect(parseDiff(diff).map((l) => l.kind)).toEqual([
+      'meta',
+      'meta',
+      'meta',
+      'meta',
+      'hunk',
+      'context',
+      'del',
+      'add',
+      'context'
+    ])
+  })
+
+  it('no confunde una línea quitada que empieza con "--" con la cabecera', () => {
+    const lines = parseDiff('@@ -1 +1 @@\n--- vieja\n+++ nueva')
+    expect(lines.map((l) => l.kind)).toEqual(['hunk', 'del', 'add'])
   })
 })

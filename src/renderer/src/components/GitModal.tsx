@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import type { GitActionResult, GitChange, GitStatusResult } from '../../../shared/git'
+import {
+  parseDiff,
+  type GitActionResult,
+  type GitChange,
+  type GitDiffLineKind,
+  type GitDiffResult,
+  type GitStatusResult
+} from '../../../shared/git'
 import { Modal } from './Modal'
 
 const CHANGE: Record<GitChange, { label: string; className: string }> = {
@@ -10,11 +17,21 @@ const CHANGE: Record<GitChange, { label: string; className: string }> = {
   conflict: { label: 'Conflicto', className: 'text-red-400' }
 }
 
+const DIFF_LINE: Record<GitDiffLineKind, string> = {
+  add: 'bg-emerald-500/10 text-emerald-300',
+  del: 'bg-red-500/10 text-red-300',
+  hunk: 'text-blue-400',
+  context: 'text-zinc-400',
+  meta: 'text-zinc-500'
+}
+
 export function GitModal({ onClose }: { onClose: () => void }): React.JSX.Element {
   const [data, setData] = useState<GitStatusResult | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [selected, setSelected] = useState<string | null>(null)
+  const [diff, setDiff] = useState<{ path: string; result: GitDiffResult } | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -32,6 +49,8 @@ export function GitModal({ onClose }: { onClose: () => void }): React.JSX.Elemen
     const result = await action()
     if (!result.ok) setError(result.error)
     setData(await window.api.gitStatus())
+    setSelected(null)
+    setDiff(null)
     setBusy(false)
     return result.ok
   }
@@ -40,8 +59,22 @@ export function GitModal({ onClose }: { onClose: () => void }): React.JSX.Elemen
     if (await run(() => window.api.gitCommit(message))) setMessage('')
   }
 
+  const openDiff = async (path: string): Promise<void> => {
+    if (selected === path) {
+      setSelected(null)
+      return
+    }
+    setSelected(path)
+    const result = await window.api.gitDiff(path)
+    setDiff({ path, result })
+  }
+
   const repo = data?.ok && data.state === 'repo' ? data : null
   const files = repo?.status.files ?? []
+
+  // Solo se muestra el diff si corresponde al archivo elegido (evita mezclar respuestas tardías)
+  const diffView = selected !== null && diff?.path === selected ? diff.result : null
+  const diffLines = diffView?.ok ? parseDiff(diffView.diff).filter((l) => l.kind !== 'meta') : []
 
   return (
     <Modal title="Git" onClose={onClose} wide>
@@ -97,21 +130,52 @@ export function GitModal({ onClose }: { onClose: () => void }): React.JSX.Elemen
             ) : (
               <ul className="divide-y divide-zinc-800 text-xs">
                 {files.map((f) => (
-                  <li key={f.path} className="flex items-center gap-3 px-3 py-1.5">
-                    <span className={`w-20 shrink-0 ${CHANGE[f.change].className}`}>
-                      {CHANGE[f.change].label}
-                    </span>
-                    <span
-                      className="min-w-0 flex-1 truncate font-mono text-zinc-300"
-                      title={f.path}
+                  <li key={f.path}>
+                    <button
+                      onClick={() => void openDiff(f.path)}
+                      title="Ver cambios"
+                      className={`flex w-full items-center gap-3 px-3 py-1.5 text-left transition-colors hover:bg-zinc-800/60 ${
+                        selected === f.path ? 'bg-zinc-800' : ''
+                      }`}
                     >
-                      {f.path}
-                    </span>
+                      <span className={`w-20 shrink-0 ${CHANGE[f.change].className}`}>
+                        {CHANGE[f.change].label}
+                      </span>
+                      <span
+                        className="min-w-0 flex-1 truncate font-mono text-zinc-300"
+                        title={f.path}
+                      >
+                        {f.path}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
           </div>
+
+          {selected && (
+            <div className="mt-3 overflow-hidden rounded-md border border-zinc-800">
+              {diffView === null ? (
+                <p className="p-3 text-xs text-zinc-500">Cargando…</p>
+              ) : !diffView.ok ? (
+                <p className="p-3 text-xs text-red-300">{diffView.error}</p>
+              ) : diffLines.length === 0 ? (
+                <p className="p-3 text-xs text-zinc-500">No hay diferencias de texto para mostrar.</p>
+              ) : (
+                <div className="selectable max-h-64 overflow-auto py-1 font-mono text-[11px] leading-5">
+                  {diffLines.map((line, i) => (
+                    <div key={i} className={`whitespace-pre px-3 ${DIFF_LINE[line.kind]}`}>
+                      {line.text || ' '}
+                    </div>
+                  ))}
+                  {diffView.truncated && (
+                    <p className="px-3 pt-1 text-zinc-500">… diff recortado por ser muy largo</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-3 flex gap-2">
             <input

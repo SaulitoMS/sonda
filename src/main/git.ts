@@ -1,11 +1,12 @@
 import { ipcMain } from 'electron'
 import { execFile } from 'child_process'
 import { promises as fs } from 'fs'
-import { join } from 'path'
+import { join, resolve, sep } from 'path'
 import {
   parseGitStatus,
   type GitActionResult,
   type GitCommit,
+  type GitDiffResult,
   type GitStatusResult
 } from '../shared/git'
 import { getWorkspacePath } from './settings'
@@ -51,6 +52,9 @@ async function workspace(): Promise<string> {
   return root
 }
 
+/** Un diff muy largo no sirve de nada en pantalla y hace lenta la interfaz */
+const MAX_DIFF_LINES = 1500
+
 const samePath = (a: string, b: string): boolean =>
   process.platform === 'linux' ? a === b : a.toLowerCase() === b.toLowerCase()
 
@@ -93,6 +97,41 @@ export function registerGitHandlers(): void {
   ipcMain.handle('git:status', async (): Promise<GitStatusResult> => {
     try {
       return await status()
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  })
+
+    ipcMain.handle('git:diff', async (_e, relPath: string): Promise<GitDiffResult> => {
+    try {
+      const root = await workspace()
+      const file = String(relPath ?? '')
+      const target = resolve(root, file)
+      if (!file || !target.startsWith(root + sep)) {
+        return { ok: false, error: 'La ruta está fuera del workspace' }
+      }
+
+      // Cambios contra el último commit; sin commits todavía, contra lo preparado (git add)
+      let res = await git(['diff', 'HEAD', '--no-color', '--', file], root)
+      if (!res.ok) res = await git(['diff', '--cached', '--no-color', '--', file], root)
+      let text = res.ok ? res.stdout : ''
+
+      // Un archivo sin seguimiento no sale en `git diff`: se muestra completo como "nuevo"
+      if (!text) {
+        const tracked = await git(['ls-files', '--', file], root)
+        if (tracked.ok && !tracked.stdout.trim()) {
+          const content = await fs.readFile(target, 'utf-8').catch(() => null)
+          if (content !== null) {
+            const body = content.split('\n')
+            if (body[body.length - 1] === '') body.pop() // el salto de línea final no es una línea
+            text = ['@@ archivo nuevo @@', ...body.map((l) => `+${l}`)].join('\n')
+          }
+        }
+      }
+
+      const lines = text.split('\n')
+      const truncated = lines.length > MAX_DIFF_LINES
+      return { ok: true, diff: lines.slice(0, MAX_DIFF_LINES).join('\n'), truncated }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
     }

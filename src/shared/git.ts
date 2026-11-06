@@ -89,3 +89,37 @@ export function parseGitStatus(output: string): GitRepoStatus {
   }
   return { ...head, files }
 }
+
+export type GitDiffResult =
+  | { ok: true; diff: string; truncated: boolean }
+  | { ok: false; error: string }
+
+export type GitDiffLineKind = 'add' | 'del' | 'hunk' | 'meta' | 'context'
+
+export interface GitDiffLine {
+  kind: GitDiffLineKind
+  text: string
+}
+
+/** Clasifica cada línea de un diff. Antes del primer "@@" todo es cabecera (meta) */
+export function parseDiff(diff: string): GitDiffLine[] {
+  const lines = diff.split('\n')
+  if (lines[lines.length - 1] === '') lines.pop()
+
+  const out: GitDiffLine[] = []
+  let inHunk = false
+  for (const text of lines) {
+    if (text.startsWith('diff --git')) {
+      inHunk = false
+      out.push({ kind: 'meta', text })
+    } else if (text.startsWith('@@')) {
+      inHunk = true
+      out.push({ kind: 'hunk', text })
+    } else if (!inHunk) {
+      out.push({ kind: 'meta', text })
+    } else {
+      out.push({ kind: text[0] === '+' ? 'add' : text[0] === '-' ? 'del' : 'context', text })
+    }
+  }
+  return out
+}

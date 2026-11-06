@@ -8,7 +8,7 @@ import type {
 } from './websocket'
 import type { MockChaos } from './mockChaos'
 import type { MockOverride } from './mockOverrides'
-import type { GitActionResult, GitStatusResult } from './git'
+import type { GitActionResult, GitDiffResult, GitStatusResult } from './git'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
@@ -495,6 +495,8 @@ export interface SondaApi {
   gitInit: () => Promise<GitActionResult>
   /** Hace `git add -A` y un commit con el mensaje dado */
   gitCommit: (message: string) => Promise<GitActionResult>
+  /** Diff de un archivo del workspace (ruta relativa) contra el último commit */
+  gitDiff: (path: string) => Promise<GitDiffResult>
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'
