@@ -44,6 +44,7 @@ import { buildBugReport } from '../../../shared/bugReport'
 import { learnSchema } from '../../../shared/learnSchema'
 import { validateResponse } from '../../../shared/validate'
 import { analyzePerformance } from '../../../shared/performanceInsights'
+import { TimingWaterfall } from './TimingWaterfall'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -1138,7 +1139,18 @@ export function ResponsePanel(): React.JSX.Element {
 
         {current === 'security' && <SecurityReport findings={securityFindings} />}
 
-        {current === 'limits' && <LimitsReport insights={limitInsights} />}
+        {current === 'limits' && (
+          <>
+            {response.ok && (
+              <TimingWaterfall
+                timeMs={response.timeMs}
+                ttfbMs={response.ttfbMs}
+                connection={response.connection}
+              />
+            )}
+            <LimitsReport insights={limitInsights} />
+          </>
+        )}
       </div>
     </div>
   )
