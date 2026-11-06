@@ -43,6 +43,7 @@ import { addBodyExtraction } from '../../../shared/extractFromTree'
 import { buildBugReport } from '../../../shared/bugReport'
 import { learnSchema } from '../../../shared/learnSchema'
 import { validateResponse } from '../../../shared/validate'
+import { analyzePerformance } from '../../../shared/performanceInsights'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -207,6 +208,7 @@ const INSIGHT_STYLE: Record<HeaderInsight['level'], { label: string; color: stri
 
 const INSIGHT_GROUPS: { id: HeaderInsight['group']; label: string }[] = [
   { id: 'limits', label: 'Límites de uso' },
+  { id: 'performance', label: 'Rendimiento' },
   { id: 'cache', label: 'Caché' }
 ]
 
@@ -533,7 +535,13 @@ export function ResponsePanel(): React.JSX.Element {
   )
 
   const limitInsights = useMemo(
-    () => (response?.ok ? analyzeHeaders(response.headers, method, response.status) : []),
+    () =>
+      response?.ok
+        ? [
+            ...analyzeHeaders(response.headers, method, response.status),
+            ...analyzePerformance(response.headers, response.sizeBytes, response.timeMs)
+          ]
+        : [],
     [response, method]
   )
 

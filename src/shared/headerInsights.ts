@@ -2,7 +2,7 @@ export type InsightLevel = 'ok' | 'warn' | 'info'
 
 export interface HeaderInsight {
   id: string
-  group: 'cache' | 'limits'
+  group: 'cache' | 'limits' | 'performance'
   level: InsightLevel
   title: string
   detail: string
