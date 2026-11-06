@@ -43,6 +43,7 @@ import { CoverageModal } from './components/CoverageModal'
 import { WebSocketModal } from './components/WebSocketModal'
 import { togglePin, useQuickAccess } from './lib/quickAccess'
 import { VariablesAuditModal } from './components/VariablesAuditModal'
+import { SecretsScanModal } from './components/SecretsScanModal'
 import { FindReplaceModal } from './components/FindReplaceModal'
 import { ToolboxModal } from './components/ToolboxModal'
 import { EnvCompareModal } from './components/EnvCompareModal'
@@ -78,6 +79,7 @@ type ModalType =
   | 'websocket'
   | 'coverage'
   | 'vars'
+  | 'secrets'
   | 'replace'
   | 'compare'
   | 'toolbox'
@@ -452,6 +454,13 @@ function App(): React.JSX.Element {
       label: 'Variables',
       description: 'Detectar variables sin definir o sin usar en tus colecciones',
       onSelect: () => setModal('vars')
+    },
+    {
+      id: 'secrets',
+      icon: 'shield',
+      label: 'Secretos',
+      description: 'Detectar credenciales en texto plano antes de subir tus colecciones a Git',
+      onSelect: () => setModal('secrets')
     },
     {
       id: 'replace',
@@ -865,6 +874,7 @@ function App(): React.JSX.Element {
       {modal === 'mock' && <MockModal onClose={() => setModal(null)} />}
       {modal === 'websocket' && <WebSocketModal onClose={() => setModal(null)} />}
       {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
+      {modal === 'secrets' && <SecretsScanModal onClose={() => setModal(null)} />}
       {modal === 'replace' && <FindReplaceModal onClose={() => setModal(null)} />}
       {modal === 'toolbox' && <ToolboxModal onClose={() => setModal(null)} />}
       {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal(null)} />}
