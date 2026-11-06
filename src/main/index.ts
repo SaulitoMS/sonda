@@ -16,6 +16,7 @@ import { registerOAuthHandlers } from './oauthFlow'
 import { registerWebhookHandlers } from './webhook'
 import { registerTrashHandlers } from './trash'
 import { registerGitHandlers } from './git'
+import { registerHostHandlers } from './hostDiagnostics'
 
 registerHttpHandlers()
 registerCollectionHandlers()
@@ -28,6 +29,7 @@ registerOAuthHandlers()
 registerWebhookHandlers()
 registerTrashHandlers()
 registerGitHandlers()
+registerHostHandlers()
 
 ipcMain.handle('script:run', (_e, input: ScriptInput) => runScript(input))
 

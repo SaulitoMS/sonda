@@ -381,6 +381,42 @@ export interface TrashItem {
   deletedAt: number
 }
 
+// ---------- Diagnóstico de host ----------
+
+export interface HostCertInfo {
+  subject: string
+  issuer: string
+  validFrom: string
+  validTo: string
+  /** Negativo si ya venció */
+  daysLeft: number
+  altNames: string[]
+  fingerprint256: string
+  /** true si la cadena es de confianza para este equipo */
+  authorized: boolean
+  authError: string | null
+  protocol: string | null
+  cipher: string | null
+  /** Protocolo negociado por ALPN ("h2" o "http/1.1") */
+  alpn: string | null
+}
+
+export type HostDnsResult =
+  | { ok: true; ms: number; addresses: { address: string; family: 4 | 6 }[] }
+  | { ok: false; ms: number; error: string }
+
+export type HostTlsResult =
+  { ok: true; ms: number; cert: HostCertInfo } | { ok: false; ms: number; error: string }
+
+export interface HostReport {
+  host: string
+  port: number
+  dns: HostDnsResult
+  tls: HostTlsResult
+}
+
+export type HostInspectResult = { ok: true; report: HostReport } | { ok: false; error: string }
+
 /** Contrato de window.api (lo implementa preload, lo usa el renderer) */
 export interface SondaApi {
   sendRequest: (input: SendRequestInput) => Promise<SendRequestResult>
@@ -499,6 +535,8 @@ export interface SondaApi {
   gitDiff: (path: string) => Promise<GitDiffResult>
   /** Devuelve un archivo del workspace a como está en el último commit (descarta sus cambios) */
   gitDiscard: (path: string) => Promise<GitActionResult>
+  /** Resuelve el DNS y lee el certificado TLS de un host (acepta host, host:puerto o URL) */
+  inspectHost: (target: string) => Promise<HostInspectResult>
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'

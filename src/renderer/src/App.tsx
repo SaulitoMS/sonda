@@ -50,6 +50,7 @@ import { nextEnvironmentId } from '../../shared/envCycle'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { HistoryStatsModal } from './components/HistoryStatsModal'
 import { ConsoleModal } from './components/ConsoleModal'
+import { HostDiagnosticsModal } from './components/HostDiagnosticsModal'
 
 type ModalType =
   | 'import'
@@ -78,6 +79,7 @@ type ModalType =
   | 'toolbox'
   | 'datagen'
   | 'shortcuts'
+  | 'host'
   | 'stats'
   | 'console'
   | null
@@ -460,6 +462,13 @@ function App(): React.JSX.Element {
       label: 'Datos de prueba',
       description: 'Genera CSV o JSON con datos aleatorios para el runner',
       onSelect: () => setModal('datagen')
+    },
+    {
+      id: 'host',
+      icon: 'shield',
+      label: 'Diagnóstico de host',
+      description: 'DNS y certificado TLS: vencimiento, emisor y HTTP/2',
+      onSelect: () => setModal('host')
     },
     {
       id: 'curl',
@@ -847,6 +856,7 @@ function App(): React.JSX.Element {
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'trash' && <TrashModal onClose={() => setModal(null)} />}
       {modal === 'git' && <GitModal onClose={() => setModal(null)} />}
+      {modal === 'host' && <HostDiagnosticsModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
           onClose={() => setModal(null)}
