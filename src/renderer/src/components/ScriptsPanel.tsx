@@ -1,4 +1,5 @@
 import { useRequestStore } from '../store/useRequestStore'
+import { SCRIPT_SNIPPETS, appendSnippet } from '../../../shared/scriptSnippets'
 
 const editor =
   'min-h-32 w-full flex-1 resize-y rounded-md border border-zinc-700 bg-zinc-800 p-2 font-mono text-xs leading-relaxed outline-none placeholder:text-zinc-500 focus:border-blue-500'
@@ -8,19 +9,35 @@ function Section({
   hint,
   value,
   onChange,
-  placeholder
+  placeholder,
+  phase
 }: {
   title: string
   hint: string
   value: string
   onChange: (v: string) => void
   placeholder: string
+  phase: 'pre' | 'post'
 }): React.JSX.Element {
+  const snippets = SCRIPT_SNIPPETS.filter((s) => s.phase === phase)
+
   return (
     <div className="flex flex-1 flex-col gap-1">
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-semibold text-zinc-300">{title}</span>
         <span className="text-[11px] text-zinc-500">{hint}</span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {snippets.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onChange(appendSnippet(value, s.code))}
+            className="rounded border border-zinc-700 px-1.5 py-0.5 text-[11px] text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+          >
+            + {s.label}
+          </button>
+        ))}
       </div>
       <textarea
         value={value}
@@ -44,6 +61,7 @@ export function ScriptsPanel(): React.JSX.Element {
       <Section
         title="Pre-script"
         hint="Antes de enviar"
+        phase="pre"
         value={preScript}
         onChange={setPreScript}
         placeholder={"sonda.request.headers['X-Request-Id'] = String(Date.now())"}
@@ -51,6 +69,7 @@ export function ScriptsPanel(): React.JSX.Element {
       <Section
         title="Post-script"
         hint="Al recibir la respuesta"
+        phase="post"
         value={postScript}
         onChange={setPostScript}
         placeholder={
