@@ -7,6 +7,7 @@ import {
   type GitDiffResult,
   type GitStatusResult
 } from '../../../shared/git'
+import { useCollectionsStore } from '../store/useCollectionsStore'
 import { Modal } from './Modal'
 
 const CHANGE: Record<GitChange, { label: string; className: string }> = {
@@ -26,6 +27,7 @@ const DIFF_LINE: Record<GitDiffLineKind, string> = {
 }
 
 export function GitModal({ onClose }: { onClose: () => void }): React.JSX.Element {
+  const refreshCollections = useCollectionsStore((s) => s.refresh)
   const [data, setData] = useState<GitStatusResult | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -69,12 +71,29 @@ export function GitModal({ onClose }: { onClose: () => void }): React.JSX.Elemen
     setDiff({ path, result })
   }
 
+  const discard = async (path: string): Promise<void> => {
+    const ok = confirm(
+      `¿Descartar los cambios de "${path}"?\n\nVolverá a como estaba en el último commit. Esto no se puede deshacer.`
+    )
+    if (!ok) return
+    await run(() => window.api.gitDiscard(path))
+    // El archivo cambió en disco: se recarga el árbol de colecciones
+    await refreshCollections()
+  }
+
   const repo = data?.ok && data.state === 'repo' ? data : null
   const files = repo?.status.files ?? []
 
   // Solo se muestra el diff si corresponde al archivo elegido (evita mezclar respuestas tardías)
   const diffView = selected !== null && diff?.path === selected ? diff.result : null
   const diffLines = diffView?.ok ? parseDiff(diffView.diff).filter((l) => l.kind !== 'meta') : []
+
+  // Descartar solo tiene sentido en archivos que ya estuvieron en un commit
+  const selectedFile = files.find((f) => f.path === selected)
+  const canDiscard =
+    !!selectedFile &&
+    (selectedFile.change === 'modified' || selectedFile.change === 'deleted') &&
+    (repo?.commits.length ?? 0) > 0
 
   return (
     <Modal title="Git" onClose={onClose} wide>
@@ -156,12 +175,29 @@ export function GitModal({ onClose }: { onClose: () => void }): React.JSX.Elemen
 
           {selected && (
             <div className="mt-3 overflow-hidden rounded-md border border-zinc-800">
+              <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-1.5 text-[11px]">
+                <span className="min-w-0 truncate font-mono text-zinc-500" title={selected}>
+                  {selected}
+                </span>
+                {canDiscard && (
+                  <button
+                    onClick={() => void discard(selected)}
+                    disabled={busy}
+                    className="shrink-0 rounded px-2 py-1 text-red-400 hover:bg-zinc-800 disabled:opacity-40"
+                  >
+                    Descartar cambios
+                  </button>
+                )}
+              </div>
+
               {diffView === null ? (
                 <p className="p-3 text-xs text-zinc-500">Cargando…</p>
               ) : !diffView.ok ? (
                 <p className="p-3 text-xs text-red-300">{diffView.error}</p>
               ) : diffLines.length === 0 ? (
-                <p className="p-3 text-xs text-zinc-500">No hay diferencias de texto para mostrar.</p>
+                <p className="p-3 text-xs text-zinc-500">
+                  No hay diferencias de texto para mostrar.
+                </p>
               ) : (
                 <div className="selectable max-h-64 overflow-auto py-1 font-mono text-[11px] leading-5">
                   {diffLines.map((line, i) => (

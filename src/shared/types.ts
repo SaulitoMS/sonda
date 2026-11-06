@@ -497,6 +497,8 @@ export interface SondaApi {
   gitCommit: (message: string) => Promise<GitActionResult>
   /** Diff de un archivo del workspace (ruta relativa) contra el último commit */
   gitDiff: (path: string) => Promise<GitDiffResult>
+  /** Devuelve un archivo del workspace a como está en el último commit (descarta sus cambios) */
+  gitDiscard: (path: string) => Promise<GitActionResult>
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'

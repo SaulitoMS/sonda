@@ -137,6 +137,31 @@ export function registerGitHandlers(): void {
     }
   })
 
+    ipcMain.handle('git:discard', async (_e, relPath: string): Promise<GitActionResult> => {
+    try {
+      const root = await workspace()
+      const file = String(relPath ?? '')
+      if (!file || !resolve(root, file).startsWith(root + sep)) {
+        return { ok: false, error: 'La ruta está fuera del workspace' }
+      }
+
+      // Vuelve el archivo (disco y área de preparación) a como está en el último commit.
+      // Solo funciona con archivos que ya estuvieron en un commit: un archivo nuevo no se toca
+      const res = await git(['checkout', 'HEAD', '--', file], root)
+      if (!res.ok) {
+        return {
+          ok: false,
+          error: /did not match/i.test(res.message)
+            ? 'Ese archivo es nuevo (no está en ningún commit), no hay a qué volver'
+            : res.message
+        }
+      }
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  })
+
   ipcMain.handle('git:init', async (): Promise<GitActionResult> => {
     try {
       const root = await workspace()

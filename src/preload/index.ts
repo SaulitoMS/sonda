@@ -80,6 +80,7 @@ const api: SondaApi = {
   gitInit: () => ipcRenderer.invoke('git:init'),
   gitCommit: (message) => ipcRenderer.invoke('git:commit', message),
   gitDiff: (path) => ipcRenderer.invoke('git:diff', path),
+  gitDiscard: (path) => ipcRenderer.invoke('git:discard', path),
   onWsEvent: (listener) => {
     const handler = (_event: IpcRendererEvent, msg: WsEvent): void => listener(msg)
     ipcRenderer.on('ws:event', handler)
