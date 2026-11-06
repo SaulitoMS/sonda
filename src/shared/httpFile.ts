@@ -108,7 +108,11 @@ function parseBlock(
   }
 
   // Body: el resto del bloque, sin líneas en blanco al inicio ni al final
-  let body = lines.slice(i).join('\n').replace(/^\s*\n/, '').trimEnd()
+  let body = lines
+    .slice(i)
+    .join('\n')
+    .replace(/^\s*\n/, '')
+    .trimEnd()
   if (/^<(?:@\w*)?\s+\S+\s*$/.test(body)) {
     notes.fileRefs++
     body = ''
@@ -161,16 +165,22 @@ export function parseHttpFile(text: string, fileName: string): ParsedPostman {
   }
 
   if (requests.length === 0) {
-    throw new Error('El archivo no contiene peticiones HTTP (ej: "GET https://api.example.com/users")')
+    throw new Error(
+      'El archivo no contiene peticiones HTTP (ej: "GET https://api.example.com/users")'
+    )
   }
 
   const warnings: string[] = []
   if (requests.length > MAX_REQUESTS) {
-    warnings.push(`El archivo tiene ${requests.length} peticiones: se importaron las primeras ${MAX_REQUESTS}.`)
+    warnings.push(
+      `El archivo tiene ${requests.length} peticiones: se importaron las primeras ${MAX_REQUESTS}.`
+    )
     requests.length = MAX_REQUESTS
   }
   if (notes.skipped.length > 0) {
-    warnings.push(`Se omitieron peticiones con un método que Sonda no soporta: ${notes.skipped.join(', ')}.`)
+    warnings.push(
+      `Se omitieron peticiones con un método que Sonda no soporta: ${notes.skipped.join(', ')}.`
+    )
   }
   if (notes.unsupportedVars.size > 0) {
     warnings.push(
@@ -183,10 +193,14 @@ export function parseHttpFile(text: string, fileName: string): ParsedPostman {
     )
   }
   if (notes.fileRefs > 0) {
-    warnings.push(`${notes.fileRefs} body(s) leían un archivo externo (< ./archivo): quedaron vacíos.`)
+    warnings.push(
+      `${notes.fileRefs} body(s) leían un archivo externo (< ./archivo): quedaron vacíos.`
+    )
   }
   if (notes.unsupportedMeta.size > 0) {
-    warnings.push(`Se ignoraron las anotaciones: ${[...notes.unsupportedMeta].map((m) => `@${m}`).join(', ')}.`)
+    warnings.push(
+      `Se ignoraron las anotaciones: ${[...notes.unsupportedMeta].map((m) => `@${m}`).join(', ')}.`
+    )
   }
 
   const base = fileName.replace(/\.[^.]+$/, '').trim() || 'http'

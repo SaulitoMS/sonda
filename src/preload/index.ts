@@ -41,6 +41,7 @@ const api: SondaApi = {
   importPostman: () => ipcRenderer.invoke('postman:import'),
   exportPostman: (id) => ipcRenderer.invoke('postman:export', id),
   exportInsomnia: (id) => ipcRenderer.invoke('insomnia:export', id),
+  exportHttp: (id) => ipcRenderer.invoke('http:export', id),
   exportDocs: (id) => ipcRenderer.invoke('docs:export', id),
   exportOpenApi: (id) => ipcRenderer.invoke('openapi:export', id),
   loadEnvironments: () => ipcRenderer.invoke('environments:load'),

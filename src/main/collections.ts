@@ -39,6 +39,7 @@ import { looksLikeHar, parseHar } from '../shared/har'
 import { buildOpenApi } from '../shared/openapiExport'
 import { looksLikeInsomnia, parseInsomnia } from '../shared/insomnia'
 import { isHttpFilePath, parseHttpFile } from '../shared/httpFile'
+import { buildHttpFile } from '../shared/httpExport'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -636,6 +637,28 @@ export function registerCollectionHandlers(): void {
 
       const data = buildInsomniaExport(name, meta?.baseUrl, files)
       await fs.writeFile(picked.filePath, JSON.stringify(data, null, 2) + '\n', 'utf-8')
+      return { ok: true, path: picked.filePath, count: files.length }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  })
+
+  ipcMain.handle('http:export', async (_e, id: string): Promise<ExportResult | null> => {
+    try {
+      const dir = safePath(id)
+      const meta = await readMeta(dir)
+      const files = await readCollectionFiles(dir)
+      if (files.length === 0) throw new Error('La colección no tiene peticiones para exportar')
+
+      const name = meta?.name ?? id
+      const picked = await dialog.showSaveDialog({
+        title: 'Exportar colección a archivo .http',
+        defaultPath: join(app.getPath('documents'), `${slug(name)}.http`),
+        filters: [{ name: 'Archivo HTTP', extensions: ['http', 'rest'] }]
+      })
+      if (picked.canceled || !picked.filePath) return null
+
+      await fs.writeFile(picked.filePath, buildHttpFile(name, meta?.baseUrl, files), 'utf-8')
       return { ok: true, path: picked.filePath, count: files.length }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
