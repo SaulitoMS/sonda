@@ -19,11 +19,25 @@ export function shouldRetry(method: HttpMethod, result: SendRequestResult): bool
   return result.ok ? RETRYABLE_STATUS.has(result.status) : NETWORK_ERROR.test(result.error)
 }
 
+/** Segundos que pide esperar Retry-After: acepta segundos ("120") o fecha HTTP. null si no es válido */
+function retryAfterSeconds(value: string | undefined, now: number): number | null {
+  const text = value?.trim()
+  if (!text) return null
+  if (/^\d+(\.\d+)?$/.test(text)) return Number(text)
+  const date = Date.parse(text)
+  return Number.isNaN(date) ? null : Math.max(0, (date - now) / 1000)
+}
+
 /** Espera antes del intento `attempt` (1, 2, 3…): Retry-After si existe; si no, backoff exponencial */
-export function retryDelayMs(attempt: number, baseMs: number, result: SendRequestResult): number {
+export function retryDelayMs(
+  attempt: number,
+  baseMs: number,
+  result: SendRequestResult,
+  now: number = Date.now()
+): number {
   if (result.ok) {
-    const seconds = Number(result.headers['retry-after'])
-    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, MAX_DELAY_MS)
+    const seconds = retryAfterSeconds(result.headers['retry-after'], now)
+    if (seconds !== null) return Math.min(seconds * 1000, MAX_DELAY_MS)
   }
   return Math.min(baseMs * 2 ** (attempt - 1), MAX_DELAY_MS)
 }
