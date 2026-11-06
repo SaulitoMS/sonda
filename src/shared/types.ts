@@ -8,6 +8,7 @@ import type {
 } from './websocket'
 import type { MockChaos } from './mockChaos'
 import type { MockOverride } from './mockOverrides'
+import type { GitActionResult, GitStatusResult } from './git'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 
@@ -488,6 +489,12 @@ export interface SondaApi {
   /** Devuelve la ruta donde quedó lo restaurado (puede cambiar si ya existía otra igual) */
   restoreFromTrash: (id: string) => Promise<string>
   emptyTrash: () => Promise<void>
+  /** Estado del repositorio Git del workspace */
+  gitStatus: () => Promise<GitStatusResult>
+  /** Inicia un repositorio en el workspace (con .gitignore para la papelera) */
+  gitInit: () => Promise<GitActionResult>
+  /** Hace `git add -A` y un commit con el mensaje dado */
+  gitCommit: (message: string) => Promise<GitActionResult>
 }
 
 export type SslMode = 'auto' | 'verify' | 'ignore'

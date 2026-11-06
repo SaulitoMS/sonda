@@ -76,6 +76,9 @@ const api: SondaApi = {
   listTrash: () => ipcRenderer.invoke('trash:list'),
   restoreFromTrash: (id) => ipcRenderer.invoke('trash:restore', id),
   emptyTrash: () => ipcRenderer.invoke('trash:empty'),
+  gitStatus: () => ipcRenderer.invoke('git:status'),
+  gitInit: () => ipcRenderer.invoke('git:init'),
+  gitCommit: (message) => ipcRenderer.invoke('git:commit', message),
   onWsEvent: (listener) => {
     const handler = (_event: IpcRendererEvent, msg: WsEvent): void => listener(msg)
     ipcRenderer.on('ws:event', handler)

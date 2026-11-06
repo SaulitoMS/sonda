@@ -22,6 +22,7 @@ const TITLE_ICONS: [RegExp, IconName][] = [
   [/variable|graphql/, 'braces'],
   [/reemplazar/, 'search'],
   [/comparar/, 'gitCompare'],
+  [/git/, 'gitCompare'],
   [/autenticacion|auth/, 'key'],
   [/header/, 'list'],
   [/script/, 'fileCode'],

@@ -20,6 +20,7 @@ import { useMonitorStore } from './store/useMonitorStore'
 import { CommandPalette, type Command } from './components/CommandPalette'
 import { CookiesModal } from './components/CookiesModal'
 import { TrashModal } from './components/TrashModal'
+import { GitModal } from './components/GitModal'
 import { PollModal } from './components/PollModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
@@ -60,6 +61,7 @@ type ModalType =
   | 'palette'
   | 'cookies'
   | 'trash'
+  | 'git'
   | 'poll'
   | 'settings'
   | 'bench'
@@ -320,6 +322,13 @@ function App(): React.JSX.Element {
       label: 'Papelera',
       description: 'Recupera peticiones y colecciones eliminadas',
       onSelect: () => setModal('trash')
+    },
+    {
+      id: 'git',
+      icon: 'gitCompare',
+      label: 'Git',
+      description: 'Ver cambios del workspace y guardar versiones',
+      onSelect: () => setModal('git')
     },
     {
       id: 'bench',
@@ -792,6 +801,7 @@ function App(): React.JSX.Element {
       {modal === 'compare' && <EnvCompareModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
       {modal === 'trash' && <TrashModal onClose={() => setModal(null)} />}
+      {modal === 'git' && <GitModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
           onClose={() => setModal(null)}
