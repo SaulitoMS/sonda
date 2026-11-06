@@ -8,7 +8,7 @@ type Source = 'swagger' | 'file'
 
 const SOURCES: { id: Source; label: string; icon: IconName }[] = [
   { id: 'swagger', label: 'Swagger / OpenAPI', icon: 'globe' },
-  { id: 'file', label: 'Postman / Insomnia / HAR', icon: 'upload' }
+  { id: 'file', label: 'Postman / Insomnia / HAR / .http', icon: 'upload' }
 ]
 
 export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Element {
@@ -51,7 +51,7 @@ export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Ele
     await runSwagger(file)
   }
 
-  // ── Postman / Insomnia / HAR ──
+  // ── Postman / Insomnia / HAR / .http ──
   const runFile = async (): Promise<void> => {
     if (loading) return
     setLoading(true)
@@ -127,9 +127,9 @@ export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Ele
       ) : (
         <>
           <p className="mb-3 text-xs text-zinc-400">
-            Elige un archivo exportado desde Postman o Insomnia (.json) o una captura HAR (.har). El
-            formato se detecta automáticamente y se crea una colección con sus peticiones y
-            variables.
+            Elige un archivo exportado desde Postman o Insomnia (.json), una captura HAR (.har) o un
+            archivo HTTP de VS Code o JetBrains (.http, .rest). El formato se detecta
+            automáticamente y se crea una colección con sus peticiones y variables.
           </p>
 
           <button
@@ -143,7 +143,9 @@ export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Ele
             <span className="text-xs font-medium">
               {loading ? 'Importando…' : 'Elegir archivo…'}
             </span>
-            <span className="text-[11px] text-zinc-500">.json (Postman / Insomnia) · .har</span>
+            <span className="text-[11px] text-zinc-500">
+              .json (Postman / Insomnia) · .har · .http / .rest
+            </span>
           </button>
         </>
       )}

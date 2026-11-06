@@ -38,6 +38,7 @@ import { sortByOrder } from '../shared/reorder'
 import { looksLikeHar, parseHar } from '../shared/har'
 import { buildOpenApi } from '../shared/openapiExport'
 import { looksLikeInsomnia, parseInsomnia } from '../shared/insomnia'
+import { isHttpFilePath, parseHttpFile } from '../shared/httpFile'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -532,30 +533,39 @@ export function registerCollectionHandlers(): void {
 
   ipcMain.handle('postman:import', async (): Promise<ImportResult | null> => {
     const picked = await dialog.showOpenDialog({
-      title: 'Importar colección de Postman, Insomnia o archivo HAR',
+      title: 'Importar colección de Postman, Insomnia, HAR o archivo .http',
       properties: ['openFile'],
       filters: [
         {
-          name: 'Postman / Insomnia (.json) o HAR (.har)',
-          extensions: ['json', 'har']
+          name: 'Postman / Insomnia (.json), HAR (.har) o HTTP (.http, .rest)',
+          extensions: ['json', 'har', 'http', 'rest']
         }
       ]
     })
     if (picked.canceled || !picked.filePaths[0]) return null
 
     try {
-      let json: unknown
-      try {
-        json = JSON.parse(await fs.readFile(picked.filePaths[0], 'utf-8'))
-      } catch {
-        throw new Error('El archivo no es un JSON válido')
+      const file = picked.filePaths[0]
+      const raw = await fs.readFile(file, 'utf-8')
+
+      let parsed: ReturnType<typeof parsePostmanCollection>
+      if (isHttpFilePath(file)) {
+        // Archivo .http / .rest (VS Code REST Client o JetBrains)
+        parsed = parseHttpFile(raw, basename(file))
+      } else {
+        let json: unknown
+        try {
+          json = JSON.parse(raw)
+        } catch {
+          throw new Error('El archivo no es un JSON válido')
+        }
+        // Un HAR (captura del navegador), un export de Insomnia o una colección de Postman
+        parsed = looksLikeHar(json)
+          ? parseHar(json)
+          : looksLikeInsomnia(json)
+            ? parseInsomnia(json)
+            : parsePostmanCollection(json)
       }
-      // Un HAR (captura del navegador), un export de Insomnia o una colección de Postman
-      const parsed = looksLikeHar(json)
-        ? parseHar(json)
-        : looksLikeInsomnia(json)
-          ? parseInsomnia(json)
-          : parsePostmanCollection(json)
 
       await fs.mkdir(getRoot(), { recursive: true })
       const dir = await uniquePath(getRoot(), slug(parsed.name), '')
