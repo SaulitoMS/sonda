@@ -22,6 +22,7 @@ import { CookiesModal } from './components/CookiesModal'
 import { TrashModal } from './components/TrashModal'
 import { GitModal } from './components/GitModal'
 import { PollModal } from './components/PollModal'
+import { PaginateModal } from './components/PaginateModal'
 import { SettingsModal } from './components/SettingsModal'
 import { BenchmarkModal } from './components/BenchmarkModal'
 import { FuzzModal } from './components/FuzzModal'
@@ -67,6 +68,7 @@ type ModalType =
   | 'trash'
   | 'git'
   | 'poll'
+  | 'paginate'
   | 'settings'
   | 'bench'
   | 'fuzz'
@@ -398,6 +400,13 @@ function App(): React.JSX.Element {
       label: 'Polling',
       description: 'Repetir la petición hasta que se cumpla una condición',
       onSelect: () => setModal('poll')
+    },
+    {
+      id: 'paginate',
+      icon: 'list',
+      label: 'Paginación',
+      description: 'Pedir todas las páginas de un listado y juntar los items',
+      onSelect: () => setModal('paginate')
     },
     {
       id: 'fuzz',
@@ -849,6 +858,7 @@ function App(): React.JSX.Element {
       {modal === 'envs' && <EnvironmentsModal onClose={() => setModal(null)} />}
       {modal === 'bench' && <BenchmarkModal onClose={() => setModal(null)} />}
       {modal === 'poll' && <PollModal onClose={() => setModal(null)} />}
+      {modal === 'paginate' && <PaginateModal onClose={() => setModal(null)} />}
       {modal === 'fuzz' && <FuzzModal onClose={() => setModal(null)} />}
       {modal === 'snapshot' && <SnapshotModal onClose={() => setModal(null)} />}
       {modal === 'monitor' && <MonitorModal onClose={() => setModal(null)} />}
