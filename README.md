@@ -58,17 +58,17 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API respond
 
 ## Resumen de funciones
 
-| Área                | Qué incluye                                                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Peticiones          | Todos los métodos HTTP, body JSON, `x-www-form-urlencoded` y `multipart` con archivos, GraphQL, Server-Sent Events                          |
+| Área                | Qué incluye                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Peticiones          | Todos los métodos HTTP, body JSON, `x-www-form-urlencoded` y `multipart` con archivos, GraphQL, Server-Sent Events                                                       |
 | Autenticación       | Bearer, Basic, Digest, API Key y OAuth 2.0 (client credentials, password y authorization code con PKCE), con herencia desde la colección o la carpeta e inspector de JWT |
-| Respuestas          | JSON en árbol, XML formateado, vista previa HTML, binarios, comparación con la respuesta anterior, exportación                              |
-| Colecciones         | Carpetas, drag and drop, duplicar, renombrar, headers y autenticación heredados, búsqueda                                                   |
-| Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, Insomnia, HAR, cURL; exportación a Postman y a código                                             |
-| Validación          | Respuesta y body contra el schema de la spec, con sincronización posterior de la colección                                                  |
-| Automatización      | Aserciones, extracción de variables, runner con datos CSV/JSON, reportes JSON, HTML y JUnit, monitor programado                             |
-| Herramientas        | Rendimiento, fuzz, snapshot, mock server, historial, cookies                                                                                |
-| Interfaz            | Pestañas con sesión restaurable, paleta de comandos, tema claro y oscuro, diseño responsive, layout configurable                            |
+| Respuestas          | JSON en árbol, XML formateado, vista previa HTML, binarios, comparación con la respuesta anterior, exportación                                                           |
+| Colecciones         | Carpetas, drag and drop, duplicar, renombrar, headers y autenticación heredados, búsqueda                                                                                |
+| Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, Insomnia, HAR, cURL; exportación a Postman y a código                                                                          |
+| Validación          | Respuesta y body contra el schema de la spec, con sincronización posterior de la colección                                                                               |
+| Automatización      | Aserciones, extracción de variables, runner con datos CSV/JSON, reportes JSON, HTML y JUnit, monitor programado                                                          |
+| Herramientas        | Rendimiento, fuzz, snapshot, mock server, historial, cookies                                                                                                             |
+| Interfaz            | Pestañas con sesión restaurable, paleta de comandos, tema claro y oscuro, diseño responsive, layout configurable                                                         |
 
 ---
 
@@ -241,7 +241,7 @@ Disponibles desde el menú **Herramientas** de la cabecera y desde la paleta de 
 | **Monitor**     | Ejecuta una colección cada cierto tiempo (de 1 minuto a 24 horas), calcula el uptime y avisa solo cuando el estado cambia: cuando empieza a fallar o se recupera |
 | **Mock**        | Levanta un servidor local con respuestas de ejemplo generadas desde los schemas de la colección, útil para desarrollar el frontend antes que el backend          |
 | **cURL**        | Importa o exporta la petición actual como comando                                                                                                                |
-| **Ajustes**     | Tiempo límite, SSL, proxy y reintentos                                                                                                                          
+| **Ajustes**     | Tiempo límite, SSL, proxy y reintentos                                                                                                                           |
 | **Git**         | Muestra los cambios del workspace, el diff de cada archivo, permite descartarlos y hacer commit desde la app                                                     |
 | **Consola**     | Registra las peticiones enviadas y los `console.log` de los scripts                                                                                              |
 | **Host**        | Diagnóstico del host: resolución DNS y certificado TLS                                                                                                           |

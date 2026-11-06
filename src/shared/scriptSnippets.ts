@@ -23,7 +23,7 @@ export const SCRIPT_SNIPPETS: ScriptSnippet[] = [
     label: 'Firma HMAC-SHA256',
     phase: 'pre',
     code: [
-      "const ts = String(sonda.now())",
+      'const ts = String(sonda.now())',
       "const firma = sonda.crypto.hmacSha256(sonda.env.get('secret'), ts + sonda.request.body, 'hex')",
       "sonda.request.headers['X-Timestamp'] = ts",
       "sonda.request.headers['X-Signature'] = firma"
@@ -51,10 +51,7 @@ export const SCRIPT_SNIPPETS: ScriptSnippet[] = [
     id: 'post-save-token',
     label: 'Guardar token en el entorno',
     phase: 'post',
-    code: [
-      'const data = sonda.response.json()',
-      "sonda.env.set('token', data.token)"
-    ].join('\n')
+    code: ['const data = sonda.response.json()', "sonda.env.set('token', data.token)"].join('\n')
   },
   {
     id: 'post-jwt-exp',

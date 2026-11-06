@@ -38,6 +38,7 @@ import { sortByOrder } from '../shared/reorder'
 import { looksLikeHar, parseHar } from '../shared/har'
 import { buildOpenApi } from '../shared/openapiExport'
 import { looksLikeInsomnia, parseInsomnia } from '../shared/insomnia'
+import { looksLikeHoppscotch, parseHoppscotch } from '../shared/hoppscotch'
 import { isHttpFilePath, parseHttpFile } from '../shared/httpFile'
 import { buildHttpFile } from '../shared/httpExport'
 
@@ -560,12 +561,14 @@ export function registerCollectionHandlers(): void {
         } catch {
           throw new Error('El archivo no es un JSON válido')
         }
-        // Un HAR (captura del navegador), un export de Insomnia o una colección de Postman
+        // Un HAR, un export de Insomnia o de Hoppscotch, o una colección de Postman
         parsed = looksLikeHar(json)
           ? parseHar(json)
           : looksLikeInsomnia(json)
             ? parseInsomnia(json)
-            : parsePostmanCollection(json)
+            : looksLikeHoppscotch(json)
+              ? parseHoppscotch(json)
+              : parsePostmanCollection(json)
       }
 
       await fs.mkdir(getRoot(), { recursive: true })
