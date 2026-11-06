@@ -102,7 +102,7 @@ export function registerGitHandlers(): void {
     }
   })
 
-    ipcMain.handle('git:diff', async (_e, relPath: string): Promise<GitDiffResult> => {
+  ipcMain.handle('git:diff', async (_e, relPath: string): Promise<GitDiffResult> => {
     try {
       const root = await workspace()
       const file = String(relPath ?? '')
@@ -137,7 +137,7 @@ export function registerGitHandlers(): void {
     }
   })
 
-    ipcMain.handle('git:discard', async (_e, relPath: string): Promise<GitActionResult> => {
+  ipcMain.handle('git:discard', async (_e, relPath: string): Promise<GitActionResult> => {
     try {
       const root = await workspace()
       const file = String(relPath ?? '')

@@ -4,6 +4,7 @@ import type {
   AssertionResult,
   ExtractionResult,
   RedirectHop,
+  ResponseSchemas,
   SchemaValidation,
   StreamEnd
 } from '../../../shared/types'
@@ -40,6 +41,8 @@ import { TimeTrendChart } from './TimeTrendChart'
 import { HeadersTable } from './HeadersTable'
 import { addBodyExtraction } from '../../../shared/extractFromTree'
 import { buildBugReport } from '../../../shared/bugReport'
+import { learnSchema } from '../../../shared/learnSchema'
+import { validateResponse } from '../../../shared/validate'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -482,6 +485,41 @@ export function ResponsePanel(): React.JSX.Element {
   const [sseView, setSseView] = useState<'events' | 'text'>('events')
   const [filter, setFilter] = useState('')
 
+  // Solo se ofrece cuando no hay schema y el body es un objeto o array JSON
+  const canLearn = useMemo(() => {
+    if (!response?.ok || response.binary || validation) return false
+    try {
+      const parsed: unknown = JSON.parse(response.body)
+      return parsed !== null && typeof parsed === 'object'
+    } catch {
+      return false
+    }
+  }, [response, validation])
+
+  const learnFromResponse = (): void => {
+    if (!response?.ok) return
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(response.body)
+    } catch {
+      return
+    }
+    const schemas: ResponseSchemas = {
+      ...(useRequestStore.getState().responseSchemas ?? {}),
+      [String(response.status)]: learnSchema(parsed)
+    }
+    useRequestStore.setState({
+      responseSchemas: schemas,
+      validation: validateResponse({
+        schemas,
+        status: response.status,
+        method,
+        headers: response.headers,
+        body: response.body
+      })
+    })
+  }
+
   const securityFindings = useMemo(
     () =>
       response?.ok
@@ -769,6 +807,16 @@ export function ResponsePanel(): React.JSX.Element {
               <span className={verdictBadge(validation).color}>
                 {verdictBadge(validation).label}
               </span>
+            </button>
+          )}
+          {canLearn && (
+            <button
+              onClick={learnFromResponse}
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+              title="Deduce un schema de esta respuesta y valida las siguientes contra él"
+            >
+              <Icon name="fileCheck" size={15} />
+              Aprender schema
             </button>
           )}
           {hasTests && (

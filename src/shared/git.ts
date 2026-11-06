@@ -91,8 +91,7 @@ export function parseGitStatus(output: string): GitRepoStatus {
 }
 
 export type GitDiffResult =
-  | { ok: true; diff: string; truncated: boolean }
-  | { ok: false; error: string }
+  { ok: true; diff: string; truncated: boolean } | { ok: false; error: string }
 
 export type GitDiffLineKind = 'add' | 'del' | 'hunk' | 'meta' | 'context'
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseDiff, parseGitStatus } from './git'
 
-
 const z = (...parts: string[]): string => parts.join('\0') + '\0'
 
 describe('parseGitStatus', () => {
