@@ -45,6 +45,7 @@ import { learnSchema } from '../../../shared/learnSchema'
 import { validateResponse } from '../../../shared/validate'
 import { analyzePerformance } from '../../../shared/performanceInsights'
 import { TimingWaterfall } from './TimingWaterfall'
+import { ConditionalResend } from './ConditionalResend'
 
 type Tab = 'body' | 'headers' | 'schema' | 'tests' | 'changes' | 'security' | 'limits'
 
@@ -1148,6 +1149,7 @@ export function ResponsePanel(): React.JSX.Element {
                 connection={response.connection}
               />
             )}
+            {response.ok && <ConditionalResend responseHeaders={response.headers} />}
             <LimitsReport insights={limitInsights} />
           </>
         )}
