@@ -93,6 +93,7 @@ export function RunnerModal({
 
   const [includeWrites, setIncludeWrites] = useState(false)
   const [folderFilter, setFolderFilter] = useState<string | null>(initialFolder)
+  const [nameFilter, setNameFilter] = useState('')
   const [stopOnFail, setStopOnFail] = useState(false)
   const [retries, setRetries] = useState(0)
   const [delayMs, setDelayMs] = useState(0)
@@ -127,8 +128,14 @@ export function RunnerModal({
       ...collection.folders.flatMap((f) => f.requests.map((item) => ({ item, group: f.name }))),
       ...collection.requests.map((item) => ({ item, group: '' }))
     ]
-    return folderFilter === null ? entries : entries.filter((e) => e.group === folderFilter)
-  }, [collection, folderFilter])
+    const byFolder =
+      folderFilter === null ? entries : entries.filter((e) => e.group === folderFilter)
+    const q = nameFilter.trim().toLowerCase()
+    if (!q) return byFolder
+    return byFolder.filter((e) =>
+      `${e.group} ${e.item.name} ${e.item.method}`.toLowerCase().includes(q)
+    )
+  }, [collection, folderFilter, nameFilter])
 
   const planned = includeWrites ? all : all.filter((e) => SAFE_METHODS.includes(e.item.method))
 
@@ -403,6 +410,16 @@ export function RunnerModal({
             )}
             {dataError && <p className="mt-2 text-[11px] text-red-400">{dataError}</p>}
           </div>
+          <label className="flex items-center gap-2">
+            <span className="shrink-0 text-zinc-400">Solo las que contengan</span>
+            <input
+              value={nameFilter}
+              onChange={(e) => setNameFilter(e.target.value)}
+              disabled={running}
+              placeholder="login, users, POST…"
+              className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100 outline-none focus:border-blue-500 disabled:opacity-50"
+            />
+          </label>
           {writeCount > 0 && (
             <label className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-amber-200">
               <input
