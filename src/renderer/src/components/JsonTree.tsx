@@ -44,6 +44,30 @@ function CopyValue({ value }: { value: unknown }): React.JSX.Element {
   )
 }
 
+function CopyPath({ path }: { path: string }): React.JSX.Element | null {
+  const [copied, setCopied] = useState(false)
+  // La raíz no tiene ruta
+  if (!path) return null
+
+  const copy = async (): Promise<void> => {
+    await navigator.clipboard.writeText(path)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1200)
+  }
+
+  return (
+    <button
+      onClick={copy}
+      title={`Copiar la ruta: ${path}`}
+      className={`ml-2 opacity-0 transition-opacity focus:opacity-100 group-hover/row:opacity-100 ${
+        copied ? 'text-emerald-300' : 'text-zinc-500 hover:text-zinc-200'
+      }`}
+    >
+      {copied ? '✓ ruta copiada' : 'ruta'}
+    </button>
+  )
+}
+
 interface ExtractState {
   onExtract: (path: string) => void
   /** Solo se ofrece extraer si la ruta apunta de verdad a ese valor */
@@ -186,6 +210,7 @@ function Node({
         {label}
         <Primitive value={value} path={path} />
         <CopyValue value={value} />
+        <CopyPath path={path} />
         <ExtractButton path={path} value={value} />
       </div>
     )
@@ -213,6 +238,7 @@ function Node({
           {!isOpen && closeBr}
         </button>
         <CopyValue value={value} />
+        <CopyPath path={path} />
       </div>
       {isOpen && (
         <>
