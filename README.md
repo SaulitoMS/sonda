@@ -61,7 +61,7 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API respond
 | Área                | Qué incluye                                                                                                                                 |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Peticiones          | Todos los métodos HTTP, body JSON, `x-www-form-urlencoded` y `multipart` con archivos, GraphQL, Server-Sent Events                          |
-| Autenticación       | Bearer, Basic, Digest, API Key y OAuth 2.0 (client credentials y password), con herencia desde la colección o la carpeta e inspector de JWT |
+| Autenticación       | Bearer, Basic, Digest, API Key y OAuth 2.0 (client credentials, password y authorization code con PKCE), con herencia desde la colección o la carpeta e inspector de JWT |
 | Respuestas          | JSON en árbol, XML formateado, vista previa HTML, binarios, comparación con la respuesta anterior, exportación                              |
 | Colecciones         | Carpetas, drag and drop, duplicar, renombrar, headers y autenticación heredados, búsqueda                                                   |
 | Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, Insomnia, HAR, cURL; exportación a Postman y a código                                             |
@@ -241,7 +241,12 @@ Disponibles desde el menú **Herramientas** de la cabecera y desde la paleta de 
 | **Monitor**     | Ejecuta una colección cada cierto tiempo (de 1 minuto a 24 horas), calcula el uptime y avisa solo cuando el estado cambia: cuando empieza a fallar o se recupera |
 | **Mock**        | Levanta un servidor local con respuestas de ejemplo generadas desde los schemas de la colección, útil para desarrollar el frontend antes que el backend          |
 | **cURL**        | Importa o exporta la petición actual como comando                                                                                                                |
-| **Ajustes**     | Tiempo límite, SSL, proxy y reintentos                                                                                                                           |
+| **Ajustes**     | Tiempo límite, SSL, proxy y reintentos                                                                                                                          
+| **Git**         | Muestra los cambios del workspace, el diff de cada archivo, permite descartarlos y hacer commit desde la app                                                     |
+| **Consola**     | Registra las peticiones enviadas y los `console.log` de los scripts                                                                                              |
+| **Host**        | Diagnóstico del host: resolución DNS y certificado TLS                                                                                                           |
+| **Paginación**  | Recorre automáticamente las páginas de un endpoint paginado                                                                                                      |
+| **Secretos**    | Detecta credenciales en texto plano dentro de las colecciones                                                                                                    |
 
 ### Interfaz y productividad
 
@@ -449,7 +454,7 @@ src/
 
 ## Tests y CI
 
-La lógica de `src/shared` está cubierta con Vitest, con más de 400 casos repartidos en 31 archivos. Incluye el parser y exportador de cURL, la interpolación de variables, el validador de schemas, las aserciones, los importadores de Postman, HAR e Insomnia, Digest Auth, la sincronización con la spec, los reportes, el fuzzing, los snapshots, el monitor y el generador de código, entre otros.
+La lógica de `src/shared` está cubierta con Vitest, con más de 650 casos repartidos en más de 70 archivos. Incluye el parser y exportador de cURL, la interpolación de variables, el validador de schemas, las aserciones, los importadores de Postman, HAR e Insomnia, Digest Auth, la sincronización con la spec, los reportes, el fuzzing, los snapshots, el monitor y el generador de código, entre otros.
 
 ```bash
 npm test
@@ -463,7 +468,7 @@ Los reportes JUnit del runner permiten, además, usar Sonda como paso de verific
 
 ## Limitaciones conocidas
 
-- OAuth 2.0 soporta los flujos `client_credentials` y `password`; no hay flujos que requieran abrir un navegador (como `authorization_code`).
+- OAuth 2.0 soporta `client_credentials`, `password` y `authorization_code` con PKCE; no soporta el flujo implícito ni el de dispositivo.
 - La validación de schemas cubre el subconjunto de JSON Schema que usa OpenAPI. Con `discriminator` elige la variante por el `enum` o `const` de la propiedad; no interpreta el `mapping` ni los nombres implícitos de los schemas.
 - Las cookies con fecha de caducidad se guardan cifradas con el keychain del sistema; las cookies de sesión se descartan al cerrar la app.
 - Digest Auth no soporta `qop=auth-int`, y el CLI y la exportación a cURL todavía no lo aplican.
