@@ -145,6 +145,21 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             <label className="flex items-center gap-2 text-xs text-zinc-300">
               <input
                 type="checkbox"
+                checked={draft.autoSave}
+                onChange={(e) => set('autoSave', e.target.checked)}
+              />
+              Guardar automáticamente las peticiones de colección
+            </label>
+            <p className={hint}>
+              Guarda 1.5 s después de tu último cambio. Las peticiones nuevas (sin colección) siguen
+              requiriendo Guardar.
+            </p>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-xs text-zinc-300">
+              <input
+                type="checkbox"
                 checked={draft.http2}
                 onChange={(e) => set('http2', e.target.checked)}
               />

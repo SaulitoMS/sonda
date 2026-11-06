@@ -509,6 +509,8 @@ export interface AppSettings {
   followRedirects: boolean
   /** Máximo de redirecciones que se siguen en una petición antes de dar error */
   maxRedirects: number
+  /** Guarda automáticamente las peticiones de colección tras editarlas */
+  autoSave: boolean
   /** auto: tolera certificados inválidos solo en localhost · verify: siempre verifica · ignore: nunca verifica */
   sslMode: SslMode
   /** Proxy http(s) para todas las peticiones salvo las de localhost. Vacío = sin proxy */

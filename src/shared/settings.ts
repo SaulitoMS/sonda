@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   timeoutSeconds: 30,
   followRedirects: true,
   maxRedirects: 20,
+  autoSave: false,
   sslMode: 'auto',
   proxyUrl: '',
   noProxy: '',
@@ -54,6 +55,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
       MIN_REDIRECT_LIMIT,
       MAX_REDIRECT_LIMIT
     ),
+    autoSave: typeof r.autoSave === 'boolean' ? r.autoSave : DEFAULT_SETTINGS.autoSave,
     sslMode:
       r.sslMode === 'verify' || r.sslMode === 'ignore' || r.sslMode === 'auto'
         ? r.sslMode

@@ -34,7 +34,7 @@ import { Splitter } from './components/Splitter'
 import { ToolsMenu, type ToolItem } from './components/ToolsMenu'
 import { getLayout, setLayout, useLayout } from './lib/layout'
 import { toggleTheme } from './lib/theme'
-import { isDirtyState } from '../../shared/dirty'
+import { isDirtyState, requestSignature } from '../../shared/dirty'
 import { tabLabel } from '../../shared/tabs'
 import { useMediaQuery } from './lib/useMediaQuery'
 import { DEFAULT_LAYOUT } from '../../shared/layout'
@@ -155,6 +155,41 @@ function App(): React.JSX.Element {
     useRequestStore.getState().markSaved(s.currentFile, s.name)
     showFlash('Guardado ✓')
   }, [showFlash])
+
+  // Autoguardado: tras 1.5 s sin cambios, guarda la petición abierta si viene de una colección
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const unsubscribe = useRequestStore.subscribe(() => {
+      clearTimeout(timer)
+      timer = setTimeout(async () => {
+        const s = useRequestStore.getState()
+        if (!s.currentFile || !isDirtyState(s)) return
+        try {
+          const { autoSave } = await window.api.loadSettings()
+          if (!autoSave) return
+          const latest = useRequestStore.getState()
+          // Si cambió de pestaña o siguió editando mientras se leían los ajustes, espera al próximo ciclo
+          if (latest.currentFile !== s.currentFile || !isDirtyState(latest)) return
+          const signature = requestSignature(latest)
+          await window.api.saveRequest({
+            relPath: latest.currentFile,
+            request: latest.toSaved(latest.name)
+          })
+          const after = useRequestStore.getState()
+          // Si siguió editando durante el guardado, no se marca como guardado: el próximo ciclo lo guarda
+          if (after.currentFile === latest.currentFile && requestSignature(after) === signature) {
+            after.markSaved(latest.currentFile, latest.name)
+          }
+        } catch {
+          // Fallo silencioso: la pestaña sigue marcada con ● y se puede guardar a mano
+        }
+      }, 1500)
+    })
+    return () => {
+      clearTimeout(timer)
+      unsubscribe()
+    }
+  }, [])
 
   const toggleSidebar = useCallback(() => {
     if (isNarrow) {
