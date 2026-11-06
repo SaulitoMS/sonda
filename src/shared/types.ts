@@ -507,6 +507,8 @@ export interface AppSettings {
   /** Tiempo máximo de espera por petición */
   timeoutSeconds: number
   followRedirects: boolean
+  /** Máximo de redirecciones que se siguen en una petición antes de dar error */
+  maxRedirects: number
   /** auto: tolera certificados inválidos solo en localhost · verify: siempre verifica · ignore: nunca verifica */
   sslMode: SslMode
   /** Proxy http(s) para todas las peticiones salvo las de localhost. Vacío = sin proxy */

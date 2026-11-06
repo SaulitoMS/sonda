@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
   DEFAULT_USER_AGENT,
+  MAX_REDIRECT_LIMIT,
   MAX_RETRIES,
   MAX_RETRY_DELAY_MS,
   MAX_TIMEOUT_S,
+  MIN_REDIRECT_LIMIT,
   MIN_RETRIES,
   MIN_RETRY_DELAY_MS,
   MIN_TIMEOUT_S
@@ -121,6 +123,23 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             />
             Seguir redirecciones automáticamente
           </label>
+
+          <div>
+            <label className={label}>Máximo de redirecciones</label>
+            <input
+              type="number"
+              min={MIN_REDIRECT_LIMIT}
+              max={MAX_REDIRECT_LIMIT}
+              value={draft.maxRedirects}
+              disabled={!draft.followRedirects}
+              onChange={(e) => set('maxRedirects', Number(e.target.value))}
+              className={field}
+            />
+            <p className={hint}>
+              Si se supera, la petición falla con un aviso de posible bucle. Entre{' '}
+              {MIN_REDIRECT_LIMIT} y {MAX_REDIRECT_LIMIT}.
+            </p>
+          </div>
 
           <div>
             <label className="flex items-center gap-2 text-xs text-zinc-300">

@@ -24,6 +24,8 @@ export interface FollowOptions {
   body?: RequestBody
   /** false = devuelve la primera respuesta tal cual, aunque sea un 3xx */
   follow: boolean
+  /** Tope de redirecciones a seguir. Por defecto MAX_REDIRECTS */
+  maxRedirects?: number
   /** Una sola petición, sin seguir redirecciones por su cuenta (redirect: 'manual') */
   send: (
     url: URL,
@@ -55,6 +57,7 @@ export async function sendFollowingRedirects(opts: FollowOptions): Promise<Follo
   let body = opts.body
   const headers = new Headers(opts.headers)
   const hops: RedirectHop[] = []
+  const maxHops = opts.maxRedirects ?? MAX_REDIRECTS
 
   for (;;) {
     opts.beforeSend?.(url, headers)
@@ -74,8 +77,8 @@ export async function sendFollowingRedirects(opts: FollowOptions): Promise<Follo
     if (next.protocol !== 'http:' && next.protocol !== 'https:') return { res, url, hops }
 
     await res.body?.cancel()
-    if (hops.length >= MAX_REDIRECTS) {
-      throw new Error(`Demasiadas redirecciones (más de ${MAX_REDIRECTS}). ¿Hay un bucle?`)
+    if (hops.length >= maxHops) {
+      throw new Error(`Demasiadas redirecciones (más de ${maxHops}). ¿Hay un bucle?`)
     }
     hops.push({
       status: res.status,

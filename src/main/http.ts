@@ -241,6 +241,7 @@ export function registerHttpHandlers(): void {
           headers,
           body,
           follow: input.followRedirects ?? settings.followRedirects,
+          maxRedirects: settings.maxRedirects,
           send: (target, init) =>
             fetch(target, {
               ...init,

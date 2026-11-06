@@ -6,11 +6,14 @@ export const MIN_RETRIES = 0
 export const MAX_RETRIES = 5
 export const MIN_RETRY_DELAY_MS = 100
 export const MAX_RETRY_DELAY_MS = 10000
+export const MIN_REDIRECT_LIMIT = 1
+export const MAX_REDIRECT_LIMIT = 50
 export const DEFAULT_USER_AGENT = 'Sonda/1.0'
 
 export const DEFAULT_SETTINGS: AppSettings = {
   timeoutSeconds: 30,
   followRedirects: true,
+  maxRedirects: 20,
   sslMode: 'auto',
   proxyUrl: '',
   noProxy: '',
@@ -45,6 +48,12 @@ export function normalizeSettings(raw: unknown): AppSettings {
     ),
     followRedirects:
       typeof r.followRedirects === 'boolean' ? r.followRedirects : DEFAULT_SETTINGS.followRedirects,
+    maxRedirects: toInt(
+      r.maxRedirects,
+      DEFAULT_SETTINGS.maxRedirects,
+      MIN_REDIRECT_LIMIT,
+      MAX_REDIRECT_LIMIT
+    ),
     sslMode:
       r.sslMode === 'verify' || r.sslMode === 'ignore' || r.sslMode === 'auto'
         ? r.sslMode
