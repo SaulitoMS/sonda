@@ -51,6 +51,7 @@ import { ShortcutsModal } from './components/ShortcutsModal'
 import { HistoryStatsModal } from './components/HistoryStatsModal'
 import { ConsoleModal } from './components/ConsoleModal'
 import { HostDiagnosticsModal } from './components/HostDiagnosticsModal'
+import { RequestPreviewModal } from './components/RequestPreviewModal'
 
 type ModalType =
   | 'import'
@@ -62,6 +63,7 @@ type ModalType =
   | 'sync'
   | 'palette'
   | 'cookies'
+  | 'preview'
   | 'trash'
   | 'git'
   | 'poll'
@@ -354,6 +356,13 @@ function App(): React.JSX.Element {
       label: 'Consola',
       description: 'Peticiones enviadas y logs de scripts de esta sesión',
       onSelect: () => setModal('console')
+    },
+    {
+      id: 'preview',
+      icon: 'fileCode',
+      label: 'Vista previa',
+      description: 'Ve la petición con las variables ya resueltas',
+      onSelect: () => setModal('preview')
     },
     {
       id: 'cookies',
@@ -854,6 +863,7 @@ function App(): React.JSX.Element {
       {modal === 'console' && <ConsoleModal onClose={() => setModal(null)} />}
       {modal === 'compare' && <EnvCompareModal onClose={() => setModal(null)} />}
       {modal === 'cookies' && <CookiesModal onClose={() => setModal(null)} />}
+      {modal === 'preview' && <RequestPreviewModal onClose={() => setModal(null)} />}
       {modal === 'trash' && <TrashModal onClose={() => setModal(null)} />}
       {modal === 'git' && <GitModal onClose={() => setModal(null)} />}
       {modal === 'host' && <HostDiagnosticsModal onClose={() => setModal(null)} />}
