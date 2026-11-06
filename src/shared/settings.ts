@@ -6,6 +6,7 @@ export const MIN_RETRIES = 0
 export const MAX_RETRIES = 5
 export const MIN_RETRY_DELAY_MS = 100
 export const MAX_RETRY_DELAY_MS = 10000
+export const DEFAULT_USER_AGENT = 'Sonda/1.0'
 
 export const DEFAULT_SETTINGS: AppSettings = {
   timeoutSeconds: 30,
@@ -20,6 +21,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   clientKeyPath: '',
   clientCertHost: '',
   caCertPath: '',
+  userAgent: DEFAULT_USER_AGENT,
   workspacePath: ''
 }
 
@@ -61,6 +63,10 @@ export function normalizeSettings(raw: unknown): AppSettings {
     clientKeyPath: toText(r.clientKeyPath),
     clientCertHost: toText(r.clientCertHost).toLowerCase(),
     caCertPath: toText(r.caCertPath),
+    userAgent:
+      typeof r.userAgent === 'string' && !/[\r\n]/.test(r.userAgent)
+        ? r.userAgent.trim()
+        : DEFAULT_SETTINGS.userAgent,
     workspacePath: toText(r.workspacePath)
   }
 }

@@ -527,6 +527,8 @@ export interface AppSettings {
   clientCertHost: string
   /** Certificado de una CA propia (PEM) en la que confiar además de las públicas. Vacío = solo las públicas */
   caCertPath: string
+  /** User-Agent que se manda si la petición no define uno propio. Vacío = el de Sonda */
+  userAgent: string
   /** Carpeta donde viven las colecciones y los entornos. Vacío = Documentos/Sonda */
   workspacePath: string
 }

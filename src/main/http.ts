@@ -212,6 +212,10 @@ export function registerHttpHandlers(): void {
         for (const h of input.headers) {
           if (h.key.trim()) headers.append(h.key.trim(), h.value)
         }
+        // User-Agent por defecto: solo si la petición no trae uno propio (vacío en ajustes = no se agrega)
+        if (!headers.has('user-agent') && settings.userAgent) {
+          headers.set('user-agent', settings.userAgent)
+        }
 
         const canHaveBody = !['GET', 'HEAD'].includes(input.method)
         let body: string | FormData | Blob | undefined

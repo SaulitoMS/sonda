@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  DEFAULT_USER_AGENT,
   MAX_RETRIES,
   MAX_RETRY_DELAY_MS,
   MAX_TIMEOUT_S,
@@ -133,6 +134,21 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             <p className={hint}>
               Solo en https y sin proxy. Si el servidor no negocia HTTP/2, la petición sigue por
               HTTP/1.1 sin errores.
+            </p>
+          </div>
+
+          <div>
+            <label className={label}>User-Agent por defecto</label>
+            <input
+              type="text"
+              value={draft.userAgent}
+              placeholder={DEFAULT_USER_AGENT}
+              onChange={(e) => set('userAgent', e.target.value)}
+              className={field}
+            />
+            <p className={hint}>
+              Se envía cuando la petición no define su propio header User-Agent. Déjalo vacío para
+              no enviar ninguno.
             </p>
           </div>
 
