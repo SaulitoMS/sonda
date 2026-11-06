@@ -28,6 +28,7 @@ import {
   withGlobalVariables
 } from '../../../shared/variables'
 import { useEnvironmentStore } from '../store/useEnvironmentStore'
+import { useConsoleStore } from '../store/useConsoleStore'
 import { looksLikeXml } from '../../../shared/bodyType'
 import { collectionVarsForPath } from './collectionVariables'
 import { resolveHeadersForPath } from './inheritedHeaders'
@@ -136,6 +137,7 @@ export async function executeRequest(
       }
     })
     warnings.push(...scriptLogWarnings(out.logs, 'pre'))
+    useConsoleStore.getState().addLogs(out.logs, 'pre', input.url)
     if (!out.ok || !out.request) {
       return failed(`Error en el pre-script: ${out.error || 'sin resultado'}`)
     }
@@ -422,9 +424,21 @@ export async function executeRequest(
       }
     })
     warnings.push(...scriptLogWarnings(out.logs, 'post'))
+    useConsoleStore.getState().addLogs(out.logs, 'post', finalUrl)
     assertionResults.push(...scriptAssertionResults(out))
     scriptEnv = [...scriptEnv, ...scriptEnvResults(out.envSet)]
   }
+
+  useConsoleStore.getState().addRequest({
+    method: draft.method,
+    url: finalUrl,
+    ok: response.ok,
+    status: response.ok ? response.status : undefined,
+    timeMs: response.timeMs,
+    sizeBytes: response.ok ? response.sizeBytes : undefined,
+    retries: retried,
+    error: response.ok ? undefined : response.error
+  })
 
   return {
     response,
