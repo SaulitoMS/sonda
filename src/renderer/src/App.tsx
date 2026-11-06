@@ -53,6 +53,7 @@ import { ShortcutsModal } from './components/ShortcutsModal'
 import { HistoryStatsModal } from './components/HistoryStatsModal'
 import { ConsoleModal } from './components/ConsoleModal'
 import { HostDiagnosticsModal } from './components/HostDiagnosticsModal'
+import { EnvResponseCompareModal } from './components/EnvResponseCompareModal'
 import { RequestPreviewModal } from './components/RequestPreviewModal'
 
 type ModalType =
@@ -82,6 +83,7 @@ type ModalType =
   | 'secrets'
   | 'replace'
   | 'compare'
+  | 'envdiff'
   | 'toolbox'
   | 'datagen'
   | 'shortcuts'
@@ -491,6 +493,13 @@ function App(): React.JSX.Element {
       onSelect: () => setModal('datagen')
     },
     {
+      id: 'envdiff',
+      icon: 'gitCompare',
+      label: 'Comparar entornos',
+      description: 'Envía la petición a dos entornos y compara status, headers y body',
+      onSelect: () => setModal('envdiff')
+    },
+    {
       id: 'host',
       icon: 'shield',
       label: 'Diagnóstico de host',
@@ -887,6 +896,7 @@ function App(): React.JSX.Element {
       {modal === 'trash' && <TrashModal onClose={() => setModal(null)} />}
       {modal === 'git' && <GitModal onClose={() => setModal(null)} />}
       {modal === 'host' && <HostDiagnosticsModal onClose={() => setModal(null)} />}
+      {modal === 'envdiff' && <EnvResponseCompareModal onClose={() => setModal(null)} />}
       {modal === 'settings' && (
         <SettingsModal
           onClose={() => setModal(null)}
