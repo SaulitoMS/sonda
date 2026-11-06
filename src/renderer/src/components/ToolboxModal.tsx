@@ -185,11 +185,7 @@ export function ToolboxModal({ onClose }: { onClose: () => void }): React.JSX.El
         >
           Usar resultado como entrada
         </button>
-        <button
-          onClick={copy}
-          disabled={!result.text || result.error}
-          className="btn btn-primary"
-        >
+        <button onClick={copy} disabled={!result.text || result.error} className="btn btn-primary">
           {copied ? '¡Copiado!' : 'Copiar resultado'}
         </button>
       </div>

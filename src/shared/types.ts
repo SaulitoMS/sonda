@@ -177,6 +177,8 @@ export interface AuthConfig {
   oauthTokenUrl?: string
   /** Solo para "authorization_code" */
   oauthAuthUrl?: string
+  /** Parámetros extra de la URL de autorización, ej: "audience=https://api&prompt=consent" */
+  oauthAuthParams?: string
   /** Solo para "authorization_code". Vacío o 0 = puerto automático */
   oauthRedirectPort?: string
   oauthClientId?: string
@@ -358,6 +360,8 @@ export interface OAuthAuthorizeInput {
   scope: string
   /** 0 = que el sistema elija un puerto libre */
   port: number
+  /** Parámetros extra de la URL de autorización (sin "?"), ej: "audience=https://api" */
+  extraParams?: string
 }
 
 export type OAuthAuthorizeResult =

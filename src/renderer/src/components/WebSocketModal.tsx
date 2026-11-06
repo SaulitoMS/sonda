@@ -716,10 +716,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
                   ))}
                 </select>
               </label>
-              <button
-                onClick={() => void saveConnection()}
-                className="btn btn-primary btn-sm"
-              >
+              <button onClick={() => void saveConnection()} className="btn btn-primary btn-sm">
                 Guardar
               </button>
               <button
@@ -762,10 +759,7 @@ export function WebSocketModal({ onClose }: { onClose: () => void }): React.JSX.
             {live ? 'Desconectar' : 'Cancelar reintento'}
           </button>
         ) : (
-          <button
-            onClick={() => void connect()}
-            className="btn btn-primary btn-sm"
-          >
+          <button onClick={() => void connect()} className="btn btn-primary btn-sm">
             Conectar
           </button>
         )}

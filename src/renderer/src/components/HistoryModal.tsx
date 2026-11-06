@@ -308,10 +308,7 @@ export function HistoryModal({ onClose, onRestored }: Props): React.JSX.Element 
         >
           Borrar historial
         </button>
-        <button
-          onClick={onClose}
-          className="btn btn-ghost"
-        >
+        <button onClick={onClose} className="btn btn-ghost">
           Cerrar
         </button>
       </div>

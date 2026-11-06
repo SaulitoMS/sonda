@@ -13,6 +13,8 @@ export interface OAuthParams {
   password: string
   /** Solo con "authorization_code" */
   authUrl: string
+  /** Parámetros extra de la URL de autorización (audience, prompt…) */
+  authParams: string
   /** 0 = automático */
   redirectPort: number
 }
@@ -25,6 +27,18 @@ interface CachedToken {
   expiresAt: number
   /** Para renovar sin volver a abrir el navegador (authorization_code) */
   refreshToken?: string
+  /** Solo para mostrarlo en la interfaz */
+  grant: OAuthGrant
+  label: string
+}
+
+/** Lo que la interfaz puede ver de un token guardado (nunca el token ni los secretos) */
+export interface OAuthTokenInfo {
+  id: string
+  grant: OAuthGrant
+  label: string
+  expiresAt: number
+  renewable: boolean
 }
 
 /** Solo en memoria: al cerrar la app se descarta y se pide uno nuevo */
@@ -34,6 +48,47 @@ const cache = new Map<string, CachedToken>()
 const SAFETY_MS = 30_000
 /** Si el servidor no dice cuánto dura el token, se asume 1 hora */
 const DEFAULT_TTL_S = 3600
+
+/* ---------- Suscripción para que la interfaz refleje los cambios ---------- */
+
+const listeners = new Set<() => void>()
+let version = 0
+
+function notify(): void {
+  version++
+  listeners.forEach((l) => l())
+}
+
+export function subscribeOAuth(cb: () => void): () => void {
+  listeners.add(cb)
+  return () => {
+    listeners.delete(cb)
+  }
+}
+
+export const oauthVersion = (): number => version
+
+export function listOAuthTokens(): OAuthTokenInfo[] {
+  return [...cache.entries()].map(([id, t]) => ({
+    id,
+    grant: t.grant,
+    label: t.label,
+    expiresAt: t.expiresAt,
+    renewable: !!t.refreshToken
+  }))
+}
+
+export function forgetOAuthToken(id: string): void {
+  if (cache.delete(id)) notify()
+}
+
+export function clearOAuthCache(): void {
+  if (cache.size === 0) return
+  cache.clear()
+  notify()
+}
+
+/* ---------- Token ---------- */
 
 const cacheKey = (p: OAuthParams): string =>
   JSON.stringify([
@@ -45,11 +100,16 @@ const cacheKey = (p: OAuthParams): string =>
     p.username,
     p.password,
     p.authUrl,
+    p.authParams,
     p.redirectPort
   ])
 
-export function clearOAuthCache(): void {
-  cache.clear()
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }
 
 type TokenReply =
@@ -114,6 +174,7 @@ async function requestToken(p: OAuthParams, body: URLSearchParams): Promise<Toke
 
 function remember(
   key: string,
+  p: OAuthParams,
   reply: Extract<TokenReply, { ok: true }>,
   previousRefresh?: string
 ): void {
@@ -121,8 +182,11 @@ function remember(
     token: reply.token,
     expiresAt: Date.now() + reply.ttlMs - SAFETY_MS,
     // Algunos servidores no devuelven un refresh token nuevo al renovar: se conserva el anterior
-    refreshToken: reply.refreshToken ?? previousRefresh
+    refreshToken: reply.refreshToken ?? previousRefresh,
+    grant: p.grant,
+    label: `${p.clientId} · ${hostOf(p.tokenUrl)}`
   })
+  notify()
 }
 
 /** Pide (o reutiliza) un access token con client credentials, password o authorization code */
@@ -147,11 +211,12 @@ export async function getOAuthToken(p: OAuthParams): Promise<OAuthTokenResult> {
       new URLSearchParams({ grant_type: 'refresh_token', refresh_token: hit.refreshToken })
     )
     if (refreshed.ok) {
-      remember(key, refreshed, hit.refreshToken)
+      remember(key, p, refreshed, hit.refreshToken)
       return { ok: true, token: refreshed.token, cached: false }
     }
     // El refresh token ya no sirve: se vuelve a iniciar sesión
     cache.delete(key)
+    notify()
   }
 
   let body: URLSearchParams
@@ -160,7 +225,8 @@ export async function getOAuthToken(p: OAuthParams): Promise<OAuthTokenResult> {
       authUrl: p.authUrl,
       clientId: p.clientId,
       scope: p.scope.trim(),
-      port: p.redirectPort
+      port: p.redirectPort,
+      extraParams: p.authParams.trim() || undefined
     })
     if (!auth.ok) return { ok: false, error: `OAuth 2.0: ${auth.error}` }
     body = new URLSearchParams({
@@ -181,6 +247,6 @@ export async function getOAuthToken(p: OAuthParams): Promise<OAuthTokenResult> {
   const reply = await requestToken(p, body)
   if (!reply.ok) return reply
 
-  remember(key, reply)
+  remember(key, p, reply)
   return { ok: true, token: reply.token, cached: false }
 }

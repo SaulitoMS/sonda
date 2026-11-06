@@ -98,11 +98,7 @@ export function ScopeScriptsModal({
         >
           Cancelar
         </button>
-        <button
-          onClick={save}
-          disabled={saving}
-          className="btn btn-primary"
-        >
+        <button onClick={save} disabled={saving} className="btn btn-primary">
           Guardar
         </button>
       </div>

@@ -173,10 +173,7 @@ export function GraphQLModal({ onClose }: Props): React.JSX.Element {
         >
           Cancelar
         </button>
-        <button
-          onClick={apply}
-          className="btn btn-primary btn-sm"
-        >
+        <button onClick={apply} className="btn btn-primary btn-sm">
           Aplicar al body
         </button>
       </div>

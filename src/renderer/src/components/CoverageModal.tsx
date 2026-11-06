@@ -196,10 +196,7 @@ export function CoverageModal({ collectionId, collectionName, onClose }: Props):
       )}
 
       <div className="mt-4 flex justify-end">
-        <button
-          onClick={onClose}
-          className="btn btn-ghost"
-        >
+        <button onClick={onClose} className="btn btn-ghost">
           Cerrar
         </button>
       </div>

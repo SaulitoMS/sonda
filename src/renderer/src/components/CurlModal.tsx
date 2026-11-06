@@ -136,17 +136,10 @@ function ImportTab({
       )}
 
       <div className="mt-4 flex justify-end gap-2">
-        <button
-          onClick={onClose}
-          className="btn btn-ghost"
-        >
+        <button onClick={onClose} className="btn btn-ghost">
           Cancelar
         </button>
-        <button
-          onClick={submit}
-          disabled={!parsed?.ok}
-          className="btn btn-primary"
-        >
+        <button onClick={submit} disabled={!parsed?.ok} className="btn btn-primary">
           Importar
         </button>
       </div>
@@ -309,16 +302,10 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       )}
 
       <div className="mt-4 flex justify-end gap-2">
-        <button
-          onClick={onClose}
-          className="btn btn-ghost"
-        >
+        <button onClick={onClose} className="btn btn-ghost">
           Cerrar
         </button>
-        <button
-          onClick={copy}
-          className="btn btn-primary"
-        >
+        <button onClick={copy} className="btn btn-primary">
           {copied ? '¡Copiado!' : 'Copiar código'}
         </button>
       </div>

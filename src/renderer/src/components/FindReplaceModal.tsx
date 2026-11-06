@@ -302,10 +302,7 @@ export function FindReplaceModal({ onClose }: { onClose: () => void }): React.JS
             Deshacer el último reemplazo
           </button>
         )}
-        <button
-          onClick={onClose}
-          className="btn btn-ghost"
-        >
+        <button onClick={onClose} className="btn btn-ghost">
           Cerrar
         </button>
         <button

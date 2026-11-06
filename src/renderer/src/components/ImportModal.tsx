@@ -169,10 +169,7 @@ export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Ele
       )}
 
       <div className="mt-4 flex justify-end gap-2">
-        <button
-          onClick={onClose}
-          className="btn btn-ghost"
-        >
+        <button onClick={onClose} className="btn btn-ghost">
           {notice ? 'Cerrar' : 'Cancelar'}
         </button>
         {source === 'swagger' && (

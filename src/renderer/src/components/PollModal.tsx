@@ -305,10 +305,7 @@ export function PollModal({ onClose }: { onClose: () => void }): React.JSX.Eleme
             Detener
           </button>
         ) : (
-          <button
-            onClick={() => void start()}
-            className="btn btn-primary btn-sm"
-          >
+          <button onClick={() => void start()} className="btn btn-primary btn-sm">
             Iniciar
           </button>
         )}

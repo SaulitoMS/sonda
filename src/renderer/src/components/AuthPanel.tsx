@@ -4,6 +4,7 @@ import { useCollectionsStore } from '../store/useCollectionsStore'
 import { useRequestStore } from '../store/useRequestStore'
 import { VariableInput } from './VariableInput'
 import { JwtInfo } from './JwtInfo'
+import { OAuthTokenStatus } from './OAuthTokenStatus'
 
 const TYPES: { value: AuthType; label: string }[] = [
   { value: 'none', label: 'Sin autenticación' },
@@ -232,6 +233,15 @@ export function AuthForm({
               />
             </Field>
           )}
+          {auth.oauthGrant === 'authorization_code' && (
+            <Field label="Parámetros extra">
+              <VariableInput
+                value={auth.oauthAuthParams ?? ''}
+                onChange={(oauthAuthParams) => patch({ oauthAuthParams })}
+                placeholder="audience=https://api.ejemplo.com&prompt=consent (opcional)"
+              />
+            </Field>
+          )}
           {auth.oauthGrant === 'password' && (
             <>
               <Field label="Usuario">
@@ -261,6 +271,7 @@ export function AuthForm({
             Sonda pide el token al enviar y lo reutiliza hasta que caduca (solo en memoria). Se
             envía como <span className="font-mono text-zinc-400">Authorization: Bearer …</span>.
           </p>
+          <OAuthTokenStatus />
           {auth.oauthGrant === 'authorization_code' && (
             <p className="text-[11px] leading-relaxed text-zinc-500">
               Se abrirá tu navegador para iniciar sesión. Registra en tu proveedor la redirección{' '}

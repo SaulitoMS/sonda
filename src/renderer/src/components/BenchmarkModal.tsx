@@ -311,10 +311,7 @@ export function BenchmarkModal({ onClose }: Props): React.JSX.Element {
             Detener
           </button>
         ) : (
-          <button
-            onClick={() => void start()}
-            className="btn btn-primary btn-sm"
-          >
+          <button onClick={() => void start()} className="btn btn-primary btn-sm">
             Iniciar
           </button>
         )}

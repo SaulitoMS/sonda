@@ -164,10 +164,7 @@ export function SyncModal({ collectionId, collectionName, onClose }: Props): Rea
   }
 
   const closeBtn = (
-    <button
-      onClick={onClose}
-      className="btn btn-ghost"
-    >
+    <button onClick={onClose} className="btn btn-ghost">
       Cerrar
     </button>
   )
@@ -305,11 +302,7 @@ export function SyncModal({ collectionId, collectionName, onClose }: Props): Rea
       <div className="mt-4 flex justify-end gap-2">
         {closeBtn}
         {total > 0 && (
-          <button
-            onClick={apply}
-            disabled={applying || selected === 0}
-            className="btn btn-primary"
-          >
+          <button onClick={apply} disabled={applying || selected === 0} className="btn btn-primary">
             {applying ? 'Aplicando…' : `Aplicar (${selected})`}
           </button>
         )}

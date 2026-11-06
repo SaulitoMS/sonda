@@ -140,6 +140,12 @@ function authorize(input: OAuthAuthorizeInput): Promise<OAuthAuthorizeResult> {
       target.searchParams.set('state', state)
       if (input.scope) target.searchParams.set('scope', input.scope)
 
+      // Parámetros extra del proveedor (audience, prompt, access_type…): no pisan los que fija Sonda
+      const extra = new URLSearchParams((input.extraParams ?? '').replace(/^[?&]+/, ''))
+      extra.forEach((value, key) => {
+        if (!target.searchParams.has(key)) target.searchParams.set(key, value)
+      })
+
       shell.openExternal(target.toString()).catch((err: unknown) => {
         finish({
           ok: false,

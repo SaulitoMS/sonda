@@ -286,10 +286,7 @@ export function CookiesModal({ onClose }: { onClose: () => void }): React.JSX.El
             >
               Cancelar
             </button>
-            <button
-              onClick={() => void save()}
-              className="btn btn-primary btn-sm"
-            >
+            <button onClick={() => void save()} className="btn btn-primary btn-sm">
               Guardar cookie
             </button>
           </div>

@@ -221,7 +221,9 @@ export function CommandPalette({ onClose, commands }: Props): React.JSX.Element 
             const selected = i === index
 
             return (
-              <div key={row.kind === 'command' ? `c:${row.command.id}` : `r:${row.entry.item.path}`}>
+              <div
+                key={row.kind === 'command' ? `c:${row.command.id}` : `r:${row.entry.item.path}`}
+              >
                 {showHeading && (
                   <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                     {section}

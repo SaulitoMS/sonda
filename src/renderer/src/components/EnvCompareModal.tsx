@@ -110,11 +110,7 @@ export function EnvCompareModal({ onClose }: { onClose: () => void }): React.JSX
               ))}
             </select>
           </label>
-          <button
-            onClick={run}
-            disabled={running}
-            className="btn btn-primary btn-sm"
-          >
+          <button onClick={run} disabled={running} className="btn btn-primary btn-sm">
             {running ? 'Comparando…' : 'Comparar'}
           </button>
         </div>

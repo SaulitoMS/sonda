@@ -173,11 +173,7 @@ export function SnapshotModal({ onClose }: Props): React.JSX.Element {
             Eliminar línea base
           </button>
         )}
-        <button
-          onClick={saveCurrent}
-          disabled={!current}
-          className="btn btn-primary btn-sm"
-        >
+        <button onClick={saveCurrent} disabled={!current} className="btn btn-primary btn-sm">
           {snapshot ? 'Actualizar con la respuesta actual' : 'Guardar respuesta actual'}
         </button>
       </div>

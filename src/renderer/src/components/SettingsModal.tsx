@@ -296,11 +296,7 @@ export function SettingsModal({ onClose, onSaved }: Props): React.JSX.Element {
             >
               Cancelar
             </button>
-            <button
-              onClick={save}
-              disabled={saving}
-              className="btn btn-primary btn-sm"
-            >
+            <button onClick={save} disabled={saving} className="btn btn-primary btn-sm">
               Guardar
             </button>
           </div>

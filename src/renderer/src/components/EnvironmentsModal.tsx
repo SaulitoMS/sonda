@@ -661,17 +661,10 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
       )}
 
       <div className="mt-4 flex justify-end gap-2">
-        <button
-          onClick={onClose}
-          className="btn btn-ghost"
-        >
+        <button onClick={onClose} className="btn btn-ghost">
           Cancelar
         </button>
-        <button
-          onClick={submit}
-          disabled={saving}
-          className="btn btn-primary"
-        >
+        <button onClick={submit} disabled={saving} className="btn btn-primary">
           Guardar
         </button>
       </div>

@@ -187,10 +187,7 @@ export function VariablesAuditModal({ onClose }: { onClose: () => void }): React
       )}
 
       <div className="mt-4 flex justify-end">
-        <button
-          onClick={onClose}
-          className="btn btn-ghost"
-        >
+        <button onClick={onClose} className="btn btn-ghost">
           Cerrar
         </button>
       </div>
