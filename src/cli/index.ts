@@ -447,6 +447,16 @@ async function main(argv: string[]): Promise<number> {
   if (values.html) await fs.writeFile(values.html, reportToHtml(report), 'utf-8')
   if (values.markdown) await fs.writeFile(values.markdown, reportToMarkdown(report), 'utf-8')
 
+  // En GitHub Actions, el reporte aparece en el resumen del job
+  const stepSummary = process.env.GITHUB_STEP_SUMMARY
+  if (stepSummary) {
+    try {
+      await fs.appendFile(stepSummary, reportToMarkdown(report) + '\n', 'utf-8')
+    } catch {
+      process.stderr.write(c.yellow('⚠ No se pudo escribir en GITHUB_STEP_SUMMARY.\n'))
+    }
+  }
+
   const { pass, warn, fail, total, timeMs } = report.summary
   process.stdout.write(
     `\n${c.green(`✓ ${pass}`)}  ${c.yellow(`⚠ ${warn}`)}  ${c.red(`✗ ${fail}`)}  ${c.dim(`${total} peticiones · ${timeMs} ms`)}\n`
