@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { remapPaths } from '../../../shared/pathRemap'
 
 const KEY = 'sonda.quickAccess'
 const MAX_RECENT = 8
@@ -54,6 +55,13 @@ export function pushRecent(path: string): void {
     ...state,
     recent: [path, ...state.recent.filter((p) => p !== path)].slice(0, MAX_RECENT)
   })
+}
+
+/** Reescribe las rutas de pins y recientes cuando se mueve o renombra algo (null = sin cambios) */
+export function remapQuickAccess(map: (path: string) => string | null): void {
+  const pinned = remapPaths(state.pinned, map)
+  const recent = remapPaths(state.recent, map)
+  if (pinned !== state.pinned || recent !== state.recent) commit({ pinned, recent })
 }
 
 export function useQuickAccess(): QuickAccessState {

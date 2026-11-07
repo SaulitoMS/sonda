@@ -11,6 +11,8 @@ import { ScopeScriptsModal, type ScriptsScope } from './ScopeScriptsModal'
 import { placeItem, sortAlphabetically, type Place } from '../../../shared/reorder'
 import { Icon } from './Icon'
 import { ScopeVariablesModal, type VariablesScope } from './ScopeVariablesModal'
+import { remapPrefix } from '../../../shared/pathRemap'
+import { remapQuickAccess } from '../lib/quickAccess'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -654,14 +656,10 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
     if (!name || name === folder) return
     try {
       const next = await window.api.renameFolder(collectionId, folder, name)
-      // Las pestañas abiertas con peticiones de esa carpeta siguen apuntando a su archivo
-      const oldPrefix = `${collectionId}/${folder}/`
-      const newPrefix = `${collectionId}/${next}/`
-      useTabsStore
-        .getState()
-        .remapFiles((file) =>
-          file.startsWith(oldPrefix) ? newPrefix + file.slice(oldPrefix.length) : null
-        )
+      // Pestañas, pins y recientes siguen apuntando a sus archivos
+      const remap = remapPrefix(`${collectionId}/${folder}/`, `${collectionId}/${next}/`)
+      useTabsStore.getState().remapFiles(remap)
+      remapQuickAccess(remap)
       // La carpeta conserva si estaba abierta o cerrada
       setExpanded((e) => {
         const { [`${collectionId}/${folder}`]: wasOpen, ...rest } = e
@@ -743,7 +741,9 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   ): Promise<string | null> => {
     try {
       const newPath = await window.api.moveRequest(item.path, collectionId, folder)
-      useTabsStore.getState().remapFiles((file) => (file === item.path ? newPath : null))
+      const remap = (file: string): string | null => (file === item.path ? newPath : null)
+      useTabsStore.getState().remapFiles(remap)
+      remapQuickAccess(remap)
       setExpanded((e) => ({
         ...e,
         [collectionId]: true,
@@ -764,13 +764,9 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   ): Promise<void> => {
     try {
       const newName = await window.api.moveFolder(fromCollection, folder, toCollection)
-      const oldPrefix = `${fromCollection}/${folder}/`
-      const newPrefix = `${toCollection}/${newName}/`
-      useTabsStore
-        .getState()
-        .remapFiles((file) =>
-          file.startsWith(oldPrefix) ? newPrefix + file.slice(oldPrefix.length) : null
-        )
+      const remap = remapPrefix(`${fromCollection}/${folder}/`, `${toCollection}/${newName}/`)
+      useTabsStore.getState().remapFiles(remap)
+      remapQuickAccess(remap)
       setExpanded((e) => ({
         ...e,
         [toCollection]: true,
