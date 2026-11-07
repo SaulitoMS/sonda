@@ -242,6 +242,9 @@ export function parseCurl(input: string): ParsedCurl {
   let useGet = false
   let head = false
   let hasForm = false
+  let digest = false
+  let userValue: string | null = null
+  let userHeaderIndex = -1
 
   const formFields: FormFieldData[] = []
 
@@ -285,6 +288,9 @@ export function parseCurl(input: string): ParsedCurl {
         jsonBody = value
         break
       case 'user':
+        // Se agrega como Basic; si después aparece --digest, ese header se retira (ver más abajo)
+        userValue = value
+        userHeaderIndex = headers.length
         addHeader('Authorization', `Basic ${toBase64(value)}`)
         break
       case 'oauth2-bearer':
@@ -317,6 +323,7 @@ export function parseCurl(input: string): ParsedCurl {
   const handleFlag = (name: string): void => {
     if (name === 'get') useGet = true
     if (name === 'head') head = true
+    if (name === 'digest') digest = true
   }
 
   for (let i = 0; i < tokens.length; i++) {
@@ -356,6 +363,14 @@ export function parseCurl(input: string): ParsedCurl {
 
   if (!url) throw new Error('No encontré la URL en el comando')
 
+  // Con --digest, -u no es Basic: se quita el header y las credenciales se devuelven aparte
+  if (digest && userValue === null) {
+    warnings.push('Se omitió --digest: falta --user con las credenciales')
+    digest = false
+  } else if (digest && userHeaderIndex >= 0) {
+    headers.splice(userHeaderIndex, 1)
+  }
+
   // curl asume http:// si no hay esquema (pero respetamos {{baseUrl}})
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url) && !url.startsWith('{{')) url = `http://${url}`
 
@@ -392,6 +407,7 @@ export function parseCurl(input: string): ParsedCurl {
     ...(formFields.length > 0
       ? { bodyForm: { mode: 'form-data' as const, fields: formFields } }
       : {}),
+    ...(digest && userValue !== null ? { user: userValue, digest: true } : {}),
     warnings
   }
 }

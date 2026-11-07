@@ -74,6 +74,42 @@ describe('parseCurl', () => {
     })
   })
 
+  it('con --digest, -u no es Basic: devuelve las credenciales aparte', () => {
+    const r = parseCurl('curl --digest -u ana:s3:x https://x.com')
+    expect(r.digest).toBe(true)
+    expect(r.user).toBe('ana:s3:x')
+    expect(r.headers.some((h) => h.key === 'Authorization')).toBe(false)
+  })
+
+  it('--digest funciona después de -u y conserva los demás headers', () => {
+    const r = parseCurl("curl -H 'A: b' -u ana:clave -H 'C: d' --digest https://x.com")
+    expect(r.digest).toBe(true)
+    expect(r.headers).toEqual([
+      { key: 'A', value: 'b' },
+      { key: 'C', value: 'd' }
+    ])
+  })
+
+  it('--digest sin --user avisa y se omite', () => {
+    const r = parseCurl('curl --digest https://x.com')
+    expect(r.digest).toBeUndefined()
+    expect(r.warnings).toContain('Se omitió --digest: falta --user con las credenciales')
+  })
+
+  it('lo que exporta toCurl con Digest se vuelve a importar igual', () => {
+    const out = toCurl({
+      method: 'GET',
+      url: 'https://x.com',
+      headers: [],
+      body: '',
+      user: 'ana:clave',
+      digest: true
+    })
+    const r = parseCurl(out)
+    expect(r.digest).toBe(true)
+    expect(r.user).toBe('ana:clave')
+  })
+
   it('omite Host y Content-Length con avisos', () => {
     const r = parseCurl(
       `curl 'https://x.com' -H 'Host: x.com' -H 'Content-Length: 5' -H 'Accept: */*'`
