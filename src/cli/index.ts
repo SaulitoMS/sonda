@@ -31,6 +31,7 @@ import {
   readRequest
 } from './workspace'
 import { withGlobalVariables } from '../shared/variables'
+import { passesFilter } from '../shared/runnerFilter'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -47,6 +48,9 @@ Opciones de "run":
       --env-file <archivo> Lee variables desde un archivo .env (--var las pisa)
   -f, --folder <nombre>    Ejecuta solo las peticiones de esa carpeta
   -d, --data <archivo>     CSV o JSON: la colección corre una vez por fila
+      --only <términos>    Solo las peticiones que contengan alguno de esos términos (separados por coma)
+      --exclude <términos> Excluye las que contengan alguno de esos términos
+      --repeat <n>         Repite la colección n veces (1 a 100, se ignora con --data)
       --include-writes     Incluye POST, PUT, PATCH y DELETE (por defecto solo GET, HEAD y OPTIONS)
       --bail               Se detiene en el primer fallo
       --strict             Los avisos (⚠) también hacen fallar la ejecución
@@ -152,6 +156,9 @@ async function main(argv: string[]): Promise<number> {
       'include-writes': { type: 'boolean' },
       bail: { type: 'boolean' },
       strict: { type: 'boolean' },
+      only: { type: 'string' },
+      exclude: { type: 'string' },
+      repeat: { type: 'string' },
       retries: { type: 'string' },
       delay: { type: 'string' },
       timeout: { type: 'string' },
@@ -298,14 +305,28 @@ async function main(argv: string[]): Promise<number> {
     ...folders.flatMap((f) => f.requests.map((item) => ({ item, group: f.name }))),
     ...(values.folder ? [] : collection.requests.map((item) => ({ item, group: '' })))
   ]
+  const filtered = all.filter((e) =>
+    passesFilter(
+      `${e.group} ${e.item.name} ${e.item.method}`,
+      values.only ?? '',
+      values.exclude ?? ''
+    )
+  )
   const planned = values['include-writes']
-    ? all
-    : all.filter((e) => SAFE_METHODS.includes(e.item.method))
-  const skipped = all.length - planned.length
+    ? filtered
+    : filtered.filter((e) => SAFE_METHODS.includes(e.item.method))
+  const skipped = filtered.length - planned.length
+  const repeat = toInt(values.repeat, '--repeat', 1, 100, 1)
 
   const jobs = dataset
     ? dataset.rows.flatMap((data, i) => planned.map((entry) => ({ entry, data, iteration: i + 1 })))
-    : planned.map((entry) => ({ entry, data: undefined, iteration: undefined }))
+    : Array.from({ length: repeat }, (_, i) =>
+        planned.map((entry) => ({
+          entry,
+          data: undefined,
+          iteration: repeat > 1 ? i + 1 : undefined
+        }))
+      ).flat()
 
   if (jobs.length === 0) {
     throw new UsageError(
@@ -338,7 +359,7 @@ async function main(argv: string[]): Promise<number> {
     const runJob = async (): Promise<{ row: ReportInput; transient: boolean }> => {
       const rowEnv = withDataVars(withDataVars(state, job.data ?? {}), overrides)
       const label = job.iteration
-        ? `${job.entry.item.name} [fila ${job.iteration}]`
+        ? `${job.entry.item.name} [${dataset ? 'fila' : 'vuelta'} ${job.iteration}]`
         : job.entry.item.name
       try {
         const saved = await readRequest(root, job.entry.item.path)
