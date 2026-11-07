@@ -27,7 +27,17 @@ import { finishInFlight, startInFlight } from '../lib/inFlight'
 import { resolveAuthForPath } from '../lib/inheritedAuth'
 import { cleanOverrides, hasOverrides } from '../../../shared/requestOverrides'
 import { confirmSendMessage } from '../../../shared/writeGuard'
+import { envMismatch } from '../../../shared/envMismatch'
+import {
+  buildVarMap,
+  withCollectionVariables,
+  withGlobalVariables
+} from '../../../shared/variables'
+import { collectionVarsForPath } from '../lib/collectionVariables'
 import { notifyIfSlow } from '../lib/notifySlow'
+
+/** Pares entorno + host que ya se confirmaron en esta sesión (no se vuelve a preguntar) */
+const confirmedMismatch = new Set<string>()
 
 export interface KeyValue {
   id: string
@@ -270,9 +280,28 @@ export const useRequestStore = create<RequestState>((set, get) => ({
     } = get()
     if (loading || !url.trim()) return
 
+    const env = useEnvironmentStore.getState().getActive()
+
     // Entorno protegido: los métodos que modifican datos piden confirmación
-    const guard = confirmSendMessage(useEnvironmentStore.getState().getActive(), method, url)
+    const guard = confirmSendMessage(env, method, url)
     if (guard && !confirm(guard)) return
+
+    // Entorno y servidor que no parecen ir juntos (ej: "Producción" apuntando a localhost):
+    // se pregunta una sola vez por sesión para cada par entorno + host
+    const mismatch = envMismatch(
+      env,
+      url,
+      buildVarMap(
+        withGlobalVariables(
+          withCollectionVariables(env, collectionVarsForPath(currentFile)),
+          useEnvironmentStore.getState().data.globals
+        )
+      )
+    )
+    if (mismatch && !confirmedMismatch.has(mismatch.key)) {
+      if (!confirm(mismatch.message)) return
+      confirmedMismatch.add(mismatch.key)
+    }
 
     // La pestaña desde la que se envía: el usuario puede cambiar de pestaña mientras responde
     const tabId = useTabsStore.getState().activeId
