@@ -14,6 +14,7 @@ import {
 } from '../shared/report'
 import { DEFAULT_SETTINGS, proxyError } from '../shared/settings'
 import { passesFilter } from '../shared/runnerFilter'
+import { applyTimeBudget } from '../shared/timeBudget'
 import {
   compareRuns,
   parseReportRows,
@@ -59,6 +60,7 @@ Opciones de "run":
       --retries <n>        Reintentos ante error de red, 429 o 5xx (0 a 3, por defecto 0)
       --delay <ms>         Pausa entre peticiones (por defecto 0)
       --timeout <s>        Tiempo máximo por petición (por defecto ${DEFAULT_SETTINGS.timeoutSeconds})
+      --max-time <ms>      Límite por petición: si tarda más, cuenta como fallo (0 = sin límite)
       --no-redirects       No seguir redirecciones
       --insecure           No verificar certificados TLS (por defecto solo se tolera en localhost)
       --proxy <url>        Proxy http(s) (por defecto $HTTPS_PROXY si existe)
@@ -166,6 +168,7 @@ async function main(argv: string[]): Promise<number> {
       retries: { type: 'string' },
       delay: { type: 'string' },
       timeout: { type: 'string' },
+      'max-time': { type: 'string' },
       'no-redirects': { type: 'boolean' },
       insecure: { type: 'boolean' },
       proxy: { type: 'string' },
@@ -257,6 +260,7 @@ async function main(argv: string[]): Promise<number> {
   const retries = toInt(values.retries, '--retries', 0, 3, 0)
   const delayMs = toInt(values.delay, '--delay', 0, 10000, 0)
   const timeoutS = toInt(values.timeout, '--timeout', 1, 600, DEFAULT_SETTINGS.timeoutSeconds)
+  const maxTimeMs = toInt(values['max-time'], '--max-time', 0, 600000, 0)
   const proxyUrl = values.proxy ?? process.env.HTTPS_PROXY ?? process.env.https_proxy ?? ''
   const pe = proxyError(proxyUrl)
   if (pe) throw new UsageError(pe)
@@ -399,10 +403,13 @@ async function main(argv: string[]): Promise<number> {
           .filter((e) => !e.ok)
           .map((e) => `No se extrajo {{${e.variable || '?'}}}: ${e.message}`)
         const base = classifyResult(response, validation, assertionResults, requestValidation)
-        const verdict =
+        const verdict = applyTimeBudget(
           base.status === 'pass' && problems.length > 0
             ? { status: 'warn' as RunStatus, detail: problems[0] }
-            : base
+            : base,
+          response.timeMs,
+          maxTimeMs
+        )
 
         return {
           row: {

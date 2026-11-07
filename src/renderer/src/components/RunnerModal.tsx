@@ -32,6 +32,7 @@ import { parseDataSet, withDataVars, type DataSet } from '../../../shared/csvDat
 import { confirmRunMessage, isWriteMethod } from '../../../shared/writeGuard'
 import { createFolderSkipper, shouldRetryRow } from '../../../shared/runFlow'
 import { passesFilter } from '../../../shared/runnerFilter'
+import { applyTimeBudget } from '../../../shared/timeBudget'
 import {
   compareRuns,
   rowKey,
@@ -122,6 +123,7 @@ export function RunnerModal({
   const [stopOnFail, setStopOnFail] = useState(prefs.stopOnFail)
   const [retries, setRetries] = useState(prefs.retries)
   const [delayMs, setDelayMs] = useState(prefs.delayMs)
+  const [maxTimeMs, setMaxTimeMs] = useState(0)
   const [repeat, setRepeat] = useState(1)
   const [running, setRunning] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -243,10 +245,13 @@ export function RunnerModal({
         ...persistWarnings
       ]
       const base = classifyResult(response, validation, assertionResults, requestValidation)
-      const verdict =
+      const verdict = applyTimeBudget(
         base.status === 'pass' && problems.length > 0
           ? { status: 'warn' as RunStatus, detail: problems[0] }
-          : base
+          : base,
+        response.timeMs,
+        maxTimeMs
+      )
       return {
         entry,
         data,
@@ -588,6 +593,23 @@ export function RunnerModal({
               disabled={!!dataset}
               onChange={(e) => setRepeat(clampInt(Number(e.target.value), 1, 100))}
               className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-right disabled:opacity-50"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3">
+            <span>
+              Límite de tiempo por petición (ms, 0 = sin límite)
+              <span className="block text-[11px] text-zinc-500">
+                Si una respuesta tarda más, la petición cuenta como fallida.
+              </span>
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={600000}
+              step={100}
+              value={maxTimeMs}
+              onChange={(e) => setMaxTimeMs(clampInt(Number(e.target.value), 0, 600000))}
+              className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-right"
             />
           </label>
           <label className="flex items-center justify-between gap-3">
