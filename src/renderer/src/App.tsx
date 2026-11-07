@@ -55,6 +55,7 @@ import { ConsoleModal } from './components/ConsoleModal'
 import { HostDiagnosticsModal } from './components/HostDiagnosticsModal'
 import { EnvResponseCompareModal } from './components/EnvResponseCompareModal'
 import { RequestPreviewModal } from './components/RequestPreviewModal'
+import { CollectionLintModal } from './components/CollectionLintModal'
 
 type ModalType =
   | 'import'
@@ -81,6 +82,7 @@ type ModalType =
   | 'coverage'
   | 'vars'
   | 'secrets'
+  | 'lint'
   | 'replace'
   | 'compare'
   | 'envdiff'
@@ -463,6 +465,13 @@ function App(): React.JSX.Element {
       label: 'Secretos',
       description: 'Detectar credenciales en texto plano antes de subir tus colecciones a Git',
       onSelect: () => setModal('secrets')
+    },
+    {
+      id: 'lint',
+      icon: 'checkCircle',
+      label: 'Lint',
+      description: 'Detectar hosts fijos, peticiones duplicadas y otras malas prácticas',
+      onSelect: () => setModal('lint')
     },
     {
       id: 'replace',
@@ -884,6 +893,7 @@ function App(): React.JSX.Element {
       {modal === 'websocket' && <WebSocketModal onClose={() => setModal(null)} />}
       {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
       {modal === 'secrets' && <SecretsScanModal onClose={() => setModal(null)} />}
+      {modal === 'lint' && <CollectionLintModal onClose={() => setModal(null)} />}
       {modal === 'replace' && <FindReplaceModal onClose={() => setModal(null)} />}
       {modal === 'toolbox' && <ToolboxModal onClose={() => setModal(null)} />}
       {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal(null)} />}
