@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   clampInterval,
   decideNotification,
+  failingSince,
   pushRun,
   type MonitorRun
 } from '../../../shared/monitor'
@@ -43,8 +44,10 @@ export const useMonitorStore = create<MonitorState>((set, get) => {
     try {
       const run = await runMonitorOnce(collectionId)
       const previous = get().runs[0] ?? null
+      // Se calcula antes de guardar la comprobación nueva: mide la racha que acaba de terminar
+      const down = failingSince(get().runs)
       set({ runs: pushRun(get().runs, run) })
-      const note = decideNotification(previous, run)
+      const note = decideNotification(previous, run, down)
       if (note) {
         notify(note.title, note.body)
         const hook = getWebhookUrl()

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   clampInterval,
   decideNotification,
+  failingSince,
+  formatDuration,
   MAX_RUNS,
   pushRun,
   summarizeRun,
@@ -113,5 +115,66 @@ describe('decideNotification', () => {
 
   it('los warnings no cuentan como fallo', () => {
     expect(decideNotification(run(), run({ warn: 2, pass: 1 }))).toBeNull()
+  })
+})
+
+describe('decideNotification: detalle del aviso', () => {
+  const fails = (n: number): { name: string; detail: string }[] =>
+    Array.from({ length: n }, (_, i) => ({ name: `R${i + 1}`, detail: `HTTP 50${i}` }))
+
+  it('lista hasta 3 fallos y cuenta el resto', () => {
+    const n = decideNotification(run(), run({ fail: 5, pass: 0, total: 5, failures: fails(5) }))
+    expect(n?.body).toContain('• R1: HTTP 500')
+    expect(n?.body).toContain('• R3: HTTP 502')
+    expect(n?.body).not.toContain('R4')
+    expect(n?.body).toContain('y 2 más.')
+  })
+
+  it('al recuperarse dice cuánto estuvo fallando', () => {
+    const n = decideNotification(run({ fail: 1 }), run({ at: 10 * 60_000 }), {
+      at: 60_000,
+      complete: true
+    })
+    expect(n?.body).toContain('Estuvo fallando 9 min.')
+  })
+
+  it('si la racha podría ser más larga, dice "al menos"', () => {
+    const n = decideNotification(run({ fail: 1 }), run({ at: 10 * 60_000 }), {
+      at: 60_000,
+      complete: false
+    })
+    expect(n?.body).toContain('Estuvo fallando al menos 9 min.')
+  })
+
+  it('sin dato de caída no menciona el tiempo', () => {
+    expect(decideNotification(run({ fail: 1 }), run())?.body).not.toContain('Estuvo')
+  })
+})
+
+describe('failingSince', () => {
+  it('devuelve el inicio de la racha actual', () => {
+    const runs = [run({ at: 3, fail: 1 }), run({ at: 2, fail: 1 }), run({ at: 1 })]
+    expect(failingSince(runs)).toEqual({ at: 2, complete: true })
+  })
+
+  it('es null si la última comprobación pasó o no hay historial', () => {
+    expect(failingSince([run()])).toBeNull()
+    expect(failingSince([])).toBeNull()
+  })
+
+  it('marca incompleta la racha que ocupa todo el historial', () => {
+    const runs = Array.from({ length: MAX_RUNS }, (_, i) => run({ at: MAX_RUNS - i, fail: 1 }))
+    expect(failingSince(runs)?.complete).toBe(false)
+  })
+})
+
+describe('formatDuration', () => {
+  it('formatea minutos, horas y días', () => {
+    expect(formatDuration(0)).toBe('1 min')
+    expect(formatDuration(90_000)).toBe('2 min')
+    expect(formatDuration(3_600_000)).toBe('1 h')
+    expect(formatDuration(3_660_000)).toBe('1 h 1 min')
+    expect(formatDuration(86_400_000)).toBe('1 d')
+    expect(formatDuration(90_000_000)).toBe('1 d 1 h')
   })
 })

@@ -232,22 +232,22 @@ Ejecuta todas las peticiones de una colección con un clic y revisa el resultado
 
 Disponibles desde el menú **Herramientas** de la cabecera y desde la paleta de comandos.
 
-| Herramienta     | Qué hace                                                                                                                                                         |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Historial**   | Guarda las peticiones enviadas y permite restaurarlas. Oculta credenciales en headers, query y bodies, y recorta los bodies largos                               |
-| **Cookies**     | Lista y borra las cookies guardadas de las respuestas                                                                                                            |
-| **Rendimiento** | Envía la petición varias veces (hasta 200) con concurrencia configurable (hasta 10) y muestra percentiles, entre ellos p50 y p95                                 |
-| **Fuzz**        | Genera bodies inválidos a partir del schema de la petición y clasifica la reacción de la API: rechazada, aceptada, dudosa o fallo (`5xx`)                        |
-| **Snapshot**    | Guarda una respuesta como línea base y detecta cambios en la API, con una lista de campos a ignorar                                                              |
-| **Monitor**     | Ejecuta una colección cada cierto tiempo (de 1 minuto a 24 horas), calcula el uptime y avisa solo cuando el estado cambia: cuando empieza a fallar o se recupera |
-| **Mock**        | Levanta un servidor local con respuestas de ejemplo generadas desde los schemas de la colección, útil para desarrollar el frontend antes que el backend          |
-| **cURL**        | Importa o exporta la petición actual como comando                                                                                                                |
-| **Ajustes**     | Tiempo límite, SSL, proxy y reintentos                                                                                                                           |
-| **Git**         | Muestra los cambios del workspace, el diff de cada archivo, permite descartarlos y hacer commit desde la app                                                     |
-| **Consola**     | Registra las peticiones enviadas y los `console.log` de los scripts                                                                                              |
-| **Host**        | Diagnóstico del host: resolución DNS y certificado TLS                                                                                                           |
-| **Paginación**  | Recorre automáticamente las páginas de un endpoint paginado                                                                                                      |
-| **Secretos**    | Detecta credenciales en texto plano dentro de las colecciones                                                                                                    |
+| Herramienta     | Qué hace                                                                                                                                                                                                                   |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Historial**   | Guarda las peticiones enviadas y permite restaurarlas. Oculta credenciales en headers, query y bodies, y recorta los bodies largos                                                                                         |
+| **Cookies**     | Lista y borra las cookies guardadas de las respuestas                                                                                                                                                                      |
+| **Rendimiento** | Envía la petición varias veces (hasta 200) con concurrencia configurable (hasta 10) y muestra percentiles, entre ellos p50 y p95                                                                                           |
+| **Fuzz**        | Genera bodies inválidos a partir del schema de la petición y clasifica la reacción de la API: rechazada, aceptada, dudosa o fallo (`5xx`)                                                                                  |
+| **Snapshot**    | Guarda una respuesta como línea base y detecta cambios en la API, con una lista de campos a ignorar                                                                                                                        |
+| **Monitor**     | Ejecuta una colección cada cierto tiempo (de 1 minuto a 24 horas), calcula el uptime y avisa solo cuando el estado cambia: al empezar a fallar (con los primeros fallos) y al recuperarse (con el tiempo que estuvo caída) |
+| **Mock**        | Levanta un servidor local con respuestas de ejemplo generadas desde los schemas de la colección, útil para desarrollar el frontend antes que el backend                                                                    |
+| **cURL**        | Importa o exporta la petición actual como comando                                                                                                                                                                          |
+| **Ajustes**     | Tiempo límite, SSL, proxy y reintentos                                                                                                                                                                                     |
+| **Git**         | Muestra los cambios del workspace, el diff de cada archivo, permite descartarlos y hacer commit desde la app                                                                                                               |
+| **Consola**     | Registra las peticiones enviadas y los `console.log` de los scripts                                                                                                                                                        |
+| **Host**        | Diagnóstico del host: resolución DNS y certificado TLS                                                                                                                                                                     |
+| **Paginación**  | Recorre automáticamente las páginas de un endpoint paginado                                                                                                                                                                |
+| **Secretos**    | Detecta credenciales en texto plano dentro de las colecciones                                                                                                                                                              |
 
 ### Interfaz y productividad
 
