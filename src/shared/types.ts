@@ -431,6 +431,8 @@ export interface SondaApi {
   deleteCollection: (id: string) => Promise<void>
   /** Duplica una colección completa (peticiones, carpetas y configuración) como "<nombre> (copia)" */
   duplicateCollection: (id: string) => Promise<CollectionItem>
+  /** Duplica una carpeta dentro de su colección. Devuelve el nombre de la copia */
+  duplicateFolder: (collectionId: string, folder: string) => Promise<string>
   readRequest: (path: string) => Promise<SavedRequest>
   saveRequest: (input: SaveRequestInput) => Promise<string>
   deleteRequest: (path: string) => Promise<void>

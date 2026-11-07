@@ -369,6 +369,22 @@ export function registerCollectionHandlers(): void {
     return copy
   })
 
+  ipcMain.handle(
+    'collections:duplicateFolder',
+    async (_e, collectionId: string, folder: string): Promise<string> => {
+      if (!folder || folder !== basename(folder) || folder.startsWith('.')) {
+        throw new Error('Carpeta no válida')
+      }
+      const collectionDir = safePath(collectionId)
+      const src = safePath(collectionId, folder)
+
+      const dest = await uniquePath(collectionDir, `${folder}-copia`, '')
+      // Copia las peticiones y la configuración de la carpeta (auth, headers, scripts, orden)
+      await fs.cp(src, dest, { recursive: true })
+      return basename(dest)
+    }
+  )
+
   ipcMain.handle('collections:readRequest', async (_e, relPath: string): Promise<SavedRequest> => {
     const data = JSON.parse(await fs.readFile(safeRequestPath(relPath), 'utf-8')) as SavedRequest
     return { ...data, headers: data.headers ?? [], body: data.body ?? '' }

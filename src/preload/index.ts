@@ -19,6 +19,8 @@ const api: SondaApi = {
   createCollection: (name) => ipcRenderer.invoke('collections:create', name),
   deleteCollection: (id) => ipcRenderer.invoke('collections:delete', id),
   duplicateCollection: (id) => ipcRenderer.invoke('collections:duplicate', id),
+  duplicateFolder: (collectionId, folder) =>
+    ipcRenderer.invoke('collections:duplicateFolder', collectionId, folder),
   readRequest: (path) => ipcRenderer.invoke('collections:readRequest', path),
   saveRequest: (input) => ipcRenderer.invoke('collections:saveRequest', input),
   deleteRequest: (path) => ipcRenderer.invoke('collections:deleteRequest', path),

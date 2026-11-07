@@ -583,6 +583,16 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   const failed = (err: unknown): void =>
     alert(err instanceof Error ? err.message : 'No se pudo mover')
 
+  const duplicateFolder = async (collectionId: string, folder: string): Promise<void> => {
+    try {
+      const copy = await window.api.duplicateFolder(collectionId, folder)
+      setExpanded((e) => ({ ...e, [`${collectionId}/${copy}`]: true }))
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
   const startDrag = (e: React.DragEvent, item: DragItem, label: string): void => {
     e.stopPropagation()
     e.dataTransfer.effectAllowed = 'move'
@@ -1239,6 +1249,10 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                               title="Ejecutar las peticiones de esta carpeta"
                             />
                           )}
+                          <DuplicateButton
+                            onClick={() => duplicateFolder(c.id, f.name)}
+                            title="Duplicar carpeta"
+                          />
 
                           {dropLineFor(`fo:${key}`)}
                         </div>
