@@ -20,7 +20,8 @@ export function exportEnvironment(env: Environment, includeSecrets: boolean): st
             key: v.key.trim(),
             value: v.secret && !includeSecrets ? '' : v.value,
             secret: v.secret,
-            enabled: v.enabled
+            enabled: v.enabled,
+            ...(v.description ? { description: v.description } : {})
           }))
       },
       null,
@@ -41,12 +42,14 @@ function toVariables(list: unknown, envName: string, warnings: string[]): EnvVar
       continue
     }
     seen.add(key)
+    const description = typeof item.description === 'string' ? item.description.trim() : ''
     out.push({
       id: crypto.randomUUID(),
       key,
       value: item.value == null ? '' : String(item.value),
       secret: item.secret === true || item.type === 'secret',
-      enabled: item.enabled !== false
+      enabled: item.enabled !== false,
+      ...(description ? { description } : {})
     })
   }
   return out

@@ -603,46 +603,54 @@ export function EnvironmentsModal({ onClose }: { onClose: () => void }): React.J
                   <div className="min-h-0 flex-1 overflow-auto">
                     <div className="flex flex-col gap-2">
                       {selected.variables.map((v) => (
-                        <div key={v.id} className="flex items-center gap-2">
+                        <div key={v.id} className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={v.enabled}
+                              onChange={(e) => patchVar(v.id, { enabled: e.target.checked })}
+                              className="accent-blue-500"
+                            />
+                            <input
+                              value={v.key}
+                              onChange={(e) => patchVar(v.id, { key: e.target.value })}
+                              placeholder="Variable"
+                              spellCheck={false}
+                              className={`${inputClass} w-40`}
+                            />
+                            <input
+                              type={v.secret ? 'password' : 'text'}
+                              value={v.value}
+                              onChange={(e) => patchVar(v.id, { value: e.target.value })}
+                              placeholder="Valor"
+                              spellCheck={false}
+                              className={`${inputClass} min-w-0 flex-1`}
+                            />
+                            <button
+                              onClick={() => patchVar(v.id, { secret: !v.secret })}
+                              className={`rounded-md px-2 py-1.5 text-[10px] font-semibold ${
+                                v.secret
+                                  ? 'bg-amber-500/20 text-amber-400'
+                                  : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
+                              }`}
+                              title="Guardar este valor cifrado en el keychain"
+                            >
+                              Secreto
+                            </button>
+                            <button
+                              onClick={() => removeVar(v.id)}
+                              className="px-1 text-zinc-500 hover:text-red-400"
+                              title="Eliminar variable"
+                            >
+                              ✕
+                            </button>
+                          </div>
                           <input
-                            type="checkbox"
-                            checked={v.enabled}
-                            onChange={(e) => patchVar(v.id, { enabled: e.target.checked })}
-                            className="accent-blue-500"
+                            value={v.description ?? ''}
+                            onChange={(e) => patchVar(v.id, { description: e.target.value })}
+                            placeholder="Descripción (opcional)"
+                            className="ml-6 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[11px] text-zinc-400 outline-none placeholder:text-zinc-600 focus:border-zinc-700"
                           />
-                          <input
-                            value={v.key}
-                            onChange={(e) => patchVar(v.id, { key: e.target.value })}
-                            placeholder="Variable"
-                            spellCheck={false}
-                            className={`${inputClass} w-40`}
-                          />
-                          <input
-                            type={v.secret ? 'password' : 'text'}
-                            value={v.value}
-                            onChange={(e) => patchVar(v.id, { value: e.target.value })}
-                            placeholder="Valor"
-                            spellCheck={false}
-                            className={`${inputClass} min-w-0 flex-1`}
-                          />
-                          <button
-                            onClick={() => patchVar(v.id, { secret: !v.secret })}
-                            className={`rounded-md px-2 py-1.5 text-[10px] font-semibold ${
-                              v.secret
-                                ? 'bg-amber-500/20 text-amber-400'
-                                : 'bg-zinc-800 text-zinc-500 hover:text-zinc-300'
-                            }`}
-                            title="Guardar este valor cifrado en el keychain"
-                          >
-                            Secreto
-                          </button>
-                          <button
-                            onClick={() => removeVar(v.id)}
-                            className="px-1 text-zinc-500 hover:text-red-400"
-                            title="Eliminar variable"
-                          >
-                            ✕
-                          </button>
                         </div>
                       ))}
                     </div>

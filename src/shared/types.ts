@@ -584,6 +584,8 @@ export interface EnvVariable {
   /** Si es true, el valor se cifra en el keychain y no se escribe en environments.json */
   secret: boolean
   enabled: boolean
+  /** Nota sobre para qué sirve la variable. Si no existe, no tiene descripción */
+  description?: string
 }
 
 export interface Environment {
