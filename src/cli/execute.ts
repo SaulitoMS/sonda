@@ -1,6 +1,7 @@
 import { evaluateAssertions } from '../shared/assertions'
 import { buildAuth, resolveAuth, toBase64 } from '../shared/auth'
 import { signAwsV4 } from '../shared/awsSigV4'
+import { buildDigestAuthorization, findDigestChallenge } from '../shared/digest'
 import { signOAuth1 } from '../shared/oauth1'
 import { formDataParts, urlencodedBody } from '../shared/bodyForm'
 import { evaluateExtractions } from '../shared/extract'
@@ -197,6 +198,11 @@ export async function executeRequest(
         }
       : null
 
+  const digest =
+    auth?.type === 'digest'
+      ? { username: resolve(auth.username), password: resolve(auth.password) }
+      : null
+
   const aws =
     auth?.type === 'awsv4'
       ? {
@@ -323,13 +329,51 @@ export async function executeRequest(
     }
   }
 
-  const response = await options.send({
+  const sendInput: SendRequestInput = {
     method: draft.method,
     url: finalUrl,
     headers,
     body: finalBody,
     formData: formParts
-  })
+  }
+  let response = await options.send(sendInput)
+
+  // Digest: el servidor responde 401 con un desafío y la petición se reenvía firmada
+  if (
+    digest &&
+    response.ok &&
+    response.status === 401 &&
+    !headers.some((h) => h.key.toLowerCase() === 'authorization')
+  ) {
+    const challenge = findDigestChallenge(response.headers)
+    if (!challenge) {
+      warnings.push(
+        'Auth Digest: el servidor respondió 401 sin un desafío Digest compatible (MD5 o SHA-256 con qop=auth o auth-int).'
+      )
+    } else if (challenge.qop === 'auth-int' && formParts) {
+      warnings.push(
+        'Auth Digest: el servidor exige qop=auth-int, que firma el body, y no se puede con multipart.'
+      )
+    } else {
+      try {
+        const u = new URL(finalUrl)
+        const authorization = await buildDigestAuthorization({
+          challenge,
+          username: digest.username,
+          password: digest.password,
+          method: draft.method,
+          uri: u.pathname + u.search,
+          body: finalBody ?? ''
+        })
+        response = await options.send({
+          ...sendInput,
+          headers: [...headers, { key: 'Authorization', value: authorization }]
+        })
+      } catch {
+        warnings.push('Auth Digest: no se pudo firmar la petición (revisa la URL).')
+      }
+    }
+  }
 
   const validation =
     response.ok && draft.responseSchemas
