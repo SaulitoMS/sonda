@@ -40,6 +40,7 @@ import {
   type RunSnapshot
 } from '../../../shared/runCompare'
 import { loadLastRun, runScope, saveLastRun } from '../lib/lastRun'
+import { visibleResults, type ResultFilter } from '../../../shared/runnerView'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -128,6 +129,8 @@ export function RunnerModal({
   const [skipped, setSkipped] = useState<string[]>([])
   const [total, setTotal] = useState(0)
   const [rows, setRows] = useState<Row[]>([])
+  const [resultFilter, setResultFilter] = useState<ResultFilter>('all')
+  const [slowestFirst, setSlowestFirst] = useState(false)
   const [copied, setCopied] = useState(false)
   const [baseline, setBaseline] = useState<RunSnapshot | null>(null)
   const [dataset, setDataset] = useState<DataSet | null>(null)
@@ -201,6 +204,11 @@ export function RunnerModal({
           )
         : null,
     [baseline, rows]
+  )
+
+  const visibleRows = useMemo(
+    () => visibleResults(rows, resultFilter, slowestFirst),
+    [rows, resultFilter, slowestFirst]
   )
 
   const stats = useMemo(
@@ -617,8 +625,37 @@ export function RunnerModal({
             )}
           </div>
 
+          <div className="mb-2 flex items-center gap-1.5 text-[11px]">
+            {(
+              [
+                ['all', 'Todas'],
+                ['issues', 'Con problemas'],
+                ['fail', 'Fallidas']
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => setResultFilter(value)}
+                className={`rounded px-2 py-1 ${
+                  resultFilter === value
+                    ? 'bg-zinc-700 text-zinc-100'
+                    : 'text-zinc-400 hover:bg-zinc-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-zinc-400">
+              <input
+                type="checkbox"
+                checked={slowestFirst}
+                onChange={(e) => setSlowestFirst(e.target.checked)}
+              />
+              Más lentas primero
+            </label>
+          </div>
           <div className="max-h-[50vh] overflow-auto rounded-md border border-zinc-800">
-            {rows.map((row) => (
+            {visibleRows.map((row) => (
               <div
                 key={`${row.iteration ?? 0}:${row.entry.item.path}`}
                 onClick={() => openRow(row)}
@@ -665,6 +702,9 @@ export function RunnerModal({
                 <span className="w-16 shrink-0 text-right text-zinc-500">{row.timeMs} ms</span>
               </div>
             ))}
+            {rows.length > 0 && visibleRows.length === 0 && (
+              <p className="px-3 py-2 text-xs text-zinc-500">Ninguna petición con este filtro.</p>
+            )}
             {running && rows.length < total && (
               <p className="px-3 py-2 text-xs text-zinc-500">Ejecutando…</p>
             )}
