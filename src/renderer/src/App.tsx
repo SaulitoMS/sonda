@@ -56,6 +56,7 @@ import { HostDiagnosticsModal } from './components/HostDiagnosticsModal'
 import { EnvResponseCompareModal } from './components/EnvResponseCompareModal'
 import { RequestPreviewModal } from './components/RequestPreviewModal'
 import { CollectionLintModal } from './components/CollectionLintModal'
+import { BackupModal } from './components/BackupModal'
 
 type ModalType =
   | 'import'
@@ -83,6 +84,7 @@ type ModalType =
   | 'vars'
   | 'secrets'
   | 'lint'
+  | 'backup'
   | 'replace'
   | 'compare'
   | 'envdiff'
@@ -472,6 +474,13 @@ function App(): React.JSX.Element {
       label: 'Lint',
       description: 'Detectar hosts fijos, peticiones duplicadas y otras malas prácticas',
       onSelect: () => setModal('lint')
+    },
+    {
+      id: 'backup',
+      icon: 'download',
+      label: 'Backup',
+      description: 'Exportar o restaurar todo el workspace en un solo archivo',
+      onSelect: () => setModal('backup')
     },
     {
       id: 'replace',
@@ -894,6 +903,7 @@ function App(): React.JSX.Element {
       {modal === 'vars' && <VariablesAuditModal onClose={() => setModal(null)} />}
       {modal === 'secrets' && <SecretsScanModal onClose={() => setModal(null)} />}
       {modal === 'lint' && <CollectionLintModal onClose={() => setModal(null)} />}
+      {modal === 'backup' && <BackupModal onClose={() => setModal(null)} />}
       {modal === 'replace' && <FindReplaceModal onClose={() => setModal(null)} />}
       {modal === 'toolbox' && <ToolboxModal onClose={() => setModal(null)} />}
       {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal(null)} />}
