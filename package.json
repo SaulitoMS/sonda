@@ -7,13 +7,23 @@
   "bin": {
     "sonda-cli": "./out/cli/sonda.cjs"
   },
-  "author": "Tu Nombre",
-  "homepage": "https://github.com/TU_USUARIO/sonda",
+  "author": {
+    "name": "Saul Sarabia",
+    "url": "https://github.com/SaulitoMS"
+  },
+  "homepage": "https://github.com/SaulitoMS/sonda#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TU_USUARIO/sonda.git"
+    "url": "git+https://github.com/SaulitoMS/sonda.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SaulitoMS/sonda/issues"
   },
   "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "keywords": [
     "api-client",
     "http",
@@ -38,8 +48,8 @@
     "postinstall": "install-electron && electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux",
     "build:cli": "esbuild src/cli/index.ts --bundle --platform=node --target=node22 --format=cjs --banner:js=\"#!/usr/bin/env node\" --outfile=out/cli/sonda.cjs",
     "cli": "npm run build:cli --silent && node out/cli/sonda.cjs"
   },
