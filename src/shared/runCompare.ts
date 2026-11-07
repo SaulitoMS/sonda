@@ -1,4 +1,5 @@
 import type { RunStatus } from './classify'
+import type { RunReport } from './report'
 
 /** Lo mínimo de cada petición que se guarda para comparar la siguiente ejecución */
 export interface RunSnapshotRow {
@@ -97,4 +98,35 @@ export function parseStoredRuns(raw: string | null): Record<string, RunSnapshot>
   } catch {
     return {}
   }
+}
+
+/** Clave de una petición dentro de un reporte: la ruta más el nombre (que incluye "[fila N]" o "[vuelta N]") */
+export const reportRowKey = (r: { path: string; name: string }): string => `${r.path}#${r.name}`
+
+export const reportRows = (report: Pick<RunReport, 'results'>): RunSnapshotRow[] =>
+  report.results.map((r) => ({ key: reportRowKey(r), status: r.status, timeMs: r.timeMs }))
+
+/** Lee un reporte JSON de Sonda (el que escribe --json) y devuelve sus filas */
+export function parseReportRows(text: string): RunSnapshotRow[] {
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    throw new Error('no es un JSON válido')
+  }
+  const results = (data as { results?: unknown } | null)?.results
+  if (!Array.isArray(results)) throw new Error('no parece un reporte JSON de Sonda')
+  return results.flatMap(
+    (r: { path?: unknown; name?: unknown; status?: unknown; timeMs?: unknown }) => {
+      const row = {
+        key:
+          typeof r?.path === 'string' && typeof r?.name === 'string'
+            ? reportRowKey({ path: r.path, name: r.name })
+            : '',
+        status: r?.status,
+        timeMs: r?.timeMs
+      }
+      return row.key && isRow(row) ? [row] : []
+    }
+  )
 }

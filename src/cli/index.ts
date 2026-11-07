@@ -12,6 +12,14 @@ import {
   type ReportInput
 } from '../shared/report'
 import { DEFAULT_SETTINGS, proxyError } from '../shared/settings'
+import {
+  compareRuns,
+  parseReportRows,
+  reportRowKey,
+  reportRows,
+  summarizeComparison,
+  type RunSnapshotRow
+} from '../shared/runCompare'
 import type { CollectionItem, Environment, HttpMethod, RequestItem } from '../shared/types'
 import { executeRequest } from './execute'
 import { createSender } from './http'
@@ -51,6 +59,7 @@ Opciones de "run":
       --junit <archivo>    Escribe el reporte JUnit XML
       --json <archivo>     Escribe el reporte JSON
       --html <archivo>     Escribe el reporte HTML
+      --baseline <archivo> Compara contra un reporte JSON anterior y falla si algo empeoró
       --watch              Vuelve a ejecutar la colección cada vez que cambia un .json del workspace
       --no-color           Sin colores en la salida
   -h, --help               Muestra esta ayuda
@@ -152,6 +161,7 @@ async function main(argv: string[]): Promise<number> {
       junit: { type: 'string' },
       json: { type: 'string' },
       html: { type: 'string' },
+      baseline: { type: 'string' },
       watch: { type: 'boolean' },
       'no-color': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' }
@@ -255,6 +265,24 @@ async function main(argv: string[]): Promise<number> {
       throw new UsageError(
         `No se pudo leer ${values.data}: ${err instanceof Error ? err.message : 'error'}`
       )
+    }
+  }
+
+  // ----- Referencia para comparar -----
+  let baseline: RunSnapshotRow[] | null = null
+  if (values.baseline) {
+    try {
+      baseline = parseReportRows(await fs.readFile(values.baseline, 'utf-8'))
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        process.stderr.write(
+          c.yellow(`⚠ No existe ${values.baseline}: no hay con qué comparar todavía.\n`)
+        )
+      } else {
+        throw new UsageError(
+          `No se pudo leer --baseline ${values.baseline}: ${err instanceof Error ? err.message : 'error'}`
+        )
+      }
     }
   }
 
@@ -406,7 +434,22 @@ async function main(argv: string[]): Promise<number> {
     if (file) process.stdout.write(c.dim(`Reporte ${flag}: ${file}\n`))
   }
 
-  return fail > 0 || (values.strict && warn > 0) ? 1 : 0
+  let regressions = 0
+  if (baseline) {
+    const cmp = compareRuns(baseline, reportRows(report))
+    regressions = cmp.regressions
+    const summary = summarizeComparison(cmp)
+    process.stdout.write(
+      `${c.dim('Contra --baseline:')} ${regressions > 0 ? c.red(summary) : summary}\n`
+    )
+    for (const r of report.results) {
+      if (cmp.changes[reportRowKey(r)] === 'regression') {
+        process.stdout.write(`  ${c.red('↓')} ${r.group ? `${r.group} / ` : ''}${r.name}\n`)
+      }
+    }
+  }
+
+  return fail > 0 || (values.strict && warn > 0) || regressions > 0 ? 1 : 0
 }
 
 // Se sale cuando termina de vaciarse la salida: así no se corta el texto al encadenarlo con otro comando
