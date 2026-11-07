@@ -39,6 +39,7 @@ import { looksLikeHar, parseHar } from '../shared/har'
 import { buildOpenApi } from '../shared/openapiExport'
 import { looksLikeInsomnia, parseInsomnia } from '../shared/insomnia'
 import { looksLikeHoppscotch, parseHoppscotch } from '../shared/hoppscotch'
+import { looksLikeBruno, parseBruno } from '../shared/bruno'
 import { isHttpFilePath, parseHttpFile } from '../shared/httpFile'
 import { buildHttpFile } from '../shared/httpExport'
 import { validateFolderName } from '../shared/folderName'
@@ -633,11 +634,11 @@ export function registerCollectionHandlers(): void {
 
   ipcMain.handle('postman:import', async (): Promise<ImportResult | null> => {
     const picked = await dialog.showOpenDialog({
-      title: 'Importar colección de Postman, Insomnia, HAR o archivo .http',
+      title: 'Importar colección de Postman, Insomnia, Hoppscotch, Bruno, HAR o archivo .http',
       properties: ['openFile'],
       filters: [
         {
-          name: 'Postman / Insomnia (.json), HAR (.har) o HTTP (.http, .rest)',
+          name: 'Postman / Insomnia / Hoppscotch / Bruno (.json), HAR (.har) o HTTP (.http, .rest)',
           extensions: ['json', 'har', 'http', 'rest']
         }
       ]
@@ -659,14 +660,16 @@ export function registerCollectionHandlers(): void {
         } catch {
           throw new Error('El archivo no es un JSON válido')
         }
-        // Un HAR, un export de Insomnia o de Hoppscotch, o una colección de Postman
+        // Un HAR, un export de Insomnia, Hoppscotch o Bruno, o una colección de Postman
         parsed = looksLikeHar(json)
           ? parseHar(json)
           : looksLikeInsomnia(json)
             ? parseInsomnia(json)
             : looksLikeHoppscotch(json)
               ? parseHoppscotch(json)
-              : parsePostmanCollection(json)
+              : looksLikeBruno(json)
+                ? parseBruno(json)
+                : parsePostmanCollection(json)
       }
 
       await fs.mkdir(getRoot(), { recursive: true })

@@ -8,7 +8,7 @@ type Source = 'swagger' | 'file'
 
 const SOURCES: { id: Source; label: string; icon: IconName }[] = [
   { id: 'swagger', label: 'Swagger / OpenAPI', icon: 'globe' },
-  { id: 'file', label: 'Postman / Insomnia / Hoppscotch / HAR / .http', icon: 'upload' }
+  { id: 'file', label: 'Postman / Insomnia / Hoppscotch / Bruno / HAR / .http', icon: 'upload' }
 ]
 
 export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Element {
@@ -127,9 +127,9 @@ export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Ele
       ) : (
         <>
           <p className="mb-3 text-xs text-zinc-400">
-            Elige un archivo exportado desde Postman, Insomnia o Hoppscotch (.json), una captura HAR
-            (.har) o un archivo HTTP de VS Code o JetBrains (.http, .rest). El formato se detecta
-            automáticamente y se crea una colección con sus peticiones y variables.
+            Elige un archivo exportado desde Postman, Insomnia, Hoppscotch o Bruno (.json), una
+            captura HAR (.har) o un archivo HTTP de VS Code o JetBrains (.http, .rest). El formato
+            se detecta automáticamente y se crea una colección con sus peticiones y variables.
           </p>
 
           <button
@@ -144,7 +144,7 @@ export function ImportModal({ onClose }: { onClose: () => void }): React.JSX.Ele
               {loading ? 'Importando…' : 'Elegir archivo…'}
             </span>
             <span className="text-[11px] text-zinc-500">
-              .json (Postman / Insomnia / Hoppscotch) · .har · .http / .rest
+              .json (Postman / Insomnia / Hoppscotch / Bruno) · .har · .http / .rest
             </span>
           </button>
         </>

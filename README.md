@@ -64,7 +64,7 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API respond
 | Autenticación       | Bearer, Basic, Digest, API Key y OAuth 2.0 (client credentials, password y authorization code con PKCE), con herencia desde la colección o la carpeta e inspector de JWT |
 | Respuestas          | JSON en árbol, XML formateado, vista previa HTML, binarios, comparación con la respuesta anterior, exportación                                                           |
 | Colecciones         | Carpetas, drag and drop, duplicar, renombrar, headers y autenticación heredados, búsqueda                                                                                |
-| Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, Insomnia, HAR, cURL; exportación a Postman y a código                                                                          |
+| Importar / exportar | OpenAPI/Swagger (URL o archivo), Postman, Insomnia, HAR, Bruno, cURL; exportación a Postman y a código                                                                   |
 | Validación          | Respuesta y body contra el schema de la spec, con sincronización posterior de la colección                                                                               |
 | Automatización      | Aserciones, extracción de variables, runner con datos CSV/JSON, reportes JSON, HTML y JUnit, monitor programado                                                          |
 | Herramientas        | Rendimiento, fuzz, snapshot, mock server, historial, cookies                                                                                                             |
