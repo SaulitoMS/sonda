@@ -467,6 +467,34 @@ Los reportes JUnit del runner permiten, además, usar Sonda como paso de verific
 
 ---
 
+### Usar Sonda como verificación de tu API en CI
+
+```yaml
+name: API checks
+on: [push]
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - run: npm run build:cli
+      - uses: actions/cache@v4
+        with:
+          path: baseline.json
+          key: sonda-baseline-${{ github.run_id }}
+          restore-keys: sonda-baseline-
+      - run: >
+          node out/cli/sonda.cjs run petstore -w ./sonda
+          --baseline baseline.json --json baseline.json --junit junit.xml
+```
+
+El reporte aparece en el resumen del job. La caché solo se guarda si el job termina bien, así que un
+`baseline.json` con regresiones nunca reemplaza al último bueno.
+
 ## Limitaciones conocidas
 
 - OAuth 2.0 soporta `client_credentials`, `password` y `authorization_code` con PKCE; no soporta el flujo implícito ni el de dispositivo.
