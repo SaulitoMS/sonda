@@ -9,6 +9,7 @@ import {
   reportToHtml,
   reportToJson,
   reportToJunit,
+  reportToMarkdown,
   type ReportInput
 } from '../shared/report'
 import { DEFAULT_SETTINGS, proxyError } from '../shared/settings'
@@ -63,6 +64,7 @@ Opciones de "run":
       --junit <archivo>    Escribe el reporte JUnit XML
       --json <archivo>     Escribe el reporte JSON
       --html <archivo>     Escribe el reporte HTML
+      --markdown <archivo> Escribe el reporte Markdown
       --baseline <archivo> Compara contra un reporte JSON anterior y falla si algo empeoró
       --watch              Vuelve a ejecutar la colección cada vez que cambia un .json del workspace
       --no-color           Sin colores en la salida
@@ -168,6 +170,7 @@ async function main(argv: string[]): Promise<number> {
       junit: { type: 'string' },
       json: { type: 'string' },
       html: { type: 'string' },
+      markdown: { type: 'string' },
       baseline: { type: 'string' },
       watch: { type: 'boolean' },
       'no-color': { type: 'boolean' },
@@ -442,6 +445,7 @@ async function main(argv: string[]): Promise<number> {
   if (values.junit) await fs.writeFile(values.junit, reportToJunit(report), 'utf-8')
   if (values.json) await fs.writeFile(values.json, reportToJson(report), 'utf-8')
   if (values.html) await fs.writeFile(values.html, reportToHtml(report), 'utf-8')
+  if (values.markdown) await fs.writeFile(values.markdown, reportToMarkdown(report), 'utf-8')
 
   const { pass, warn, fail, total, timeMs } = report.summary
   process.stdout.write(
@@ -450,7 +454,8 @@ async function main(argv: string[]): Promise<number> {
   for (const [flag, file] of [
     ['junit', values.junit],
     ['json', values.json],
-    ['html', values.html]
+    ['html', values.html],
+    ['markdown', values.markdown]
   ]) {
     if (file) process.stdout.write(c.dim(`Reporte ${flag}: ${file}\n`))
   }
@@ -488,12 +493,13 @@ async function watchLoop(argv: string[]): Promise<void> {
       workspace: { type: 'string', short: 'w' },
       junit: { type: 'string' },
       json: { type: 'string' },
-      html: { type: 'string' }
+      html: { type: 'string' },
+      markdown: { type: 'string' }
     }
   })
   const root = typeof values.workspace === 'string' ? values.workspace : defaultWorkspace()
   // Los reportes pueden caer dentro del workspace: se ignoran para no entrar en bucle
-  const reports = [values.junit, values.json, values.html]
+  const reports = [values.junit, values.json, values.html, values.markdown]
     .filter((f): f is string => typeof f === 'string')
     .map((f) => resolvePath(f))
 
