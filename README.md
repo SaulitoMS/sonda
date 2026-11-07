@@ -13,7 +13,7 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API cumple 
 ![Node](https://img.shields.io/badge/Node-24-339933?logo=nodedotjs&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-800%2B-brightgreen)
 
-[Primeros pasos](#primeros-pasos) · [Funciones](#funciones) · [CLI](#cli) · [Arquitectura](#arquitectura) · [Contribuir](#contribuir)
+[Descargas](#descargas) · [Primeros pasos](#primeros-pasos) · [Funciones](#funciones) · [CLI](#cli) · [Arquitectura](#arquitectura) · [Contribuir](#contribuir)
 
 </div>
 
@@ -36,6 +36,7 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API cumple 
 
 ## Contenido
 
+- [Descargas](#descargas)
 - [Primeros pasos](#primeros-pasos)
 - [Funciones](#funciones)
 - [Atajos de teclado](#atajos-de-teclado)
@@ -47,6 +48,22 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API cumple 
 - [Limitaciones conocidas](#limitaciones-conocidas)
 - [Contribuir](#contribuir)
 - [Licencia](#licencia)
+
+---
+
+## Descargas
+
+Descarga el instalador de la última versión (**v0.1.0**) o consulta todas en [Releases](https://github.com/SaulitoMS/sonda/releases/latest).
+
+| Sistema                 | Descarga                                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Windows** (64 bits)   | [`sonda-0.1.0-setup.exe`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0-setup.exe)               |
+| **macOS** (Apple Silicon) | [`sonda-0.1.0-arm64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0-arm64.dmg)             |
+| **macOS** (Intel)       | [`sonda-0.1.0-x64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0-x64.dmg)                   |
+
+> **Aviso:** los instaladores todavía no están firmados.
+> En **Windows**, si aparece SmartScreen, pulsa _Más información_ y luego _Ejecutar de todas formas_.
+> En **macOS**, si dice que no se puede abrir, haz clic derecho sobre la app, elige _Abrir_ y confirma.
 
 ---
 
