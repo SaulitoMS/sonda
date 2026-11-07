@@ -65,6 +65,22 @@ function parseAuth(raw: unknown, warnings: string[]): AuthConfig | null | undefi
         keyValue: authValue(raw.apikey, 'value'),
         keyIn: authValue(raw.apikey, 'in') === 'query' ? 'query' : 'header'
       }
+    case 'oauth1': {
+      const method = authValue(raw.oauth1, 'signatureMethod')
+      if (method && !['HMAC-SHA1', 'HMAC-SHA256', 'PLAINTEXT'].includes(method)) {
+        warnings.push(`Auth OAuth 1.0: el método ${method} no está soportado, se usó HMAC-SHA1.`)
+      }
+      return {
+        ...base,
+        type: 'oauth1',
+        username: authValue(raw.oauth1, 'consumerKey'),
+        password: authValue(raw.oauth1, 'consumerSecret'),
+        token: authValue(raw.oauth1, 'token'),
+        oauth1TokenSecret: authValue(raw.oauth1, 'tokenSecret'),
+        oauth1Method: method === 'HMAC-SHA256' || method === 'PLAINTEXT' ? method : 'HMAC-SHA1',
+        oauth1Realm: authValue(raw.oauth1, 'realm')
+      }
+    }
     case 'awsv4':
       return {
         ...base,

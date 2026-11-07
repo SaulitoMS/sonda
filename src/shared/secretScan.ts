@@ -43,6 +43,11 @@ export function scanAuth(auth: AuthConfig | undefined): SecretFinding[] {
       add('client secret', auth.oauthClientSecret)
       add('contraseña OAuth', auth.oauthPassword)
       break
+    case 'oauth1':
+      add('Consumer Secret', auth.password)
+      add('Access Token', auth.token)
+      add('Token Secret', auth.oauth1TokenSecret)
+      break
     case 'awsv4':
       add('Secret Key', auth.password)
       add('Session Token', auth.token)

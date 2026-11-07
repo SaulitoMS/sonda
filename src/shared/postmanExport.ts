@@ -45,6 +45,18 @@ function exportAuth(auth: AuthConfig | undefined): Json | undefined {
           entry('scope', auth.oauthScope ?? '')
         ]
       }
+    case 'oauth1':
+      return {
+        type: 'oauth1',
+        oauth1: [
+          entry('consumerKey', auth.username),
+          entry('consumerSecret', auth.password),
+          entry('token', auth.token),
+          entry('tokenSecret', auth.oauth1TokenSecret ?? ''),
+          entry('signatureMethod', auth.oauth1Method ?? 'HMAC-SHA1'),
+          entry('realm', auth.oauth1Realm ?? '')
+        ]
+      }
     case 'awsv4':
       return {
         type: 'awsv4',

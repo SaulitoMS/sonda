@@ -25,7 +25,9 @@ export function authTexts(a: AuthConfig | undefined): string[] {
     a.oauthClientId ?? '',
     a.oauthScope ?? '',
     a.oauthUsername ?? '',
-    a.oauthPassword ?? ''
+    a.oauthPassword ?? '',
+    a.oauth1TokenSecret ?? '',
+    a.oauth1Realm ?? ''
   ]
 }
 

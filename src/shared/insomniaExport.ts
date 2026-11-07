@@ -44,6 +44,16 @@ function exportAuth(auth: AuthConfig | undefined): Json | undefined {
         clientSecret: toInsomniaVars(auth.oauthClientSecret ?? ''),
         scope: toInsomniaVars(auth.oauthScope ?? '')
       }
+    case 'oauth1':
+      return {
+        type: 'oauth1',
+        consumerKey: toInsomniaVars(auth.username),
+        consumerSecret: toInsomniaVars(auth.password),
+        tokenKey: toInsomniaVars(auth.token),
+        tokenSecret: toInsomniaVars(auth.oauth1TokenSecret ?? ''),
+        signatureMethod: auth.oauth1Method ?? 'HMAC-SHA1',
+        realm: toInsomniaVars(auth.oauth1Realm ?? '')
+      }
     case 'awsv4':
       return {
         type: 'iam',

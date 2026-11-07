@@ -5,6 +5,7 @@ import { useRequestStore } from '../store/useRequestStore'
 import { VariableInput } from './VariableInput'
 import { JwtInfo } from './JwtInfo'
 import { OAuthTokenStatus } from './OAuthTokenStatus'
+import { OAUTH1_METHODS } from '../../../shared/oauth1'
 
 const TYPES: { value: AuthType; label: string }[] = [
   { value: 'none', label: 'Sin autenticación' },
@@ -13,6 +14,7 @@ const TYPES: { value: AuthType; label: string }[] = [
   { value: 'digest', label: 'Digest Auth' },
   { value: 'apikey', label: 'API Key' },
   { value: 'oauth2', label: 'OAuth 2.0' },
+  { value: 'oauth1', label: 'OAuth 1.0' },
   { value: 'awsv4', label: 'AWS Signature V4' }
 ]
 
@@ -173,6 +175,67 @@ export function AuthForm({
             <span className="font-mono text-zinc-400">Authorization</span> y{' '}
             <span className="font-mono text-zinc-400">X-Amz-Date</span>. No se puede firmar un body
             form-data.
+          </p>
+        </>
+      )}
+
+      {auth.type === 'oauth1' && (
+        <>
+          <Field label="Consumer Key">
+            <VariableInput
+              value={auth.username}
+              onChange={(username) => patch({ username })}
+              placeholder="{{consumerKey}}"
+            />
+          </Field>
+          <Field label="Consumer Secret">
+            <VariableInput
+              value={auth.password}
+              onChange={(password) => patch({ password })}
+              placeholder="{{consumerSecret}}"
+            />
+          </Field>
+          <Field label="Access Token">
+            <VariableInput
+              value={auth.token}
+              onChange={(token) => patch({ token })}
+              placeholder="{{accessToken}} (opcional)"
+            />
+          </Field>
+          <Field label="Token Secret">
+            <VariableInput
+              value={auth.oauth1TokenSecret ?? ''}
+              onChange={(oauth1TokenSecret) => patch({ oauth1TokenSecret })}
+              placeholder="{{tokenSecret}} (opcional)"
+            />
+          </Field>
+          <Field label="Firma">
+            <select
+              value={auth.oauth1Method ?? 'HMAC-SHA1'}
+              onChange={(e) =>
+                patch({ oauth1Method: e.target.value as AuthConfig['oauth1Method'] })
+              }
+              className={selectClass}
+            >
+              {OAUTH1_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Realm">
+            <VariableInput
+              value={auth.oauth1Realm ?? ''}
+              onChange={(oauth1Realm) => patch({ oauth1Realm })}
+              placeholder="(opcional)"
+            />
+          </Field>
+          <p className="text-[11px] leading-relaxed text-zinc-500">
+            Sonda firma la petición al enviarla y agrega el header{' '}
+            <span className="font-mono text-zinc-400">Authorization</span> con los parámetros{' '}
+            <span className="font-mono text-zinc-400">oauth_*</span>. Pega el token y su secreto: no
+            hace el flujo de autorización.
           </p>
         </>
       )}

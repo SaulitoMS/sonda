@@ -158,7 +158,7 @@ export interface SavedRequest {
 // ---------- Autenticación ----------
 
 export type AuthType =
-  'inherit' | 'none' | 'bearer' | 'basic' | 'digest' | 'apikey' | 'oauth2' | 'awsv4'
+  'inherit' | 'none' | 'bearer' | 'basic' | 'digest' | 'apikey' | 'oauth2' | 'oauth1' | 'awsv4'
 
 /** Todos los campos viven juntos para no perder lo escrito al cambiar de tipo */
 export interface AuthConfig {
@@ -172,7 +172,6 @@ export interface AuthConfig {
   keyName: string
   keyValue: string
   keyIn: 'header' | 'query'
-  /** OAuth 2.0. Opcionales: solo existen si el usuario eligió este tipo */
   /** OAuth 2.0. Opcionales: solo existen si el usuario eligió este tipo */
   oauthGrant?: 'client_credentials' | 'password' | 'authorization_code'
   oauthTokenUrl?: string
@@ -188,6 +187,10 @@ export interface AuthConfig {
   /** Solo para el grant "password" */
   oauthUsername?: string
   oauthPassword?: string
+  /** OAuth 1.0. Usa username = Consumer Key, password = Consumer Secret y token = Access Token */
+  oauth1TokenSecret?: string
+  oauth1Method?: 'HMAC-SHA1' | 'HMAC-SHA256' | 'PLAINTEXT'
+  oauth1Realm?: string
   /** AWS Signature V4. Usa username = Access Key, password = Secret Key y token = Session Token (opcional) */
   awsRegion?: string
   awsService?: string

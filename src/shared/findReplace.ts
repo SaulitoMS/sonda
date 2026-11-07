@@ -85,6 +85,8 @@ const AUTH_FIELDS: (keyof AuthConfig)[] = [
   'oauthScope',
   'oauthUsername',
   'oauthPassword',
+  'oauth1TokenSecret',
+  'oauth1Realm',
   'awsRegion',
   'awsService'
 ]

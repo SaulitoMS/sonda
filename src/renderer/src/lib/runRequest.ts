@@ -44,6 +44,7 @@ import {
 } from '../../../shared/scriptApply'
 import { buildDigestAuthorization, findDigestChallenge } from '../../../shared/digest'
 import { signAwsV4 } from '../../../shared/awsSigV4'
+import { signOAuth1 } from '../../../shared/oauth1'
 import { decodeJwt, describeExpiry } from '../../../shared/jwt'
 
 export interface RequestDraft {
@@ -217,6 +218,18 @@ export async function executeRequest(
         }
       : null
 
+  const oauth1 =
+    auth?.type === 'oauth1'
+      ? {
+          consumerKey: resolve(auth.username).trim(),
+          consumerSecret: resolve(auth.password),
+          token: resolve(auth.token).trim(),
+          tokenSecret: resolve(auth.oauth1TokenSecret ?? ''),
+          signatureMethod: auth.oauth1Method ?? 'HMAC-SHA1',
+          realm: resolve(auth.oauth1Realm ?? '').trim()
+        }
+      : null
+
   if (missing.size > 0) {
     const names = [...missing].map((n) => `{{${n}}}`).join(', ')
     const hint = env
@@ -303,6 +316,32 @@ export async function executeRequest(
         }
       } catch {
         warnings.push('Auth AWS: no se pudo firmar la petición (revisa la URL).')
+      }
+    }
+  }
+
+  // OAuth 1.0: se firma al final, cuando URL, headers y body ya son los definitivos
+  if (oauth1) {
+    if (!oauth1.consumerKey || !oauth1.consumerSecret) {
+      warnings.push(
+        'Auth OAuth 1.0: faltan Consumer Key o Consumer Secret, no se firmó la petición.'
+      )
+    } else {
+      try {
+        const signedHeaders = await signOAuth1({
+          method: draft.method,
+          url: finalUrl,
+          headers,
+          body: finalBody ?? '',
+          ...oauth1
+        })
+        for (const h of signedHeaders) {
+          const i = headers.findIndex((x) => x.key.toLowerCase() === h.key.toLowerCase())
+          if (i >= 0) headers.splice(i, 1)
+          headers.push(h)
+        }
+      } catch {
+        warnings.push('Auth OAuth 1.0: no se pudo firmar la petición (revisa la URL).')
       }
     }
   }

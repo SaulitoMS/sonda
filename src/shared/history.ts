@@ -97,6 +97,9 @@ export function redactEntry(entry: HistoryEntry): HistoryEntry {
       : {}),
     ...(entry.auth.oauthPassword !== undefined
       ? { oauthPassword: blankUnlessVariable(entry.auth.oauthPassword) }
+      : {}),
+    ...(entry.auth.oauth1TokenSecret !== undefined
+      ? { oauth1TokenSecret: blankUnlessVariable(entry.auth.oauth1TokenSecret) }
       : {})
   }
 
