@@ -348,14 +348,38 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
 
 const BY_NAME = new Map(DYNAMIC_VARIABLES.map((v) => [v.name, v]))
 
-export const getDynamicVariable = (name: string): DynamicVariable | undefined => BY_NAME.get(name)
+/** Con desplazamiento: {{$date+7d}}, {{$isoTimestamp-2h}}, {{$timestamp+30m}} (s, m, h, d, w) */
+const OFFSET_RE = /^(\$date|\$isoTimestamp|\$timestamp|\$timestampMs)([+-])(\d{1,6})([smhdw])$/
 
-export const isDynamicVariable = (name: string): boolean => BY_NAME.has(name)
+const UNIT_MS: Record<string, number> = {
+  s: 1000,
+  m: 60 * 1000,
+  h: 60 * 60 * 1000,
+  d: DAY_MS,
+  w: 7 * DAY_MS
+}
+
+function offsetVariable(name: string): DynamicVariable | undefined {
+  const m = OFFSET_RE.exec(name)
+  const base = m ? BY_NAME.get(m[1]) : undefined
+  if (!m || !base) return undefined
+  const shift = (m[2] === '-' ? -1 : 1) * Number(m[3]) * UNIT_MS[m[4]]
+  return {
+    name,
+    description: `${base.description} ${m[2]}${m[3]}${m[4]}`,
+    generate: (ctx) => base.generate({ ...ctx, now: new Date(ctx.now.getTime() + shift) })
+  }
+}
+
+export const getDynamicVariable = (name: string): DynamicVariable | undefined =>
+  BY_NAME.get(name) ?? offsetVariable(name)
+
+export const isDynamicVariable = (name: string): boolean => getDynamicVariable(name) !== undefined
 
 /** Genera el valor de una variable dinámica, o undefined si el nombre no existe */
 export function resolveDynamic(
   name: string,
   ctx: DynamicContext = { now: new Date(), random: Math.random }
 ): string | undefined {
-  return BY_NAME.get(name)?.generate(ctx)
+  return getDynamicVariable(name)?.generate(ctx)
 }

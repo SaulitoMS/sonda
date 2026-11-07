@@ -91,3 +91,21 @@ describe('$randomRfc y $randomClabe', () => {
     expect(resolveDynamic('$randomClabe')).toMatch(/^\d{18}$/)
   })
 })
+
+describe('fechas relativas', () => {
+  it('suma y resta tiempo a la fecha base', () => {
+    expect(resolveDynamic('$date+7d', lowest)).toBe('2026-11-05')
+    expect(resolveDynamic('$date-1w', lowest)).toBe('2026-10-22')
+    expect(resolveDynamic('$isoTimestamp-2h', lowest)).toBe('2026-10-29T10:34:56.789Z')
+    expect(resolveDynamic('$timestamp+30m', lowest)).toBe('1793279096')
+    expect(resolveDynamic('$timestampMs+1s', lowest)).toBe('1793277297789')
+  })
+
+  it('rechaza formatos inválidos o variables sin fecha', () => {
+    for (const n of ['$date+7x', '$date+', '$uuid+1d', '$randomInt+1d', '$date+9999999d']) {
+      expect(isDynamicVariable(n)).toBe(false)
+      expect(resolveDynamic(n, lowest)).toBeUndefined()
+    }
+    expect(getDynamicVariable('$date+7d')?.description).toContain('+7d')
+  })
+})

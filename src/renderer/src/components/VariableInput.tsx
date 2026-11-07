@@ -14,8 +14,8 @@ import {
 import { buildVarMap } from '../../../shared/variables'
 import { useEffectiveEnv, useVariableOrigin } from '../lib/collectionVariables'
 
-const VAR_SPLIT = /(\{\{\s*\$?[\w.-]+\s*\}\})/g
-const VAR_NAME = /\{\{\s*(\$?[\w.-]+)\s*\}\}/
+const VAR_SPLIT = /(\{\{\s*\$?[\w.+-]+\s*\}\})/g
+const VAR_NAME = /\{\{\s*(\$?[\w.+-]+)\s*\}\}/
 
 interface Props {
   value: string

@@ -2,7 +2,7 @@ import { resolveDynamic } from './dynamicVariables'
 import type { Environment, EnvVariable, KeyValueData } from './types'
 
 // El $ inicial es opcional: {{nombre}} es del entorno, {{$nombre}} es dinámica
-const VAR_RE = /\{\{\s*(\$?[\w.-]+)\s*\}\}/g
+const VAR_RE = /\{\{\s*(\$?[\w.+-]+)\s*\}\}/g
 
 /** Convierte un entorno en un mapa clave → valor (solo variables activas) */
 export function buildVarMap(env: Environment | null | undefined): Record<string, string> {

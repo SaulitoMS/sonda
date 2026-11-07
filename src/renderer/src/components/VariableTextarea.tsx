@@ -17,8 +17,8 @@ const LIST_WIDTH = 360
 const ITEM_HEIGHT = 30
 const PADDING = 12 // p-3
 
-const VAR_SPLIT = /(\{\{\s*\$?[\w.-]+\s*\}\})/g
-const VAR_NAME = /\{\{\s*(\$?[\w.-]+)\s*\}\}/
+const VAR_SPLIT = /(\{\{\s*\$?[\w.+-]+\s*\}\})/g
+const VAR_NAME = /\{\{\s*(\$?[\w.+-]+)\s*\}\}/
 
 interface Props {
   value: string
