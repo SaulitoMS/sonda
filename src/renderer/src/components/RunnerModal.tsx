@@ -20,6 +20,7 @@ import type {
   SendRequestResult
 } from '../../../shared/types'
 import { downloadText } from '../lib/download'
+import { buildCliCommand } from '../../../shared/cliCommand'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { persistExtractions } from '../lib/persistExtractions'
 import { executeRequest } from '../lib/runRequest'
@@ -141,6 +142,8 @@ export function RunnerModal({
   const [dataName, setDataName] = useState('')
   const [dataError, setDataError] = useState('')
   const runId = useRef(0)
+  const [cliCopied, setCliCopied] = useState(false)
+  const [cliNotes, setCliNotes] = useState<string[]>([])
   // Petición en vuelo, para poder cancelarla al pulsar "Detener"
   const activeRequest = useRef<string | null>(null)
   // Entorno con el que se hizo la ejecución, para anotarlo en el reporte
@@ -418,6 +421,32 @@ export function RunnerModal({
       await navigator.clipboard.writeText(reportToMarkdown(makeReport()))
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* sin permiso del portapapeles */
+    }
+  }
+  const copyCliCommand = async (): Promise<void> => {
+    const { command, notes } = buildCliCommand({
+      collection: collectionId,
+      env: useEnvironmentStore.getState().getActive()?.name ?? null,
+      folder: folderFilter,
+      includeWrites,
+      bail: stopOnFail,
+      retries,
+      delayMs,
+      maxTimeMs,
+      only: nameFilter,
+      exclude: excludeFilter,
+      repeat,
+      hasData: !!dataset,
+      retryAny,
+      skipFolderOnFail
+    })
+    setCliNotes(notes)
+    try {
+      await navigator.clipboard.writeText(command)
+      setCliCopied(true)
+      setTimeout(() => setCliCopied(false), 1500)
     } catch {
       /* sin permiso del portapapeles */
     }
@@ -753,6 +782,22 @@ export function RunnerModal({
       )}
 
       <div className="mt-4 flex justify-end gap-2">
+        {!started && (
+          <div className="mr-auto max-w-[55%] text-left">
+            <button
+              onClick={() => void copyCliCommand()}
+              className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              title="Para correr lo mismo en un pipeline de CI"
+            >
+              {cliCopied ? '¡Copiado!' : 'Copiar comando de la CLI'}
+            </button>
+            {cliNotes.map((note) => (
+              <p key={note} className="mt-1 text-[11px] text-amber-300">
+                {note}
+              </p>
+            ))}
+          </div>
+        )}
         {rows.length > 0 && !running && (
           <div className="mr-auto flex gap-2">
             <button
