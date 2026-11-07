@@ -13,6 +13,7 @@ export type CodeLang =
   | 'ruby'
   | 'rust'
   | 'java'
+  | 'k6'
 
 export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'curl', label: 'cURL' },
@@ -25,7 +26,8 @@ export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'powershell', label: 'PowerShell (Invoke-WebRequest)' },
   { id: 'ruby', label: 'Ruby (Net::HTTP)' },
   { id: 'rust', label: 'Rust (reqwest)' },
-  { id: 'java', label: 'Java (HttpClient)' }
+  { id: 'java', label: 'Java (HttpClient)' },
+  { id: 'k6', label: 'k6 (prueba de carga)' }
 ]
 
 // JSON.stringify produce literales de string válidos tanto en JavaScript como en Python
@@ -585,6 +587,59 @@ function toJava(r: CurlRequest): string {
   return lines.join('\n')
 }
 
+/** Script de k6 para pruebas de carga: la petición se repite con 10 usuarios virtuales durante 30 s */
+function toK6(r: CurlRequest): string {
+  const parts = formParts(r)
+  // Con multipart el Content-Type lo arma k6 con el boundary del FormData
+  const headers = parts.length ? r.headers.filter((h) => !isContentType(h)) : r.headers
+  const rows = headers.map((h) => `      ${str(h.key)}: ${str(h.value)}`)
+  if (parts.length) {
+    rows.push('      "Content-Type": "multipart/form-data; boundary=" + form.boundary')
+  }
+  if (r.user) rows.push(`      "Authorization": "Basic " + encoding.b64encode(${str(r.user)})`)
+
+  const lines = ["import http from 'k6/http'", "import { check, sleep } from 'k6'"]
+  if (r.user) lines.push("import encoding from 'k6/encoding'")
+  if (parts.length) {
+    lines.push("import { FormData } from 'https://jslib.k6.io/formdata/0.0.2/index.js'")
+  }
+  lines.push(
+    '',
+    'export const options = {',
+    '  vus: 10,',
+    "  duration: '30s',",
+    '  thresholds: {',
+    "    http_req_failed: ['rate<0.01'],",
+    "    http_req_duration: ['p(95)<500']",
+    '  }',
+    '}',
+    ''
+  )
+  // open() solo funciona fuera de default function (contexto init de k6)
+  if (parts.length) {
+    lines.push(
+      'const form = new FormData()',
+      ...parts.map((p) =>
+        p.kind === 'file'
+          ? `form.append(${str(p.key)}, http.file(open(${str(p.value)}, 'b'), ${str(fileName(p.value))}))`
+          : `form.append(${str(p.key)}, ${str(p.value)})`
+      ),
+      ''
+    )
+  }
+
+  const body = parts.length ? 'form.body()' : hasBody(r) ? str(r.body) : 'null'
+  const params = rows.length ? `{\n    headers: {\n${rows.join(',\n')}\n    }\n  }` : 'null'
+  lines.push(
+    'export default function () {',
+    `  const res = http.request(${str(r.method)}, ${str(r.url)}, ${body}, ${params})`,
+    "  check(res, { 'status < 400': (r) => r.status < 400 })",
+    '  sleep(1)',
+    '}'
+  )
+  return lines.join('\n')
+}
+
 export function generateCode(lang: CodeLang, request: CurlRequest): string {
   switch (lang) {
     case 'curl':
@@ -609,5 +664,7 @@ export function generateCode(lang: CodeLang, request: CurlRequest): string {
       return toRust(request)
     case 'java':
       return toJava(request)
+    case 'k6':
+      return toK6(request)
   }
 }
