@@ -22,6 +22,8 @@ interface Props {
   onChange: (value: string) => void
   onEnter?: () => void
   placeholder?: string
+  /** id de un <datalist> con sugerencias nativas (ej: URLs recientes) */
+  listId?: string
 }
 
 interface Hover {
@@ -38,7 +40,13 @@ interface SuggestState {
   top: number
 }
 
-export function VariableInput({ value, onChange, onEnter, placeholder }: Props): React.JSX.Element {
+export function VariableInput({
+  value,
+  onChange,
+  onEnter,
+  placeholder,
+  listId
+}: Props): React.JSX.Element {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -186,6 +194,7 @@ export function VariableInput({ value, onChange, onEnter, placeholder }: Props):
       <input
         ref={inputRef}
         value={value}
+        list={listId}
         onChange={(e) => {
           setHover(null)
           onChange(e.target.value)

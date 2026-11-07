@@ -1,4 +1,7 @@
+import { useMemo } from 'react'
 import { looksLikeCurl, parseCurl } from '../../../shared/curl'
+import { recentUrls } from '../../../shared/urlSuggest'
+import { useHistoryStore } from '../store/useHistoryStore'
 import type { HttpMethod } from '../../../shared/types'
 import { applyCurl } from '../lib/applyCurl'
 import { cancelInFlight } from '../lib/inFlight'
@@ -18,6 +21,8 @@ interface Props {
 
 export function RequestBar({ onCurlImported }: Props): React.JSX.Element {
   const { method, url, loading, setMethod, setUrl, send } = useRequestStore()
+  const history = useHistoryStore((s) => s.entries)
+  const suggestions = useMemo(() => recentUrls(history), [history])
 
   // Si lo pegado es un comando cURL válido, se importa en vez de escribirlo en la URL
   const handlePaste = (e: React.ClipboardEvent): void => {
@@ -66,8 +71,14 @@ export function RequestBar({ onCurlImported }: Props): React.JSX.Element {
             value={url}
             onChange={setUrl}
             onEnter={send}
+            listId="sonda-url-history"
             placeholder="https://api.ejemplo.com/endpoint  (o pega un comando curl)"
           />
+          <datalist id="sonda-url-history">
+            {suggestions.map((s) => (
+              <option key={s.url} value={s.url} label={s.method} />
+            ))}
+          </datalist>
         </div>
 
         {loading ? (
