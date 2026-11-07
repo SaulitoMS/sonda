@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛰️ Sonda
+# Sonda
 
 **Cliente de APIs local-first, sin login.**
 Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API cumple lo que promete y automatiza las pruebas, desde la app o desde la terminal.
@@ -13,7 +13,7 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API cumple 
 ![Node](https://img.shields.io/badge/Node-24-339933?logo=nodedotjs&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-800%2B-brightgreen)
 
-[Primeros pasos](#-primeros-pasos) · [Funciones](#-funciones) · [CLI](#-cli) · [Arquitectura](#-arquitectura) · [Contribuir](#-contribuir)
+[Primeros pasos](#primeros-pasos) · [Funciones](#funciones) · [CLI](#cli) · [Arquitectura](#arquitectura) · [Contribuir](#contribuir)
 
 </div>
 
@@ -21,36 +21,36 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API cumple 
 
 ---
 
-## ✨ Por qué Sonda
+## Por qué Sonda
 
 |                                    |                                                                                                  |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
-| 🔒 **Local-first**                 | Sin cuentas, sin nube y sin telemetría. Todo vive en tu computadora.                             |
-| 📁 **Peticiones como archivos**    | Cada petición es un `.json` legible que puedes versionar con Git y revisar en un PR.             |
-| ⚡ **De la spec a la petición**    | Pega la URL de un Swagger/OpenAPI y Sonda crea la colección completa.                            |
-| ✅ **Valida contra el schema**     | Detecta cuando la API no cumple su propia documentación, en la respuesta y en el body que envías. |
-| 🤖 **Automatización integrada**    | Runner, CLI para CI, monitor, fuzzing, snapshots, pruebas de rendimiento y servidor mock.        |
-| 🔐 **Secretos cifrados**           | Las variables secretas se guardan en el keychain del sistema, nunca en texto plano.              |
+| **Local-first**                 | Sin cuentas, sin nube y sin telemetría. Todo vive en tu computadora.                             |
+| **Peticiones como archivos**    | Cada petición es un `.json` legible que puedes versionar con Git y revisar en un PR.             |
+| **De la spec a la petición**    | Pega la URL de un Swagger/OpenAPI y Sonda crea la colección completa.                            |
+| **Valida contra el schema**     | Detecta cuando la API no cumple su propia documentación, en la respuesta y en el body que envías. |
+| **Automatización integrada**    | Runner, CLI para CI, monitor, fuzzing, snapshots, pruebas de rendimiento y servidor mock.        |
+| **Secretos cifrados**           | Las variables secretas se guardan en el keychain del sistema, nunca en texto plano.              |
 
 ---
 
-## 📚 Contenido
+## Contenido
 
-- [Primeros pasos](#-primeros-pasos)
-- [Funciones](#-funciones)
-- [Atajos de teclado](#-atajos-de-teclado)
-- [CLI](#-cli)
-- [Cómo guarda tus datos](#-cómo-guarda-tus-datos)
-- [Arquitectura](#-arquitectura)
-- [Scripts disponibles](#-scripts-disponibles)
-- [Tests y CI](#-tests-y-ci)
-- [Limitaciones conocidas](#-limitaciones-conocidas)
-- [Contribuir](#-contribuir)
-- [Licencia](#-licencia)
+- [Primeros pasos](#primeros-pasos)
+- [Funciones](#funciones)
+- [Atajos de teclado](#atajos-de-teclado)
+- [CLI](#cli)
+- [Cómo guarda tus datos](#cómo-guarda-tus-datos)
+- [Arquitectura](#arquitectura)
+- [Scripts disponibles](#scripts-disponibles)
+- [Tests y CI](#tests-y-ci)
+- [Limitaciones conocidas](#limitaciones-conocidas)
+- [Contribuir](#contribuir)
+- [Licencia](#licencia)
 
 ---
 
-## 🚀 Primeros pasos
+## Primeros pasos
 
 ### Requisitos
 
@@ -83,11 +83,11 @@ Los instaladores quedan en la carpeta `dist/`.
 3. Abre cualquier petición de la colección y pulsa **Enviar** (`Cmd/Ctrl + Enter`).
 4. Revisa la pestaña **Schema** para ver si la respuesta cumple lo que promete la spec.
 
-> 📖 Las guías paso a paso de cada funcionalidad están en [`funcionalidadesRD`](./funcionalidadesRD/README.md).
+>  Las guías paso a paso de cada funcionalidad están en [`funcionalidadesRD`](./funcionalidadesRD/README.md).
 
 ---
 
-## 🧩 Funciones
+## Funciones
 
 ### Peticiones
 
@@ -128,18 +128,18 @@ Los instaladores quedan en la carpeta `dist/`.
 
 ### Importar y exportar
 
-| Formato               | Importar | Exportar |
-| --------------------- | :------: | :------: |
-| **Swagger / OpenAPI** | ✅ (URL o archivo) | ✅ |
-| **Postman**           | ✅       | ✅       |
-| **Insomnia** (v4)     | ✅       | ✅       |
-| **Bruno**             | ✅       | —        |
-| **Hoppscotch**        | ✅       | —        |
-| **HAR**               | ✅       | ✅       |
-| **cURL**              | ✅       | ✅       |
-| **Código**            | —        | cURL, `fetch`, `axios`, Python `requests`, HTTPie, wget, PHP y más |
-| **Documentación**     | —        | ✅       |
-| **Archivos `.http`**  | ✅       | ✅       |
+| Formato               | Importar           | Exportar |
+| --------------------- | ------------------ | -------- |
+| **Swagger / OpenAPI** | Sí (URL o archivo) | Sí       |
+| **Postman**           | Sí                 | Sí       |
+| **Insomnia** (v4)     | Sí                 | Sí       |
+| **Bruno**             | Sí                 | No       |
+| **Hoppscotch**        | Sí                 | No       |
+| **HAR**               | Sí                 | Sí       |
+| **cURL**              | Sí                 | Sí       |
+| **Código**            | No                 | cURL, `fetch`, `axios`, Python `requests`, HTTPie, wget, PHP y más |
+| **Documentación**     | No                 | Sí       |
+| **Archivos `.http`**  | Sí                 | Sí       |
 
 ### Entornos y variables
 
@@ -158,8 +158,8 @@ El diferenciador de Sonda. Las peticiones importadas de OpenAPI guardan el schem
 | ----------------------------------------------------------------------- | ---------------------------------- |
 | Tipos, requeridos, `enum`, `nullable`, formatos, rangos y patrones      | Error con la ruta exacta (`$.tags[1].label`) |
 | Arrays, `additionalProperties`, `allOf` / `anyOf` / `oneOf`, `not`      | Error con la variante más cercana  |
-| Campos que la API devuelve pero la spec no documenta                    | ⚠️ Advertencia                     |
-| Status que la spec no declara (ej. un `500` inesperado)                 | ⚠️ Aviso                           |
+| Campos que la API devuelve pero la spec no documenta                    | Advertencia                      |
+| Status que la spec no declara (ej. un `500` inesperado)                 | Aviso                           |
 
 También se valida **lo que envías**: el body se comprueba contra el `requestBody` antes de mandarlo.
 
@@ -178,20 +178,20 @@ Disponibles desde el menú **Herramientas** y la paleta de comandos.
 
 | Herramienta        | Qué hace                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------ |
-| 📜 **Historial**   | Guarda las peticiones enviadas y oculta credenciales. Incluye estadísticas y comparación         |
-| 🍪 **Cookies**     | Lista y borra las cookies guardadas                                                              |
-| ⏱️ **Rendimiento** | Hasta 200 envíos con concurrencia configurable y percentiles                                     |
-| 🧪 **Fuzz**        | Genera bodies inválidos desde el schema y clasifica la reacción de la API                        |
-| 📸 **Snapshot**    | Guarda una línea base y detecta cambios, con campos ignorables                                   |
-| 🎭 **Mock**        | Servidor local con respuestas generadas desde los schemas, con modo caos y overrides             |
-| 🔁 **Polling**     | Repite una petición hasta que se cumple una condición                                            |
-| 📄 **Paginación**  | Recorre automáticamente los endpoints paginados                                                  |
-| 🎲 **Datos de prueba** | Genera datos aleatorios para tus bodies                                                      |
-| 🌿 **Git**         | Cambios del workspace, diff por archivo, descartar y commit desde la app                         |
-| 🖥️ **Consola**     | Peticiones enviadas y `console.log` de los scripts                                               |
-| 🌐 **Host**        | Diagnóstico de DNS y certificado TLS                                                             |
-| 🕵️ **Secretos**    | Detecta credenciales en texto plano dentro de las colecciones                                    |
-| 🔎 **Variables**   | Auditoría de variables usadas, no definidas o sin uso                                            |
+| **Historial**   | Guarda las peticiones enviadas y oculta credenciales. Incluye estadísticas y comparación         |
+| **Cookies**     | Lista y borra las cookies guardadas                                                              |
+| **Rendimiento** | Hasta 200 envíos con concurrencia configurable y percentiles                                     |
+| **Fuzz**        | Genera bodies inválidos desde el schema y clasifica la reacción de la API                        |
+| **Snapshot**    | Guarda una línea base y detecta cambios, con campos ignorables                                   |
+| **Mock**        | Servidor local con respuestas generadas desde los schemas, con modo caos y overrides             |
+| **Polling**     | Repite una petición hasta que se cumple una condición                                            |
+| **Paginación**  | Recorre automáticamente los endpoints paginados                                                  |
+| **Datos de prueba** | Genera datos aleatorios para tus bodies                                                      |
+| **Git**         | Cambios del workspace, diff por archivo, descartar y commit desde la app                         |
+| **Consola**     | Peticiones enviadas y `console.log` de los scripts                                               |
+| **Host**        | Diagnóstico de DNS y certificado TLS                                                             |
+| **Secretos**    | Detecta credenciales en texto plano dentro de las colecciones                                    |
+| **Variables**   | Auditoría de variables usadas, no definidas o sin uso                                            |
 
 ### Interfaz
 
@@ -205,7 +205,7 @@ Tiempo límite (1 a 600 s), redirecciones, SSL (automático, siempre verificar o
 
 ---
 
-## ⌨️ Atajos de teclado
+## Atajos de teclado
 
 | Atajo                      | Acción                                  |
 | -------------------------- | --------------------------------------- |
@@ -219,7 +219,7 @@ Tiempo límite (1 a 600 s), redirecciones, SSL (automático, siempre verificar o
 
 ---
 
-## 💻 CLI
+## CLI
 
 Ejecuta tus colecciones desde la terminal o desde un pipeline, con los mismos schemas y aserciones que la app.
 
@@ -273,7 +273,7 @@ La caché solo se guarda si el job termina bien, así que un `baseline.json` con
 
 ---
 
-## 💾 Cómo guarda tus datos
+## Cómo guarda tus datos
 
 ```text
 ~/Documents/Sonda/
@@ -321,7 +321,7 @@ La caché solo se guarda si el job termina bien, así que un `baseline.json` con
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ```text
 ┌───────────────────────┐    IPC (preload)    ┌────────────────────────┐
@@ -367,7 +367,7 @@ src/
 
 ---
 
-## 🛠️ Scripts disponibles
+## Scripts disponibles
 
 | Comando                                           | Qué hace                                               |
 | ------------------------------------------------- | ------------------------------------------------------ |
@@ -385,7 +385,7 @@ src/
 
 ---
 
-## 🧪 Tests y CI
+## Tests y CI
 
 La lógica de `src/shared` está cubierta con Vitest: más de **800 casos** en más de **90 archivos**.
 
@@ -397,7 +397,7 @@ En cada push a `main` y en cada pull request, **GitHub Actions** ejecuta `lint`,
 
 ---
 
-## ⚠️ Limitaciones conocidas
+## Limitaciones conocidas
 
 - OAuth 2.0 no soporta el flujo implícito ni el de dispositivo.
 - La validación de schemas cubre el subconjunto de JSON Schema que usa OpenAPI. Con `discriminator` elige la variante por el `enum` o `const` de la propiedad; no interpreta `mapping`.
@@ -408,7 +408,7 @@ En cada push a `main` y en cada pull request, **GitHub Actions** ejecuta `lint`,
 
 ---
 
-## 🤝 Contribuir
+## Contribuir
 
 Las ideas y los pull requests son bienvenidos.
 
@@ -426,8 +426,8 @@ Las ideas y los pull requests son bienvenidos.
 
 ---
 
-## 📄 Licencia
+## Licencia
 
 Distribuido bajo la licencia **MIT**.
 
-Hecho con ☕ por [Saul Sarabia](https://github.com/SaulitoMS).
+Hecho por [Saul Sarabia](https://github.com/SaulitoMS).
