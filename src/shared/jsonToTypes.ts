@@ -134,3 +134,91 @@ export function jsonToTypeScript(value: unknown, rootName = 'Respuesta'): string
   }
   return ctx.out.join('\n\n')
 }
+
+function zodOf(s: Shape, hint: string, ctx: Ctx): string {
+  switch (s.kind) {
+    case 'prim':
+      return s.name === 'string' || s.name === 'number' || s.name === 'boolean'
+        ? `z.${s.name}()`
+        : s.name === 'null'
+          ? 'z.null()'
+          : 'z.unknown()'
+    case 'array':
+      return s.item ? `z.array(${zodOf(s.item, singular(hint), ctx)})` : 'z.array(z.unknown())'
+    case 'union': {
+      const rest = s.parts.filter((p) => !(p.kind === 'prim' && p.name === 'null'))
+      // string | null se escribe como z.string().nullable()
+      if (rest.length === 1 && rest.length < s.parts.length) {
+        return `${zodOf(rest[0], hint, ctx)}.nullable()`
+      }
+      return `z.union([${s.parts.map((p) => zodOf(p, hint, ctx)).join(', ')}])`
+    }
+    case 'object': {
+      if (s.props.size === 0) return 'z.record(z.string(), z.unknown())'
+      const name = `${uniqueName(hint, ctx)}Schema`
+      // Los hijos se declaran antes que el padre: un const no se puede usar antes de su línea
+      const lines = [...s.props].map(([k, p]) => {
+        const key = IDENT.test(k) ? k : JSON.stringify(k)
+        return `  ${key}: ${zodOf(p.shape, k, ctx)}${p.optional ? '.optional()' : ''}`
+      })
+      ctx.out.push(`export const ${name} = z.object({\n${lines.join(',\n')}\n})`)
+      return name
+    }
+  }
+}
+
+/** Genera un esquema de Zod (y su tipo inferido) a partir de un JSON de ejemplo */
+export function jsonToZod(value: unknown, rootName = 'Respuesta'): string {
+  const ctx: Ctx = { out: [], used: new Set() }
+  const shape = infer(value)
+  const t = zodOf(shape, rootName, ctx)
+  const root = `${pascal(rootName)}Schema`
+  if (shape.kind !== 'object' || shape.props.size === 0) {
+    ctx.out.push(`export const ${root} = ${t}`)
+  }
+  ctx.out.push(`export type ${pascal(rootName)} = z.infer<typeof ${root}>`)
+  return ["import { z } from 'zod'", ...ctx.out].join('\n\n')
+}
+
+const GO_PRIMS: Record<string, string> = { string: 'string', number: 'float64', boolean: 'bool' }
+
+function goType(s: Shape, hint: string, ctx: Ctx): string {
+  switch (s.kind) {
+    case 'prim':
+      return GO_PRIMS[s.name] ?? 'any'
+    case 'array':
+      return s.item ? `[]${goType(s.item, singular(hint), ctx)}` : '[]any'
+    case 'union':
+      return 'any'
+    case 'object': {
+      if (s.props.size === 0) return 'map[string]any'
+      const name = uniqueName(hint, ctx)
+      const slot = ctx.out.length
+      ctx.out.push('') // el padre va antes que sus hijos
+      const fields = new Set<string>()
+      const lines = [...s.props].map(([k, p]) => {
+        let field = pascal(k)
+        for (let i = 2; fields.has(field); i++) field = `${pascal(k)}${i}`
+        fields.add(field)
+        let type = goType(p.shape, k, ctx)
+        // Un campo opcional pasa a puntero para distinguir "falta" de "valor vacío"
+        if (p.optional && !/^(\[\]|map\[|any$)/.test(type)) type = `*${type}`
+        const tag = `${k.replace(/["\\`]/g, '')}${p.optional ? ',omitempty' : ''}`
+        return `\t${field} ${type} \`json:"${tag}"\``
+      })
+      ctx.out[slot] = `type ${name} struct {\n${lines.join('\n')}\n}`
+      return name
+    }
+  }
+}
+
+/** Genera structs de Go con tags json a partir de un JSON de ejemplo (pásalo por gofmt) */
+export function jsonToGo(value: unknown, rootName = 'Respuesta'): string {
+  const ctx: Ctx = { out: [], used: new Set() }
+  const shape = infer(value)
+  const t = goType(shape, rootName, ctx)
+  if (shape.kind !== 'object' || shape.props.size === 0) {
+    ctx.out.unshift(`type ${pascal(rootName)} ${t}`)
+  }
+  return ctx.out.join('\n\n')
+}

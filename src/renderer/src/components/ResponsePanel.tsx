@@ -33,7 +33,7 @@ import { Icon } from './Icon'
 import { checkSecurity, type SecurityFinding } from '../../../shared/securityCheck'
 import { analyzeHeaders, type HeaderInsight } from '../../../shared/headerInsights'
 import { describeTiming } from '../../../shared/timing'
-import { jsonToTypeScript } from '../../../shared/jsonToTypes'
+import { jsonToGo, jsonToTypeScript, jsonToZod } from '../../../shared/jsonToTypes'
 import { describeStatus } from '../../../shared/httpStatus'
 import { timeTrend } from '../../../shared/responseTrend'
 import { useHistoryStore } from '../store/useHistoryStore'
@@ -660,9 +660,10 @@ export function ResponsePanel(): React.JSX.Element {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  const copyTypes = async (): Promise<void> => {
+  const copyTypes = async (lang: 'ts' | 'zod' | 'go' = 'ts'): Promise<void> => {
     if (!parsed.ok) return
-    await navigator.clipboard.writeText(jsonToTypeScript(parsed.value))
+    const generate = { ts: jsonToTypeScript, zod: jsonToZod, go: jsonToGo }[lang]
+    await navigator.clipboard.writeText(generate(parsed.value))
     setMenuOpen(false)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
@@ -940,12 +941,26 @@ export function ResponsePanel(): React.JSX.Element {
                     Respuesta completa (.json)
                   </button>
                   {parsed.ok && typeof parsed.value === 'object' && parsed.value !== null && (
-                    <button
-                      onClick={() => void copyTypes()}
-                      className="block w-full rounded-md px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
-                    >
-                      Copiar como tipos TypeScript
-                    </button>
+                    <>
+                      <button
+                        onClick={() => void copyTypes('ts')}
+                        className="block w-full rounded-md px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                      >
+                        Copiar como tipos TypeScript
+                      </button>
+                      <button
+                        onClick={() => void copyTypes('zod')}
+                        className="block w-full rounded-md px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                      >
+                        Copiar como esquema Zod
+                      </button>
+                      <button
+                        onClick={() => void copyTypes('go')}
+                        className="block w-full rounded-md px-3 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-800"
+                      >
+                        Copiar como structs de Go
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={() => void copyReport()}
