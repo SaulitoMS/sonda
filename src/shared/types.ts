@@ -310,6 +310,8 @@ export interface CollectionItem {
   variables?: KeyValueData[]
   /** Scripts que corren en todas las peticiones de la colección */
   scripts?: ScopeScripts
+  /** Descripción de la colección en Markdown. Si no existe, no tiene descripción */
+  description?: string
 }
 
 export interface SaveRequestInput {
@@ -471,6 +473,8 @@ export interface SondaApi {
   ) => Promise<void>
   /** Guarda las variables de una colección. null = quitarlas */
   setCollectionVariables: (collectionId: string, variables: KeyValueData[] | null) => Promise<void>
+  /** Guarda la descripción (Markdown) de una colección. null = quitarla */
+  setCollectionDescription: (collectionId: string, description: string | null) => Promise<void>
   openWorkspace: () => Promise<void>
   importSwagger: (url: string) => Promise<ImportResult>
   /** Abre el selector de archivos e importa una colección de Postman. null = el usuario canceló */

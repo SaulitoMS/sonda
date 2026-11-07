@@ -11,6 +11,7 @@ import { ScopeScriptsModal, type ScriptsScope } from './ScopeScriptsModal'
 import { placeItem, sortAlphabetically, type Place } from '../../../shared/reorder'
 import { Icon } from './Icon'
 import { ScopeVariablesModal, type VariablesScope } from './ScopeVariablesModal'
+import { CollectionDescriptionModal, type DescriptionScope } from './CollectionDescriptionModal'
 import { remapPrefix } from '../../../shared/pathRemap'
 import { remapQuickAccess } from '../lib/quickAccess'
 
@@ -292,6 +293,36 @@ function VariablesButton({
   )
 }
 
+function DescriptionButton({
+  onClick,
+  title,
+  active
+}: {
+  onClick: () => void
+  title: string
+  /** true si ya tiene descripción: el icono se ve siempre */
+  active: boolean
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className={`rounded p-0.5 hover:bg-zinc-700 hover:text-blue-400 ${
+        active ? 'block text-blue-400 group-hover:block' : 'hidden text-zinc-500 group-hover:block'
+      }`}
+      title={title}
+    >
+      <svg {...svgProps} width={13} height={13}>
+        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+        <path d="M14 3v6h6" />
+        <path d="M8 13h8M8 17h5" />
+      </svg>
+    </button>
+  )
+}
+
 function ExportButton({
   onClick,
   title
@@ -497,6 +528,7 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   const [headersScope, setHeadersScope] = useState<HeadersScope | null>(null)
   const [scriptsScope, setScriptsScope] = useState<ScriptsScope | null>(null)
   const [variablesScope, setVariablesScope] = useState<VariablesScope | null>(null)
+  const [descriptionScope, setDescriptionScope] = useState<DescriptionScope | null>(null)
   // Lo que se arrastra vive en un ref: así los eventos de soltar no dependen de un re-render
   const dragRef = useRef<DragItem | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
@@ -1212,6 +1244,17 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                   }
                   title="Variables de la colección"
                 />
+                <DescriptionButton
+                  active={!!c.description}
+                  onClick={() =>
+                    setDescriptionScope({
+                      collectionId: c.id,
+                      collectionName: c.name,
+                      description: c.description
+                    })
+                  }
+                  title="Descripción de la colección"
+                />
                 {total > 0 && (
                   <PlayButton onClick={() => onRun(c.id)} title="Ejecutar todas las peticiones" />
                 )}
@@ -1426,6 +1469,12 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
       )}
       {variablesScope && (
         <ScopeVariablesModal scope={variablesScope} onClose={() => setVariablesScope(null)} />
+      )}
+      {descriptionScope && (
+        <CollectionDescriptionModal
+          scope={descriptionScope}
+          onClose={() => setDescriptionScope(null)}
+        />
       )}
     </aside>
   )

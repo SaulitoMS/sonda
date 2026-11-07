@@ -42,6 +42,7 @@ import { looksLikeHoppscotch, parseHoppscotch } from '../shared/hoppscotch'
 import { isHttpFilePath, parseHttpFile } from '../shared/httpFile'
 import { buildHttpFile } from '../shared/httpExport'
 import { validateFolderName } from '../shared/folderName'
+import { cleanDescription } from '../shared/collectionDescription'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -57,6 +58,8 @@ interface CollectionMeta {
   scripts?: ScopeScripts
   /** Variables de la colección (solo en el sonda.collection.json de la colección, no de las carpetas) */
   variables?: KeyValueData[]
+  /** Descripción de la colección en Markdown (solo en el sonda.collection.json de la colección) */
+  description?: string
   /** Cómo era cada endpoint al importarlo, por ruta relativa a la colección */
   endpoints?: Record<string, EndpointStamp>
   createdAt: string
@@ -268,6 +271,7 @@ async function listCollections(): Promise<CollectionItem[]> {
       ...(meta?.headers?.length ? { headers: meta.headers } : {}),
       ...(meta?.scripts ? { scripts: meta.scripts } : {}),
       ...(meta?.variables?.length ? { variables: meta.variables } : {}),
+      ...(meta?.description ? { description: meta.description } : {}),
       requests: await listRequests(dir, meta?.order),
       folders: orderedFolders
     })
@@ -569,6 +573,18 @@ export function registerCollectionHandlers(): void {
     'collections:setVariables',
     async (_e, collectionId: string, variables: KeyValueData[] | null) => {
       await writeScopeVariables(safePath(collectionId), variables)
+    }
+  )
+
+  ipcMain.handle(
+    'collections:setDescription',
+    async (_e, collectionId: string, description: string | null): Promise<void> => {
+      const dir = safePath(collectionId)
+      const meta: Partial<CollectionMeta> = (await readMeta(dir)) ?? {}
+      const clean = cleanDescription(description)
+      if (clean) meta.description = clean
+      else delete meta.description
+      await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
     }
   )
 
