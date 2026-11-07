@@ -312,6 +312,38 @@ export function reportToCsv(report: RunReport): string {
   return '\uFEFF' + lines.join('\r\n') + '\r\n'
 }
 
+const mdCell = (text: string): string => text.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
+
+function mdTable(results: ReportResult[]): string[] {
+  return [
+    '| | Petición | HTTP | Tiempo | Detalle |',
+    '| --- | --- | ---: | ---: | --- |',
+    ...results.map((r) => {
+      const name = `${r.method} ${r.group ? `${r.group} / ` : ''}${r.name}`
+      return `| ${MARK[r.status]} | ${mdCell(name)} | ${r.httpStatus ?? '—'} | ${r.timeMs} ms | ${mdCell(r.detail)} |`
+    })
+  ]
+}
+
+/** Reporte en Markdown, para pegar en un PR, un issue o un chat */
+export function reportToMarkdown(report: RunReport): string {
+  const { summary } = report
+  const env = report.environment ? ` · Entorno: ${report.environment}` : ''
+  const lines = [
+    `# Reporte de ejecución: ${report.collection}`,
+    '',
+    `${report.generatedAt}${env}`,
+    '',
+    `**✓ ${summary.pass}** · **⚠ ${summary.warn}** · **✗ ${summary.fail}** — ${summary.total} peticiones, ${summary.timeMs} ms`,
+    ''
+  ]
+
+  const problems = report.results.filter((r) => r.status !== 'pass')
+  if (problems.length > 0) lines.push('## Con problemas', '', ...mdTable(problems), '')
+  lines.push('## Todas', '', ...mdTable(report.results), '')
+  return lines.join('\n')
+}
+
 /** Nombre de archivo tipo sonda-petstore-20261029-123456.html */
 export function reportFileName(report: RunReport, ext: 'json' | 'html' | 'xml' | 'csv'): string {
   const stamp = report.generatedAt.slice(0, 19).replace(/[-:]/g, '').replace('T', '-')

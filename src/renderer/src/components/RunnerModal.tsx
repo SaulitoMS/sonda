@@ -6,7 +6,9 @@ import {
   reportToCsv,
   reportToHtml,
   reportToJson,
-  reportToJunit
+  reportToJunit,
+  reportToMarkdown,
+  type RunReport
 } from '../../../shared/report'
 import { useTabsStore } from '../store/useTabsStore'
 import type {
@@ -126,6 +128,7 @@ export function RunnerModal({
   const [skipped, setSkipped] = useState<string[]>([])
   const [total, setTotal] = useState(0)
   const [rows, setRows] = useState<Row[]>([])
+  const [copied, setCopied] = useState(false)
   const [baseline, setBaseline] = useState<RunSnapshot | null>(null)
   const [dataset, setDataset] = useState<DataSet | null>(null)
   const [dataName, setDataName] = useState('')
@@ -356,8 +359,8 @@ export function RunnerModal({
     onClose()
   }
 
-  const exportReport = (format: 'json' | 'html' | 'xml' | 'csv'): void => {
-    const report = buildReport({
+  const makeReport = (): RunReport =>
+    buildReport({
       collection:
         (collection?.name ?? '') +
         (folderFilter === null ? '' : ` / ${folderFilter || '(sin carpeta)'}`),
@@ -377,6 +380,9 @@ export function RunnerModal({
         validation: r.validation
       }))
     })
+
+  const exportReport = (format: 'json' | 'html' | 'xml' | 'csv'): void => {
+    const report = makeReport()
     if (format === 'json') {
       downloadText(reportFileName(report, 'json'), reportToJson(report), 'application/json')
     } else if (format === 'xml') {
@@ -385,6 +391,16 @@ export function RunnerModal({
       downloadText(reportFileName(report, 'csv'), reportToCsv(report), 'text/csv')
     } else {
       downloadText(reportFileName(report, 'html'), reportToHtml(report), 'text/html')
+    }
+  }
+
+  const copyMarkdown = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(reportToMarkdown(makeReport()))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* sin permiso del portapapeles */
     }
   }
   const count = (s: RunStatus): number => rows.filter((r) => r.status === s).length
@@ -704,6 +720,14 @@ export function RunnerModal({
                 Repetir fallidas
               </button>
             )}
+
+            <button
+              onClick={() => void copyMarkdown()}
+              className="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              title="Para pegar en un PR, un issue o un chat"
+            >
+              {copied ? '¡Copiado!' : 'Copiar Markdown'}
+            </button>
 
             <button
               onClick={() => exportReport('csv')}
