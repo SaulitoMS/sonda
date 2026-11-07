@@ -5,9 +5,12 @@ import {
   buildTables,
   cellText,
   downloadXlsx,
+  tableToCsv,
+  tableToMarkdown,
   tableToTsv,
   type TableData
 } from '../lib/tables'
+import { downloadText } from '../lib/download'
 import { useRequestStore } from '../store/useRequestStore'
 
 const MAX_ROWS = 500
@@ -87,6 +90,7 @@ function DataTable({
   query: string
 }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
+  const [copiedMd, setCopiedMd] = useState(false)
   const [sort, setSort] = useState<SortState | null>(null)
 
   const activeSort = sort && sort.col < table.columns.length ? sort : null
@@ -123,6 +127,18 @@ function DataTable({
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const copyMarkdown = async (): Promise<void> => {
+    await navigator.clipboard.writeText(tableToMarkdown(exported))
+    setCopiedMd(true)
+    setTimeout(() => setCopiedMd(false), 1500)
+  }
+
+  // El BOM hace que Excel lea bien los acentos del CSV
+  const csv = (): void => {
+    const name = baseName.replace(/\.xlsx$/, `-${slug(table.title)}.csv`)
+    downloadText(name, `\uFEFF${tableToCsv(exported)}`, 'text/csv')
+  }
+
   const excel = (): void => {
     const name = baseName.replace(/\.xlsx$/, `-${slug(table.title)}.xlsx`)
     void downloadXlsx(name, [exported])
@@ -136,7 +152,7 @@ function DataTable({
           {filtering
             ? `${visible.length} de ${table.rows.length} filas`
             : `${table.rows.length} ${table.rows.length === 1 ? 'fila' : 'filas'}`}
-          {cut && ' · se muestra solo una parte; Copiar y Excel incluyen todo'}
+          {cut && ' · se muestra solo una parte; Copiar, Markdown, CSV y Excel incluyen todo'}
         </p>
         <div className="ml-auto flex gap-1.5">
           <button
@@ -146,6 +162,22 @@ function DataTable({
             title="Copiar para pegar en Excel"
           >
             {copied ? '¡Copiado!' : 'Copiar'}
+          </button>
+          <button
+            onClick={() => void copyMarkdown()}
+            disabled={visible.length === 0}
+            className={`${BTN} disabled:opacity-40`}
+            title="Copiar como tabla Markdown"
+          >
+            {copiedMd ? '¡Copiado!' : 'Markdown'}
+          </button>
+          <button
+            onClick={csv}
+            disabled={visible.length === 0}
+            className={`${BTN} disabled:opacity-40`}
+            title="Descargar esta tabla como .csv"
+          >
+            CSV
           </button>
           <button
             onClick={excel}

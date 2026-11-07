@@ -82,6 +82,29 @@ export const tableToTsv = (table: TableData): string => {
   return lines.map((row) => row.map(tsvCell).join('\t')).join('\n')
 }
 
+const csvCell = (v: unknown): string => {
+  const text = cellText(v)
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
+
+/** Tabla en CSV (separada por comas, con comillas donde hace falta) */
+export const tableToCsv = (table: TableData): string => {
+  const lines: unknown[][] = [table.columns, ...table.rows]
+  return lines.map((row) => row.map(csvCell).join(',')).join('\r\n')
+}
+
+const mdCell = (v: unknown): string => cellText(v).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
+
+/** Tabla en Markdown, lista para pegar en un issue, un PR o un README */
+export const tableToMarkdown = (table: TableData): string => {
+  const line = (cells: string[]): string => `| ${cells.join(' | ')} |`
+  return [
+    line(table.columns.map(mdCell)),
+    line(table.columns.map(() => '---')),
+    ...table.rows.map((row) => line(row.map(mdCell)))
+  ].join('\n')
+}
+
 const sheetNames = (tables: TableData[]): string[] => {
   const used = new Set<string>()
   return tables.map((t) => {
