@@ -29,6 +29,7 @@ import { timingStats } from '../../../shared/timing'
 import { parseDataSet, withDataVars, type DataSet } from '../../../shared/csvData'
 import { confirmRunMessage, isWriteMethod } from '../../../shared/writeGuard'
 import { createFolderSkipper, shouldRetryRow } from '../../../shared/runFlow'
+import { passesFilter } from '../../../shared/runnerFilter'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -94,6 +95,7 @@ export function RunnerModal({
   const [includeWrites, setIncludeWrites] = useState(false)
   const [folderFilter, setFolderFilter] = useState<string | null>(initialFolder)
   const [nameFilter, setNameFilter] = useState('')
+  const [excludeFilter, setExcludeFilter] = useState('')
   const [stopOnFail, setStopOnFail] = useState(false)
   const [retries, setRetries] = useState(0)
   const [delayMs, setDelayMs] = useState(0)
@@ -130,12 +132,10 @@ export function RunnerModal({
     ]
     const byFolder =
       folderFilter === null ? entries : entries.filter((e) => e.group === folderFilter)
-    const q = nameFilter.trim().toLowerCase()
-    if (!q) return byFolder
     return byFolder.filter((e) =>
-      `${e.group} ${e.item.name} ${e.item.method}`.toLowerCase().includes(q)
+      passesFilter(`${e.group} ${e.item.name} ${e.item.method}`, nameFilter, excludeFilter)
     )
-  }, [collection, folderFilter, nameFilter])
+  }, [collection, folderFilter, nameFilter, excludeFilter])
 
   const planned = includeWrites ? all : all.filter((e) => SAFE_METHODS.includes(e.item.method))
 
@@ -417,6 +417,16 @@ export function RunnerModal({
               onChange={(e) => setNameFilter(e.target.value)}
               disabled={running}
               placeholder="login, users, POST…"
+              className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100 outline-none focus:border-blue-500 disabled:opacity-50"
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="shrink-0 text-zinc-400">Excluir las que contengan</span>
+            <input
+              value={excludeFilter}
+              onChange={(e) => setExcludeFilter(e.target.value)}
+              disabled={running}
+              placeholder="logout, delete…"
               className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100 outline-none focus:border-blue-500 disabled:opacity-50"
             />
           </label>
