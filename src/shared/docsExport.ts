@@ -97,7 +97,8 @@ function requestToMarkdown(req: SavedRequest): string[] {
 export function buildMarkdownDocs(
   name: string,
   baseUrl: string | undefined,
-  files: DocsFile[]
+  files: DocsFile[],
+  description?: string
 ): string {
   const byName = (a: DocsFile, b: DocsFile): number => a.request.name.localeCompare(b.request.name)
   const folders = new Map<string, DocsFile[]>()
@@ -119,6 +120,7 @@ export function buildMarkdownDocs(
 
   const out: string[] = [`# ${name}`, '']
   if (baseUrl) out.push(`**Base URL:** \`${baseUrl}\``, '')
+  if (description?.trim()) out.push(description.trim(), '')
   out.push(`${files.length} peticiones.`, '', '## Índice', '')
   for (const [folder, list] of sections) {
     out.push(`- **${folder}**`)

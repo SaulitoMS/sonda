@@ -781,7 +781,11 @@ export function registerCollectionHandlers(): void {
       })
       if (picked.canceled || !picked.filePath) return null
 
-      await fs.writeFile(picked.filePath, buildMarkdownDocs(name, meta?.baseUrl, files), 'utf-8')
+      await fs.writeFile(
+        picked.filePath,
+        buildMarkdownDocs(name, meta?.baseUrl, files, meta?.description),
+        'utf-8'
+      )
       return { ok: true, path: picked.filePath, count: files.length }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : 'Error desconocido' }
