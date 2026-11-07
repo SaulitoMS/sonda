@@ -99,6 +99,7 @@ export function RunnerModal({
   const [stopOnFail, setStopOnFail] = useState(false)
   const [retries, setRetries] = useState(0)
   const [delayMs, setDelayMs] = useState(0)
+  const [repeat, setRepeat] = useState(1)
   const [running, setRunning] = useState(false)
   const [finished, setFinished] = useState(false)
   const [stoppedEarly, setStoppedEarly] = useState(false)
@@ -139,14 +140,21 @@ export function RunnerModal({
 
   const planned = includeWrites ? all : all.filter((e) => SAFE_METHODS.includes(e.item.method))
 
-  // Con archivo de datos se recorre toda la cola una vez por fila
+  // Con archivo de datos se recorre toda la cola una vez por fila; sin él, una vez por vuelta
   const jobs = useMemo<Job[]>(() => {
-    if (!dataset) return planned.map((entry) => ({ entry }))
-    return dataset.rows.flatMap((data, i) =>
-      planned.map((entry) => ({ entry, data, iteration: i + 1 }))
-    )
+    if (dataset) {
+      return dataset.rows.flatMap((data, i) =>
+        planned.map((entry) => ({ entry, data, iteration: i + 1 }))
+      )
+    }
+    if (repeat > 1) {
+      return Array.from({ length: repeat }, (_, i) =>
+        planned.map((entry) => ({ entry, iteration: i + 1 }))
+      ).flat()
+    }
+    return planned.map((entry) => ({ entry }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataset, includeWrites, all])
+  }, [dataset, includeWrites, all, repeat])
 
   const loadData = async (file: File | undefined): Promise<void> => {
     if (!file) return
@@ -311,7 +319,9 @@ export function RunnerModal({
       environment: runEnvName.current,
       rows: rows.map((r) => ({
         group: r.entry.group,
-        name: r.iteration ? `${r.entry.item.name} [fila ${r.iteration}]` : r.entry.item.name,
+        name: r.iteration
+          ? `${r.entry.item.name} [${r.data ? 'fila' : 'vuelta'} ${r.iteration}]`
+          : r.entry.item.name,
         method: r.entry.item.method,
         path: r.entry.item.path,
         status: r.status,
@@ -343,7 +353,9 @@ export function RunnerModal({
             Se enviarán <b>{jobs.length}</b>
             {dataset
               ? ` peticiones (${planned.length} × ${dataset.rows.length} filas de datos)`
-              : ` de ${all.length} peticiones`}{' '}
+              : repeat > 1
+                ? ` peticiones (${planned.length} × ${repeat} vueltas)`
+                : ` de ${all.length} peticiones`}{' '}
             usando el entorno activo y se validará cada respuesta contra su schema y sus aserciones.
           </p>
           {collection && collection.folders.length > 0 && (
@@ -485,6 +497,25 @@ export function RunnerModal({
             </span>
           </label>
           <label className="flex items-center justify-between gap-3">
+            <span>
+              Repetir la colección (1 a 100 vueltas)
+              {dataset && (
+                <span className="block text-[11px] text-zinc-500">
+                  Con datos de prueba se repite una vez por fila.
+                </span>
+              )}
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={dataset ? 1 : repeat}
+              disabled={!!dataset}
+              onChange={(e) => setRepeat(clampInt(Number(e.target.value), 1, 100))}
+              className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-right disabled:opacity-50"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3">
             <span>Pausa entre peticiones (ms, 0 a 10000)</span>
             <input
               type="number"
@@ -538,7 +569,9 @@ export function RunnerModal({
                     {row.entry.group && <span className="text-zinc-500">{row.entry.group} / </span>}
                     {row.entry.item.name}
                     {row.iteration && (
-                      <span className="ml-2 text-[11px] text-zinc-500">fila {row.iteration}</span>
+                      <span className="ml-2 text-[11px] text-zinc-500">
+                        {row.data ? 'fila' : 'vuelta'} {row.iteration}
+                      </span>
                     )}
                     {row.attempts && row.attempts > 1 && (
                       <span className="ml-2 text-[11px] text-amber-400">

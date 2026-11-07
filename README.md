@@ -223,6 +223,7 @@ Ejecuta todas las peticiones de una colección con un clic y revisa el resultado
 
 - Valida el schema y las aserciones de cada petición.
 - **Datos de prueba:** ejecuta la colección una vez por fila de un archivo **CSV o JSON**. Las columnas se usan como variables.
+- **Repetir la colección:** de 1 a 100 vueltas sin necesidad de un archivo de datos, útil para detectar endpoints intermitentes. Con datos de prueba se repite una vez por fila.
 - Reintentos, pausa entre peticiones (0 a 10 000 ms), detener al primer fallo y **repetir solo las fallidas**.
 - Estadísticas: promedio, p50, p95 y la petición más lenta.
 - **Reportes** en JSON, HTML (un solo archivo, sin dependencias) y **JUnit XML** para GitHub Actions, GitLab CI o Jenkins. Los reportes no incluyen bodies, headers ni valores del entorno, así que se pueden compartir sin filtrar secretos.
