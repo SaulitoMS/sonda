@@ -328,6 +328,9 @@ export type ImportResult =
 export type ExportResult =
   { ok: true; path: string; count: number; warnings?: string[] } | { ok: false; error: string }
 
+export type RestoreResult =
+  { ok: true; restored: number; skipped: number; ignored: number } | { ok: false; error: string }
+
 export interface CookieInfo {
   id: string
   name: string
@@ -474,6 +477,10 @@ export interface SondaApi {
   exportDocs: (collectionId: string) => Promise<ExportResult | null>
   /** Exporta una colección como spec OpenAPI 3.0 (JSON). null = el usuario canceló */
   exportOpenApi: (collectionId: string) => Promise<ExportResult | null>
+  /** Guarda todo el workspace (colecciones y entornos, sin secretos) en un solo archivo. null = canceló */
+  exportBackup: () => Promise<ExportResult | null>
+  /** Restaura un backup sin pisar archivos existentes. null = canceló */
+  restoreBackup: () => Promise<RestoreResult | null>
   loadEnvironments: () => Promise<EnvironmentsData>
   saveEnvironments: (data: EnvironmentsData) => Promise<void>
   previewSync: (collectionId: string) => Promise<SyncPreviewResult>
