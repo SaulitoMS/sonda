@@ -41,6 +41,7 @@ import {
 } from '../../../shared/runCompare'
 import { loadLastRun, runScope, saveLastRun } from '../lib/lastRun'
 import { visibleResults, type ResultFilter } from '../../../shared/runnerView'
+import { loadRunnerPrefs, saveRunnerPrefs } from '../lib/runnerPrefs'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -117,15 +118,16 @@ export function RunnerModal({
   const [folderFilter, setFolderFilter] = useState<string | null>(initialFolder)
   const [nameFilter, setNameFilter] = useState('')
   const [excludeFilter, setExcludeFilter] = useState('')
-  const [stopOnFail, setStopOnFail] = useState(false)
-  const [retries, setRetries] = useState(0)
-  const [delayMs, setDelayMs] = useState(0)
+  const [prefs] = useState(loadRunnerPrefs)
+  const [stopOnFail, setStopOnFail] = useState(prefs.stopOnFail)
+  const [retries, setRetries] = useState(prefs.retries)
+  const [delayMs, setDelayMs] = useState(prefs.delayMs)
   const [repeat, setRepeat] = useState(1)
   const [running, setRunning] = useState(false)
   const [finished, setFinished] = useState(false)
   const [stoppedEarly, setStoppedEarly] = useState(false)
-  const [retryAny, setRetryAny] = useState(false)
-  const [skipFolderOnFail, setSkipFolderOnFail] = useState(false)
+  const [retryAny, setRetryAny] = useState(prefs.retryAny)
+  const [skipFolderOnFail, setSkipFolderOnFail] = useState(prefs.skipFolderOnFail)
   const [skipped, setSkipped] = useState<string[]>([])
   const [total, setTotal] = useState(0)
   const [rows, setRows] = useState<Row[]>([])
@@ -149,6 +151,10 @@ export function RunnerModal({
       ref.current++
     }
   }, [])
+
+  useEffect(() => {
+    saveRunnerPrefs({ stopOnFail, skipFolderOnFail, retryAny, retries, delayMs })
+  }, [stopOnFail, skipFolderOnFail, retryAny, retries, delayMs])
 
   const all = useMemo<Entry[]>(() => {
     if (!collection) return []
