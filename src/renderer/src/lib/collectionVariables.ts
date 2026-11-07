@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
+import { variableSource } from '../../../shared/varSource'
 import { withCollectionVariables, withGlobalVariables } from '../../../shared/variables'
 import type { Environment, KeyValueData } from '../../../shared/types'
 import { useCollectionsStore } from '../store/useCollectionsStore'
@@ -27,4 +28,29 @@ export function useEffectiveEnv(): Environment | null {
     )
     return withGlobalVariables(withCollection, data.globals)
   }, [data, currentFile, collections])
+}
+
+/** Dice de dónde sale una variable: "Entorno Dev", "Colección Petstore" o "Globales" (null si no existe) */
+export function useVariableOrigin(): (name: string) => string | null {
+  const data = useEnvironmentStore((s) => s.data)
+  const currentFile = useRequestStore((s) => s.currentFile)
+  const collections = useCollectionsStore((s) => s.collections)
+
+  return useCallback(
+    (name: string) => {
+      const env = data.environments.find((e) => e.id === data.activeId) ?? null
+      const collection = collections.find((c) => c.id === currentFile?.split('/')[0])
+      switch (variableSource(name, env, collection?.variables, data.globals)) {
+        case 'environment':
+          return `Entorno ${env?.name ?? ''}`.trim()
+        case 'collection':
+          return `Colección ${collection?.name ?? ''}`.trim()
+        case 'global':
+          return 'Globales'
+        default:
+          return null
+      }
+    },
+    [data, currentFile, collections]
+  )
 }

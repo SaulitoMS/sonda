@@ -12,7 +12,7 @@ import {
   type VarSuggestion
 } from '../../../shared/varSuggest'
 import { buildVarMap } from '../../../shared/variables'
-import { useEffectiveEnv } from '../lib/collectionVariables'
+import { useEffectiveEnv, useVariableOrigin } from '../lib/collectionVariables'
 
 const VAR_SPLIT = /(\{\{\s*\$?[\w.-]+\s*\}\})/g
 const VAR_NAME = /\{\{\s*(\$?[\w.-]+)\s*\}\}/
@@ -55,6 +55,7 @@ export function VariableInput({
   const [suggest, setSuggest] = useState<SuggestState | null>(null)
 
   const activeEnv = useEffectiveEnv()
+  const origin = useVariableOrigin()
   const vars = buildVarMap(activeEnv)
 
   const envInfo = (activeEnv?.variables ?? [])
@@ -278,7 +279,9 @@ export function VariableInput({
               <div className="break-all font-mono text-zinc-200">
                 {hoveredVar.secret ? '••••••••' : hoveredVar.value || '(vacío)'}
               </div>
-              <div className="mt-1.5 text-[10px] text-zinc-500">Entorno: {activeEnv?.name}</div>
+              <div className="mt-1.5 text-[10px] text-zinc-500">
+                Origen: {origin(hover.name) ?? activeEnv?.name}
+              </div>
             </>
           ) : (
             <>
