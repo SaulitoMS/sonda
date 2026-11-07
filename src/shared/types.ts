@@ -429,6 +429,8 @@ export interface SondaApi {
   listCollections: () => Promise<CollectionItem[]>
   createCollection: (name: string) => Promise<CollectionItem>
   deleteCollection: (id: string) => Promise<void>
+  /** Duplica una colección completa (peticiones, carpetas y configuración) como "<nombre> (copia)" */
+  duplicateCollection: (id: string) => Promise<CollectionItem>
   readRequest: (path: string) => Promise<SavedRequest>
   saveRequest: (input: SaveRequestInput) => Promise<string>
   deleteRequest: (path: string) => Promise<void>

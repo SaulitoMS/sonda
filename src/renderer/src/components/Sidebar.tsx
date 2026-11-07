@@ -513,6 +513,11 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
     await refresh()
   }
 
+  const duplicateCollection = async (id: string): Promise<void> => {
+    await window.api.duplicateCollection(id)
+    await refresh()
+  }
+
   const createCollection = async (): Promise<void> => {
     if (!newName.trim()) return
     const created = await window.api.createCollection(newName.trim())
@@ -1149,6 +1154,11 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                     title="Exportar a OpenAPI (JSON)"
                   />
                 )}
+
+                <DuplicateButton
+                  onClick={() => duplicateCollection(c.id)}
+                  title="Duplicar colección"
+                />
 
                 <TrashButton
                   onClick={() => removeCollection(c.id, c.name)}

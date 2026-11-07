@@ -349,6 +349,26 @@ export function registerCollectionHandlers(): void {
     await moveToTrash('collection', safePath(id), id)
   })
 
+  ipcMain.handle('collections:duplicate', async (_e, id: string): Promise<CollectionItem> => {
+    const src = safePath(id)
+    const meta = await readMeta(src)
+    const name = `${meta?.name ?? id} (copia)`
+    const dest = await uniquePath(getRoot(), slug(name), '')
+
+    // Copia todo: carpetas, peticiones, auth, headers, scripts, variables y orden
+    await fs.cp(src, dest, { recursive: true })
+    await fs.writeFile(
+      join(dest, META_FILE),
+      JSON.stringify({ ...(meta ?? {}), name, createdAt: new Date().toISOString() }, null, 2) +
+        '\n',
+      'utf-8'
+    )
+
+    const copy = (await listCollections()).find((c) => c.id === basename(dest))
+    if (!copy) throw new Error('No se pudo duplicar la colección')
+    return copy
+  })
+
   ipcMain.handle('collections:readRequest', async (_e, relPath: string): Promise<SavedRequest> => {
     const data = JSON.parse(await fs.readFile(safeRequestPath(relPath), 'utf-8')) as SavedRequest
     return { ...data, headers: data.headers ?? [], body: data.body ?? '' }
