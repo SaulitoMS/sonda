@@ -6,8 +6,8 @@ export interface DigestChallenge {
   opaque?: string
   /** Tal como lo mandó el servidor (MD5, SHA-256, ...) */
   algorithm: string
-  /** Solo se soporta "auth". undefined = el servidor no pidió qop (RFC 2069) */
-  qop?: 'auth'
+  /** "auth-int" también firma el body. undefined = el servidor no pidió qop (RFC 2069) */
+  qop?: 'auth' | 'auth-int'
 }
 
 // ---------- MD5 (Web Crypto no lo ofrece) ----------
@@ -101,11 +101,13 @@ export function parseDigestChallenge(header: string): DigestChallenge | null {
   const algorithm = params.algorithm || 'MD5'
   if (!/^(md5|sha-256)(-sess)?$/i.test(algorithm)) return null
 
-  let qop: 'auth' | undefined
+  let qop: 'auth' | 'auth-int' | undefined
   if (params.qop) {
     const options = params.qop.split(',').map((q) => q.trim().toLowerCase())
-    if (!options.includes('auth')) return null // solo auth-int: no soportado
-    qop = 'auth'
+    // Se prefiere auth (no necesita el body); auth-int solo si el servidor no ofrece otra cosa
+    if (options.includes('auth')) qop = 'auth'
+    else if (options.includes('auth-int')) qop = 'auth-int'
+    else return null
   }
 
   return {
@@ -142,6 +144,8 @@ export interface DigestInput {
   method: string
   /** Ruta con query, tal como va en la primera línea de la petición (/dir/index.html?a=1) */
   uri: string
+  /** Body exacto que se enviará. Solo se usa con qop=auth-int (vacío si no hay) */
+  body?: string
   /** Solo para pruebas */
   cnonce?: string
   nc?: number
@@ -159,7 +163,10 @@ export async function buildDigestAuthorization(input: DigestInput): Promise<stri
 
   let ha1 = await hash(`${username}:${c.realm}:${password}`)
   if (sess) ha1 = await hash(`${ha1}:${c.nonce}:${cnonce}`)
-  const ha2 = await hash(`${method.toUpperCase()}:${uri}`)
+  const ha2 =
+    c.qop === 'auth-int'
+      ? await hash(`${method.toUpperCase()}:${uri}:${await hash(input.body ?? '')}`)
+      : await hash(`${method.toUpperCase()}:${uri}`)
   const response = c.qop
     ? await hash(`${ha1}:${c.nonce}:${nc}:${cnonce}:${c.qop}:${ha2}`)
     : await hash(`${ha1}:${c.nonce}:${ha2}`)

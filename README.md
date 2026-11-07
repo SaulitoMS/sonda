@@ -471,7 +471,7 @@ Los reportes JUnit del runner permiten, además, usar Sonda como paso de verific
 - OAuth 2.0 soporta `client_credentials`, `password` y `authorization_code` con PKCE; no soporta el flujo implícito ni el de dispositivo.
 - La validación de schemas cubre el subconjunto de JSON Schema que usa OpenAPI. Con `discriminator` elige la variante por el `enum` o `const` de la propiedad; no interpreta el `mapping` ni los nombres implícitos de los schemas.
 - Las cookies con fecha de caducidad se guardan cifradas con el keychain del sistema; las cookies de sesión se descartan al cerrar la app.
-- Digest Auth no soporta `qop=auth-int`, y el CLI y la exportación a cURL todavía no lo aplican.
+- Digest Auth con `qop=auth-int` no funciona con body multipart ni binario, y el CLI y la exportación a cURL todavía no aplican Digest.
 - El importador de Insomnia solo lee el formato JSON v4 (no el YAML de las versiones nuevas) y no importa los sub-entornos.
 - Los instaladores de macOS aún no están firmados ni notarizados.
 

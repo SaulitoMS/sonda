@@ -404,7 +404,11 @@ export async function executeRequest(
     const challenge = findDigestChallenge(response.headers)
     if (!challenge) {
       warnings.push(
-        'Auth Digest: el servidor respondió 401 sin un desafío Digest compatible (MD5 o SHA-256 con qop=auth).'
+        'Auth Digest: el servidor respondió 401 sin un desafío Digest compatible (MD5 o SHA-256 con qop=auth o auth-int).'
+      )
+    } else if (challenge.qop === 'auth-int' && (formParts || binaryFile)) {
+      warnings.push(
+        'Auth Digest: el servidor exige qop=auth-int, que firma el body, y Sonda no puede hacerlo con multipart ni con archivos binarios.'
       )
     } else {
       try {
@@ -414,7 +418,8 @@ export async function executeRequest(
           username: digest.username,
           password: digest.password,
           method: draft.method,
-          uri: u.pathname + u.search
+          uri: u.pathname + u.search,
+          body: finalBody ?? ''
         })
         response = await window.api.sendRequest({
           ...sendInput,

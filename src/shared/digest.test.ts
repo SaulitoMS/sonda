@@ -36,8 +36,14 @@ describe('parseDigestChallenge', () => {
     expect(parseDigestChallenge('Digest realm="x", nonce="n", algorithm=SHA-512-256')).toBe(null)
   })
 
-  it('rechaza cuando solo se ofrece auth-int', () => {
-    expect(parseDigestChallenge('Digest realm="x", nonce="n", qop="auth-int"')).toBe(null)
+  it('usa auth-int cuando es lo único que ofrece el servidor', () => {
+    expect(parseDigestChallenge('Digest realm="x", nonce="n", qop="auth-int"')?.qop).toBe(
+      'auth-int'
+    )
+  })
+
+  it('rechaza un qop desconocido', () => {
+    expect(parseDigestChallenge('Digest realm="x", nonce="n", qop="foo"')).toBe(null)
   })
 
   it('encuentra el header sin importar las mayúsculas', () => {
@@ -87,5 +93,19 @@ describe('buildDigestAuthorization', () => {
     })
     expect(value.includes('cnonce')).toBe(false)
     expect(value.includes('nc=')).toBe(false)
+  })
+
+  it('con qop=auth-int incluye el hash del body en la firma', async () => {
+    const value = await buildDigestAuthorization({
+      challenge: { realm: 'r', nonce: 'n', algorithm: 'MD5', qop: 'auth-int' },
+      username: 'u',
+      password: 'p',
+      method: 'post',
+      uri: '/x?a=1',
+      body: '{"a":1}',
+      cnonce: 'c'
+    })
+    expect(value).toContain('response="ba0f3ebb19de00ee88c534af0c573ad3"')
+    expect(value).toContain('qop=auth-int')
   })
 })
