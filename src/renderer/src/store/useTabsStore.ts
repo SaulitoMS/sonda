@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { isDirtyState } from '../../../shared/dirty'
-import { nextActiveAfterClose } from '../../../shared/tabs'
+import { nextActiveAfterClose, togglePinned } from '../../../shared/tabs'
 import type { SavedRequest } from '../../../shared/types'
 import { pushRecent } from '../lib/quickAccess'
 import {
@@ -15,6 +15,8 @@ export interface Tab {
   id: string
   /** Estado guardado de la pestaña. En la activa puede estar desactualizado: manda useRequestStore */
   snapshot: RequestSnapshot | null
+  /** Anclada: va a la izquierda y no se cierra con "Cerrar las demás" */
+  pinned?: boolean
 }
 
 interface TabsState {
@@ -32,6 +34,8 @@ interface TabsState {
   duplicate: (id: string) => void
   /** Cierra todas las pestañas menos la indicada (quedan en "reabrir cerrada") */
   closeOthers: (id: string) => void
+  /** Ancla o desancla una pestaña */
+  togglePin: (id: string) => void
   /** Abre una petición de una colección: salta a su pestaña si ya está abierta */
   openSaved: (saved: SavedRequest, path: string) => void
   /** Actualiza una pestaña inactiva (ej: llegó la respuesta de una petición en vuelo) */
@@ -161,21 +165,30 @@ export const useTabsStore = create<TabsState>((set, get) => {
     closeOthers: (id) => {
       const { tabs, activeId, closed } = get()
       const frozen = freeze(tabs, activeId)
-      const keep = frozen.find((t) => t.id === id)
-      if (!keep) return
+      const target = frozen.find((t) => t.id === id)
+      if (!target) return
 
+      // Las ancladas se quedan
+      const kept = frozen.filter((t) => t.id === id || t.pinned)
       const discarded = frozen
-        .filter((t) => t.id !== id)
+        .filter((t) => !kept.includes(t))
         .flatMap((t) => (t.snapshot ? [t.snapshot] : []))
         .filter((s) => s.currentFile || s.url.trim())
         .map((s) => ({ ...s, loading: false }))
 
-      if (id !== activeId) useRequestStore.setState(keep.snapshot ?? blankSnapshot())
+      // Si la activa se cierra, queda activa la elegida
+      const nextActive = kept.some((t) => t.id === activeId) ? activeId : id
+      if (nextActive !== activeId) useRequestStore.setState(target.snapshot ?? blankSnapshot())
       set({
-        tabs: [keep],
-        activeId: id,
+        tabs: kept,
+        activeId: nextActive,
         closed: [...discarded, ...closed].slice(0, MAX_CLOSED)
       })
+    },
+
+    togglePin: (id) => {
+      const { tabs, activeId } = get()
+      set({ tabs: togglePinned(freeze(tabs, activeId), id) })
     },
 
     openSaved: (saved, path) => {

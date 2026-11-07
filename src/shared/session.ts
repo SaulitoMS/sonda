@@ -44,6 +44,8 @@ export interface PersistedRequest {
 
 export interface PersistedTab {
   id: string
+  /** Si no existe, la pestaña no está anclada */
+  pinned?: boolean
   request: PersistedRequest
 }
 
@@ -115,7 +117,9 @@ export function parseSession(raw: string | null): PersistedSession | null {
     for (const t of data.tabs) {
       if (!isObject(t)) continue
       const request = parseRequest(t.request)
-      if (typeof t.id === 'string' && request) tabs.push({ id: t.id, request })
+      if (typeof t.id === 'string' && request) {
+        tabs.push({ id: t.id, ...(t.pinned === true ? { pinned: true } : {}), request })
+      }
       if (tabs.length >= MAX_TABS) break
     }
     if (tabs.length === 0) return null

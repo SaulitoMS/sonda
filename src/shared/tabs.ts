@@ -26,3 +26,12 @@ export function nextActiveAfterClose(
   if (remaining.length === 0) return null
   return remaining[Math.min(Math.max(index, 0), remaining.length - 1)]
 }
+
+/** Alterna el anclaje de `id` y deja las ancladas a la izquierda, sin alterar el orden del resto */
+export function togglePinned<T extends { id: string; pinned?: boolean }>(
+  tabs: T[],
+  id: string
+): T[] {
+  const next = tabs.map((t) => (t.id === id ? { ...t, pinned: !t.pinned } : t))
+  return [...next.filter((t) => t.pinned), ...next.filter((t) => !t.pinned)]
+}

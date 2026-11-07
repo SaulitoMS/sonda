@@ -66,7 +66,6 @@ function toSnapshot(p: PersistedRequest): RequestSnapshot {
   }
 }
 
-/** Vuelve a abrir las pestañas de la última sesión. Llamar una vez, antes de renderizar */
 export function restoreSession(): void {
   let raw: string | null
   try {
@@ -77,10 +76,18 @@ export function restoreSession(): void {
   const session = parseSession(raw)
   if (!session) return
 
-  const restored = session.tabs.map((t) => ({ id: t.id, snapshot: toSnapshot(t.request) }))
+  const restored = session.tabs.map((t) => ({
+    id: t.id,
+    pinned: t.pinned,
+    snapshot: toSnapshot(t.request)
+  }))
   const active = restored.find((t) => t.id === session.activeId) ?? restored[0]
 
-  const tabs: Tab[] = restored.map((t) => ({ id: t.id, snapshot: t.snapshot }))
+  const tabs: Tab[] = restored.map((t) => ({
+    id: t.id,
+    snapshot: t.snapshot,
+    ...(t.pinned ? { pinned: true } : {})
+  }))
   useRequestStore.setState(active.snapshot)
   useTabsStore.setState({ tabs, activeId: active.id })
 }
@@ -93,6 +100,7 @@ function buildSession(): PersistedSession {
     activeId,
     tabs: tabs.map((t) => ({
       id: t.id,
+      ...(t.pinned ? { pinned: true } : {}),
       request: toPersisted(t.id === activeId ? live : (t.snapshot ?? blankSnapshot()))
     }))
   }

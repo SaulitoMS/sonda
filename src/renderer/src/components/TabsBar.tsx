@@ -23,6 +23,7 @@ interface TabMenu {
   id: string
   label: string
   dirty: boolean
+  pinned: boolean
 }
 
 export function TabsBar(): React.JSX.Element {
@@ -33,6 +34,7 @@ export function TabsBar(): React.JSX.Element {
   const close = useTabsStore((s) => s.close)
   const duplicate = useTabsStore((s) => s.duplicate)
   const closeOthers = useTabsStore((s) => s.closeOthers)
+  const togglePin = useTabsStore((s) => s.togglePin)
   const strip = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState<TabMenu | null>(null)
 
@@ -78,9 +80,11 @@ export function TabsBar(): React.JSX.Element {
   }
 
   const requestCloseOthers = (id: string): void => {
+    // Las ancladas no se cierran, así que no cuentan
     const dirtyOthers = tabs.filter(
       (t) =>
         t.id !== id &&
+        !t.pinned &&
         (t.id === activeId ? liveDirty : t.snapshot ? isDirtyState(t.snapshot) : false)
     ).length
     if (
@@ -103,6 +107,7 @@ export function TabsBar(): React.JSX.Element {
       >
         {tabs.map((t) => {
           const active = t.id === activeId
+          const pinned = !!t.pinned
           const view = active
             ? {
                 name: liveName,
@@ -128,10 +133,17 @@ export function TabsBar(): React.JSX.Element {
               onClick={() => select(t.id)}
               onContextMenu={(e) => {
                 e.preventDefault()
-                setMenu({ x: e.clientX, y: e.clientY, id: t.id, label, dirty: view.dirty })
+                setMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  id: t.id,
+                  label,
+                  dirty: view.dirty,
+                  pinned
+                })
               }}
               onAuxClick={(e) => {
-                if (e.button === 1) {
+                if (e.button === 1 && !pinned) {
                   e.preventDefault()
                   requestClose(t.id, label, view.dirty)
                 }
@@ -142,6 +154,14 @@ export function TabsBar(): React.JSX.Element {
                   : 'text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300'
               }`}
             >
+              {pinned && (
+                <Icon
+                  name="star"
+                  size={11}
+                  className="shrink-0 text-amber-400"
+                  aria-label="Anclada"
+                />
+              )}
               <span className={`shrink-0 text-[10px] font-bold ${METHOD_COLORS[view.method]}`}>
                 {SHORT[view.method]}
               </span>
@@ -151,30 +171,34 @@ export function TabsBar(): React.JSX.Element {
               {view.loading && (
                 <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-blue-400/30 border-t-blue-400" />
               )}
-              {/* Con cambios sin guardar se ve un punto; al pasar el cursor, la ✕ */}
+              {/* Con cambios sin guardar se ve un punto; al pasar el cursor, la ✕ (salvo en las ancladas) */}
               {view.dirty && (
                 <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 group-hover:hidden"
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 ${
+                    pinned ? '' : 'group-hover:hidden'
+                  }`}
                   title="Cambios sin guardar"
                 />
               )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  requestClose(t.id, label, view.dirty)
-                }}
-                className={`shrink-0 rounded p-0.5 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-100 ${
-                  view.dirty
-                    ? 'hidden group-hover:block'
-                    : active
-                      ? ''
-                      : 'invisible group-hover:visible'
-                }`}
-                title="Cerrar pestaña"
-                aria-label="Cerrar pestaña"
-              >
-                <Icon name="x" size={12} />
-              </button>
+              {!pinned && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    requestClose(t.id, label, view.dirty)
+                  }}
+                  className={`shrink-0 rounded p-0.5 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-100 ${
+                    view.dirty
+                      ? 'hidden group-hover:block'
+                      : active
+                        ? ''
+                        : 'invisible group-hover:visible'
+                  }`}
+                  title="Cerrar pestaña"
+                  aria-label="Cerrar pestaña"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              )}
             </div>
           )
         })}
@@ -195,11 +219,17 @@ export function TabsBar(): React.JSX.Element {
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             left: Math.min(menu.x, window.innerWidth - 200),
-            top: Math.min(menu.y, window.innerHeight - 130)
+            top: Math.min(menu.y, window.innerHeight - 170)
           }}
           className="anim-pop fixed z-50 w-48 rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 shadow-2xl"
         >
           {[
+            {
+              id: 'pin',
+              label: menu.pinned ? 'Desanclar pestaña' : 'Anclar pestaña',
+              disabled: false,
+              run: () => togglePin(menu.id)
+            },
             {
               id: 'duplicate',
               label: 'Duplicar pestaña',
