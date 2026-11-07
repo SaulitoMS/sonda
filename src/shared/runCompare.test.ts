@@ -84,15 +84,34 @@ describe('parseStoredRuns', () => {
 
   it('descarta entradas y filas con forma inválida', () => {
     const raw = JSON.stringify({
-      ok: {
-        savedAt: '2026-11-07',
-        rows: [row('a', 'pass'), { key: 1 }, row('b', 'raro' as never)]
-      },
-      mal: { savedAt: 3, rows: [] },
+      ok: [
+        { savedAt: '2026-11-07', rows: [row('a', 'pass'), { key: 1 }, row('b', 'raro' as never)] }
+      ],
+      mal: [{ savedAt: 3, rows: [] }],
       peor: 5
     })
     expect(parseStoredRuns(raw)).toEqual({
-      ok: { savedAt: '2026-11-07', rows: [row('a', 'pass')] }
+      ok: [{ savedAt: '2026-11-07', rows: [row('a', 'pass')] }]
+    })
+  })
+
+  it('conserva el orden de varias ejecuciones', () => {
+    const raw = JSON.stringify({
+      s: [
+        { savedAt: '2026-11-07T10:00', rows: [] },
+        { savedAt: '2026-11-06T10:00', rows: [] }
+      ]
+    })
+    expect(parseStoredRuns(raw).s.map((r) => r.savedAt)).toEqual([
+      '2026-11-07T10:00',
+      '2026-11-06T10:00'
+    ])
+  })
+
+  it('acepta el formato anterior de una sola ejecución', () => {
+    const raw = JSON.stringify({ s: { savedAt: '2026-11-07', rows: [row('a', 'pass')] } })
+    expect(parseStoredRuns(raw)).toEqual({
+      s: [{ savedAt: '2026-11-07', rows: [row('a', 'pass')] }]
     })
   })
 })

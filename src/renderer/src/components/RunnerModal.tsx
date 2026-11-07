@@ -41,7 +41,7 @@ import {
   type RowChange,
   type RunSnapshot
 } from '../../../shared/runCompare'
-import { loadLastRun, runScope, saveLastRun } from '../lib/lastRun'
+import { loadRunHistory, runScope, saveLastRun } from '../lib/lastRun'
 import { visibleResults, type ResultFilter } from '../../../shared/runnerView'
 import { loadRunnerPrefs, saveRunnerPrefs } from '../lib/runnerPrefs'
 
@@ -137,7 +137,9 @@ export function RunnerModal({
   const [resultFilter, setResultFilter] = useState<ResultFilter>('all')
   const [slowestFirst, setSlowestFirst] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [baseline, setBaseline] = useState<RunSnapshot | null>(null)
+  const [history, setHistory] = useState<RunSnapshot[]>([])
+  const [baseIndex, setBaseIndex] = useState(0)
+  const baseline = history[baseIndex] ?? null
   const [dataset, setDataset] = useState<DataSet | null>(null)
   const [dataName, setDataName] = useState('')
   const [dataError, setDataError] = useState('')
@@ -294,7 +296,8 @@ export function RunnerModal({
 
     const myRun = ++runId.current
     runEnvName.current = useEnvironmentStore.getState().getActive()?.name ?? null
-    setBaseline(loadLastRun(scope))
+    setHistory(loadRunHistory(scope))
+    setBaseIndex(0)
     setRows([])
     setFinished(false)
     setStoppedEarly(false)
@@ -672,6 +675,23 @@ export function RunnerModal({
                 Contra la ejecución del {new Date(baseline.savedAt).toLocaleString()}:{' '}
                 {summarizeComparison(comparison)}
               </p>
+            )}
+            {history.length > 1 && (
+              <label className="flex items-center gap-2 text-zinc-500">
+                Comparar con
+                <select
+                  value={baseIndex}
+                  onChange={(e) => setBaseIndex(Number(e.target.value))}
+                  className="rounded border border-zinc-700 bg-zinc-950 px-2 py-0.5 text-zinc-300"
+                >
+                  {history.map((h, i) => (
+                    <option key={h.savedAt} value={i}>
+                      {i === 0 ? 'La anterior · ' : ''}
+                      {new Date(h.savedAt).toLocaleString()}
+                    </option>
+                  ))}
+                </select>
+              </label>
             )}
             {stats && (
               <p className="text-zinc-500">

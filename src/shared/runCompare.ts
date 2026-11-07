@@ -82,17 +82,25 @@ const isRow = (v: unknown): v is RunSnapshotRow => {
   )
 }
 
-/** Lee lo guardado en localStorage descartando cualquier cosa que no tenga la forma esperada */
-export function parseStoredRuns(raw: string | null): Record<string, RunSnapshot> {
+/**
+ * Lee lo guardado en localStorage: las ejecuciones de cada colección, de la más reciente a la más
+ * antigua. También acepta el formato anterior (una sola ejecución por colección).
+ */
+export function parseStoredRuns(raw: string | null): Record<string, RunSnapshot[]> {
   if (!raw) return {}
   try {
     const data = JSON.parse(raw) as unknown
     if (!data || typeof data !== 'object') return {}
-    const out: Record<string, RunSnapshot> = {}
+    const out: Record<string, RunSnapshot[]> = {}
     for (const [scope, value] of Object.entries(data)) {
-      const v = value as Partial<RunSnapshot> | null
-      if (!v || typeof v.savedAt !== 'string' || !Array.isArray(v.rows)) continue
-      out[scope] = { savedAt: v.savedAt, rows: v.rows.filter(isRow) }
+      const list: unknown[] = Array.isArray(value) ? value : [value]
+      const runs = list.flatMap((item): RunSnapshot[] => {
+        const v = item as Partial<RunSnapshot> | null
+        return v && typeof v.savedAt === 'string' && Array.isArray(v.rows)
+          ? [{ savedAt: v.savedAt, rows: v.rows.filter(isRow) }]
+          : []
+      })
+      if (runs.length > 0) out[scope] = runs
     }
     return out
   } catch {
