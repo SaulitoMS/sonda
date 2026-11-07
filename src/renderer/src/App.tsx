@@ -266,7 +266,24 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
+      // Esc cancela la petición en curso, salvo que esté escribiendo o haya un modal abierto
+      if (e.key === 'Escape') {
+        const target = e.target as HTMLElement | null
+        const typing = target?.closest('input, textarea, select, [contenteditable="true"]')
+        if (typing || document.querySelector('[role="dialog"]')) return
+        if (useRequestStore.getState().loading) {
+          cancelInFlight(useTabsStore.getState().activeId)
+          showFlash('Petición cancelada')
+        }
+        return
+      }
       if (!(e.metaKey || e.ctrlKey)) return
+      // Ctrl/Cmd+Shift+S: Guardar como…
+      if (e.key.toLowerCase() === 's' && e.shiftKey) {
+        e.preventDefault()
+        setModal('save')
+        return
+      }
       if (e.key.toLowerCase() === 't' && e.shiftKey) {
         e.preventDefault()
         reopenClosed()
@@ -340,6 +357,7 @@ function App(): React.JSX.Element {
     closeActiveTab,
     cycleTab,
     cycleEnvironment,
+    showFlash,
     toggleSidebar,
     toggleDirection
   ])
