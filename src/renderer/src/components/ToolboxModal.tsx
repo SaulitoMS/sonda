@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   describeTimestamp,
+  escapeHtml,
   escapeJsonString,
   formatJson,
   fromBase64,
@@ -10,7 +11,9 @@ import {
   minifyJson,
   queryToJson,
   toBase64,
+  toBase64Url,
   toHex,
+  unescapeHtml,
   unescapeJsonString,
   urlDecode,
   urlEncode,
@@ -21,6 +24,7 @@ import { Modal } from './Modal'
 const MODES = [
   { id: 'b64-enc', label: 'Base64 · codificar' },
   { id: 'b64-dec', label: 'Base64 · decodificar' },
+  { id: 'b64u-enc', label: 'Base64url · codificar (JWT)' },
   { id: 'url-enc', label: 'URL · codificar' },
   { id: 'url-dec', label: 'URL · decodificar' },
   { id: 'qs-json', label: 'Query string → JSON' },
@@ -31,6 +35,8 @@ const MODES = [
   { id: 'json-unesc', label: 'String JSON → texto (desescapar)' },
   { id: 'hex-enc', label: 'Hex · codificar' },
   { id: 'hex-dec', label: 'Hex · decodificar' },
+  { id: 'html-esc', label: 'HTML · escapar entidades' },
+  { id: 'html-unesc', label: 'HTML · desescapar entidades' },
   { id: 'ts', label: 'Timestamp ↔ fecha' },
   { id: 'sha1', label: 'Hash SHA-1' },
   { id: 'sha256', label: 'Hash SHA-256' },
@@ -56,7 +62,10 @@ const SWAP: Partial<Record<Mode, Mode>> = {
   'json-esc': 'json-unesc',
   'json-unesc': 'json-esc',
   'hex-enc': 'hex-dec',
-  'hex-dec': 'hex-enc'
+  'hex-dec': 'hex-enc',
+  'b64u-enc': 'b64-dec',
+  'html-esc': 'html-unesc',
+  'html-unesc': 'html-esc'
 }
 
 interface Result {
@@ -71,6 +80,8 @@ function convert(mode: Mode, input: string): Result {
         return { text: toBase64(input), error: false }
       case 'b64-dec':
         return { text: fromBase64(input), error: false }
+      case 'b64u-enc':
+        return { text: toBase64Url(input), error: false }
       case 'url-enc':
         return { text: urlEncode(input), error: false }
       case 'url-dec':
@@ -91,6 +102,10 @@ function convert(mode: Mode, input: string): Result {
         return { text: toHex(input), error: false }
       case 'hex-dec':
         return { text: fromHex(input), error: false }
+      case 'html-esc':
+        return { text: escapeHtml(input), error: false }
+      case 'html-unesc':
+        return { text: unescapeHtml(input), error: false }
       case 'ts':
         return { text: describeTimestamp(input), error: false }
       default:
