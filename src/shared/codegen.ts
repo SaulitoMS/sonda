@@ -14,6 +14,9 @@ export type CodeLang =
   | 'rust'
   | 'java'
   | 'k6'
+  | 'httpie'
+  | 'wget'
+  | 'swift'
 
 export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'curl', label: 'cURL' },
@@ -27,7 +30,10 @@ export const CODE_LANGS: { id: CodeLang; label: string }[] = [
   { id: 'ruby', label: 'Ruby (Net::HTTP)' },
   { id: 'rust', label: 'Rust (reqwest)' },
   { id: 'java', label: 'Java (HttpClient)' },
-  { id: 'k6', label: 'k6 (prueba de carga)' }
+  { id: 'k6', label: 'k6 (prueba de carga)' },
+  { id: 'httpie', label: 'HTTPie' },
+  { id: 'wget', label: 'wget' },
+  { id: 'swift', label: 'Swift (URLSession)' }
 ]
 
 // JSON.stringify produce literales de string válidos tanto en JavaScript como en Python
@@ -640,6 +646,89 @@ function toK6(r: CurlRequest): string {
   return lines.join('\n')
 }
 
+/** Comillas simples de shell: dentro solo hay que escapar la comilla simple */
+const shQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`
+
+function toHttpie(r: CurlRequest): string {
+  const parts = formParts(r)
+  const args = [parts.length ? 'http --ignore-stdin --multipart' : 'http --ignore-stdin']
+  if (r.user) args.push(`--auth ${shQuote(r.user)}`)
+  args.push(`${r.method} ${shQuote(r.url)}`)
+  // Con multipart HTTPie pone el Content-Type con su boundary
+  for (const h of parts.length ? r.headers.filter((x) => !isContentType(x)) : r.headers) {
+    args.push(shQuote(`${h.key}:${h.value}`))
+  }
+  if (parts.length) {
+    // En la clave de HTTPie \, =, @ y : son separadores y se escapan con \
+    const key = (k: string): string => k.replace(/[\\=@:]/g, '\\$&')
+    for (const p of parts) {
+      const field = p.kind === 'file' ? `${key(p.key)}@${p.value}` : `${key(p.key)}=${p.value}`
+      args.push(shQuote(field))
+    }
+  } else if (hasBody(r)) {
+    args.push(`--raw ${shQuote(r.body)}`)
+  }
+  return args.join(' \\\n  ')
+}
+
+function toWget(r: CurlRequest): string {
+  const parts = formParts(r)
+  const args = ['wget --quiet --server-response --content-on-error', `--method=${r.method}`]
+  for (const h of parts.length ? r.headers.filter((x) => !isContentType(x)) : r.headers) {
+    args.push(`--header=${shQuote(`${h.key}: ${h.value}`)}`)
+  }
+  if (r.user) {
+    const [user, password] = splitUser(r.user)
+    args.push(`--user=${shQuote(user)}`, `--password=${shQuote(password)}`, '--auth-no-challenge')
+  }
+  if (hasBody(r) && parts.length === 0) args.push(`--body-data=${shQuote(r.body)}`)
+  args.push('--output-document=-', shQuote(r.url))
+
+  const out = args.join(' \\\n  ')
+  return parts.length
+    ? `# wget no soporta multipart/form-data: el formulario no se incluye. Usa cURL o HTTPie.\n${out}`
+    : out
+}
+
+/** Literal de Swift: igual que JSON salvo los escapes unicode, que en Swift son \u{XXXX} */
+const swiftStr = (s: string): string =>
+  str(s).replace(/\\(?:(\\)|u([0-9a-fA-F]{4}))/g, (m, _slash, hex?: string) =>
+    hex ? `\\u{${hex}}` : m
+  )
+
+function toSwift(r: CurlRequest): string {
+  const parts = formParts(r)
+  const lines = [
+    'import Foundation',
+    '',
+    `var request = URLRequest(url: URL(string: ${swiftStr(r.url)})!)`,
+    `request.httpMethod = ${swiftStr(r.method)}`
+  ]
+  for (const h of parts.length ? r.headers.filter((x) => !isContentType(x)) : r.headers) {
+    lines.push(`request.setValue(${swiftStr(h.value)}, forHTTPHeaderField: ${swiftStr(h.key)})`)
+  }
+  if (r.user) {
+    lines.push(
+      `let credentials = Data(${swiftStr(r.user)}.utf8).base64EncodedString()`,
+      'request.setValue("Basic \\(credentials)", forHTTPHeaderField: "Authorization")'
+    )
+  }
+  if (parts.length) {
+    lines.push('// URLSession no arma multipart/form-data por sí solo: el formulario no se incluye')
+  } else if (hasBody(r)) {
+    lines.push(`request.httpBody = Data(${swiftStr(r.body)}.utf8)`)
+  }
+  lines.push(
+    '',
+    'let (data, response) = try await URLSession.shared.data(for: request)',
+    'if let http = response as? HTTPURLResponse {',
+    '    print(http.statusCode)',
+    '}',
+    'print(String(decoding: data, as: UTF8.self))'
+  )
+  return lines.join('\n')
+}
+
 export function generateCode(lang: CodeLang, request: CurlRequest): string {
   switch (lang) {
     case 'curl':
@@ -666,5 +755,11 @@ export function generateCode(lang: CodeLang, request: CurlRequest): string {
       return toJava(request)
     case 'k6':
       return toK6(request)
+    case 'httpie':
+      return toHttpie(request)
+    case 'wget':
+      return toWget(request)
+    case 'swift':
+      return toSwift(request)
   }
 }
