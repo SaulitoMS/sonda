@@ -41,6 +41,7 @@ import { looksLikeInsomnia, parseInsomnia } from '../shared/insomnia'
 import { looksLikeHoppscotch, parseHoppscotch } from '../shared/hoppscotch'
 import { isHttpFilePath, parseHttpFile } from '../shared/httpFile'
 import { buildHttpFile } from '../shared/httpExport'
+import { validateFolderName } from '../shared/folderName'
 
 const META_FILE = 'sonda.collection.json'
 
@@ -393,6 +394,42 @@ export function registerCollectionHandlers(): void {
     meta.name = clean
     await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
   })
+
+  ipcMain.handle(
+    'collections:renameFolder',
+    async (_e, collectionId: string, folder: string, newName: string): Promise<string> => {
+      if (/[\\/]/.test(folder)) throw new Error('Carpeta no válida')
+      const check = validateFolderName(String(newName))
+      if (!check.ok) throw new Error(check.error)
+      if (check.name === folder) return folder
+
+      const root = safePath(collectionId)
+      const from = safePath(collectionId, folder)
+      if (!(await isDirectory(from))) throw new Error('La carpeta ya no existe')
+
+      // En macOS y Windows "Pets" y "pets" son la misma carpeta: ese cambio solo de mayúsculas sí se permite
+      const onlyCase = check.name.toLowerCase() === folder.toLowerCase()
+      const to = safePath(collectionId, check.name)
+      if (!onlyCase && (await exists(to))) throw new Error('Ya hay una carpeta con ese nombre')
+      await fs.rename(from, to)
+
+      // El orden manual y los sellos de la spec usan el nombre de la carpeta
+      const meta = await readMeta(root)
+      if (meta) {
+        if (meta.order) meta.order = meta.order.map((n) => (n === folder ? check.name : n))
+        if (meta.endpoints) {
+          meta.endpoints = Object.fromEntries(
+            Object.entries(meta.endpoints).map(([key, stamp]) => [
+              key.startsWith(`${folder}/`) ? `${check.name}/${key.slice(folder.length + 1)}` : key,
+              stamp
+            ])
+          )
+        }
+        await fs.writeFile(join(root, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+      }
+      return check.name
+    }
+  )
 
   ipcMain.handle('collections:readRequest', async (_e, relPath: string): Promise<SavedRequest> => {
     const data = JSON.parse(await fs.readFile(safeRequestPath(relPath), 'utf-8')) as SavedRequest

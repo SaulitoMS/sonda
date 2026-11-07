@@ -645,6 +645,34 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
     }
   }
 
+  const renameFolder = async (
+    collectionId: string,
+    folder: string,
+    name: string
+  ): Promise<void> => {
+    setRenaming(null)
+    if (!name || name === folder) return
+    try {
+      const next = await window.api.renameFolder(collectionId, folder, name)
+      // Las pestañas abiertas con peticiones de esa carpeta siguen apuntando a su archivo
+      const oldPrefix = `${collectionId}/${folder}/`
+      const newPrefix = `${collectionId}/${next}/`
+      useTabsStore
+        .getState()
+        .remapFiles((file) =>
+          file.startsWith(oldPrefix) ? newPrefix + file.slice(oldPrefix.length) : null
+        )
+      // La carpeta conserva si estaba abierta o cerrada
+      setExpanded((e) => {
+        const { [`${collectionId}/${folder}`]: wasOpen, ...rest } = e
+        return { ...rest, [`${collectionId}/${next}`]: !!wasOpen }
+      })
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
   const startDrag = (e: React.DragEvent, item: DragItem, label: string): void => {
     e.stopPropagation()
     e.dataTransfer.effectAllowed = 'move'
@@ -1253,14 +1281,7 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                       <div key={key} {...folderZone(c.id, f.name)}>
                         <div
                           onClick={() => toggle(key)}
-                          draggable
-                          onDragStart={(e) =>
-                            startDrag(
-                              e,
-                              { kind: 'folder', collectionId: c.id, name: f.name },
-                              f.name
-                            )
-                          }
+                          draggable={renaming !== `f:${key}`}
                           onDragEnd={endDrag}
                           {...folderRowDrop(c.id, f.name)}
                           className={`group relative flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-300 transition-colors hover:bg-zinc-800/70 ${
@@ -1269,7 +1290,24 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                         >
                           <ChevronIcon open={folderOpen} />
                           <FolderIcon open={folderOpen} />
-                          <span className="flex-1 truncate">{f.name}</span>
+                          {renaming === `f:${key}` ? (
+                            <RenameInput
+                              initial={f.name}
+                              onSubmit={(name) => renameFolder(c.id, f.name, name)}
+                              onCancel={() => setRenaming(null)}
+                            />
+                          ) : (
+                            <span
+                              className="flex-1 truncate"
+                              title={`${f.name} (doble clic para renombrar)`}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation()
+                                setRenaming(`f:${key}`)
+                              }}
+                            >
+                              {f.name}
+                            </span>
+                          )}
                           <span className="text-[10px] text-zinc-600 group-hover:hidden">
                             {f.requests.length}
                           </span>

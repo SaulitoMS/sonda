@@ -435,6 +435,8 @@ export interface SondaApi {
   duplicateFolder: (collectionId: string, folder: string) => Promise<string>
   /** Cambia el nombre visible de una colección (la carpeta en disco no cambia) */
   renameCollection: (id: string, name: string) => Promise<void>
+  /** Renombra una carpeta dentro de su colección. Devuelve el nombre final */
+  renameFolder: (collectionId: string, folder: string, newName: string) => Promise<string>
   readRequest: (path: string) => Promise<SavedRequest>
   saveRequest: (input: SaveRequestInput) => Promise<string>
   deleteRequest: (path: string) => Promise<void>
