@@ -36,3 +36,13 @@ export function sortByOrder<T>(
   }
   return [...items].sort((a, b) => rank(a) - rank(b) || label(a).localeCompare(label(b)))
 }
+
+/**
+ * Nombres ordenados de la A a la Z según su etiqueta visible.
+ * No distingue mayúsculas ni acentos y ordena los números por valor (Beta 2 antes que Beta 10).
+ */
+export function sortAlphabetically(entries: { name: string; label: string }[]): string[] {
+  return [...entries]
+    .sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true }))
+    .map((e) => e.name)
+}

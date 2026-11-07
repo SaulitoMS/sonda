@@ -8,7 +8,7 @@ import { useTabsStore } from '../store/useTabsStore'
 import { ScopeAuthModal, type AuthScope } from './ScopeAuthModal'
 import { ScopeHeadersModal, type HeadersScope } from './ScopeHeadersModal'
 import { ScopeScriptsModal, type ScriptsScope } from './ScopeScriptsModal'
-import { placeItem, type Place } from '../../../shared/reorder'
+import { placeItem, sortAlphabetically, type Place } from '../../../shared/reorder'
 import { Icon } from './Icon'
 import { ScopeVariablesModal, type VariablesScope } from './ScopeVariablesModal'
 
@@ -765,6 +765,36 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
     }
   }
 
+  /** Ordena de la A a la Z las colecciones y, dentro de cada una, carpetas (primero) y peticiones */
+  const sortAllAlphabetically = async (): Promise<void> => {
+    const ok = confirm(
+      'Se ordenarán de la A a la Z todas las colecciones, carpetas y peticiones.\nSe perderá el orden manual actual. ¿Continuar?'
+    )
+    if (!ok) return
+
+    try {
+      await window.api.reorderCollections(
+        sortAlphabetically(collections.map((c) => ({ name: c.id, label: c.name })))
+      )
+      for (const c of collections) {
+        await window.api.reorderItems(c.id, null, [
+          ...sortAlphabetically(c.folders.map((f) => ({ name: f.name, label: f.name }))),
+          ...sortAlphabetically(c.requests.map((r) => ({ name: fileName(r.path), label: r.name })))
+        ])
+        for (const f of c.folders) {
+          await window.api.reorderItems(
+            c.id,
+            f.name,
+            sortAlphabetically(f.requests.map((r) => ({ name: fileName(r.path), label: r.name })))
+          )
+        }
+      }
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
   /** Eventos de una fila donde se puede soltar "arriba" o "abajo" de ella */
   const rowDrop = (row: {
     key: string
@@ -946,6 +976,17 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
             aria-label="Colapsar todo"
           >
             <Icon name="chevronRight" size={14} />
+          </button>
+        )}
+
+        {collections.length > 0 && !searching && (
+          <button
+            onClick={() => void sortAllAlphabetically()}
+            className="shrink-0 rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+            title="Ordenar todo de la A a la Z"
+            aria-label="Ordenar de la A a la Z"
+          >
+            <Icon name="list" size={14} />
           </button>
         )}
       </div>
