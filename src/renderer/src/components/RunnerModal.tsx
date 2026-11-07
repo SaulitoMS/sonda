@@ -30,6 +30,14 @@ import { parseDataSet, withDataVars, type DataSet } from '../../../shared/csvDat
 import { confirmRunMessage, isWriteMethod } from '../../../shared/writeGuard'
 import { createFolderSkipper, shouldRetryRow } from '../../../shared/runFlow'
 import { passesFilter } from '../../../shared/runnerFilter'
+import {
+  compareRuns,
+  rowKey,
+  summarizeComparison,
+  type RowChange,
+  type RunSnapshot
+} from '../../../shared/runCompare'
+import { loadLastRun, runScope, saveLastRun } from '../lib/lastRun'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -72,6 +80,16 @@ const isTransient = (response: SendRequestResult): boolean =>
 const clampInt = (value: number, min: number, max: number): number =>
   Number.isFinite(value) ? Math.min(max, Math.max(min, Math.round(value))) : min
 
+/** Clave de la fila para compararla con la ejecución anterior */
+const rowId = (r: Row): string => rowKey(r.entry.item.path, r.iteration)
+
+const CHANGE: Record<RowChange, { label: string; color: string }> = {
+  regression: { label: '↓ empeoró', color: 'text-red-400' },
+  fixed: { label: '↑ mejoró', color: 'text-emerald-400' },
+  slower: { label: '⏱ más lenta', color: 'text-amber-400' },
+  new: { label: 'nueva', color: 'text-sky-400' }
+}
+
 const ICON: Record<RunStatus, { mark: string; color: string }> = {
   pass: { mark: '✓', color: 'text-emerald-400' },
   warn: { mark: '⚠', color: 'text-amber-400' },
@@ -108,6 +126,7 @@ export function RunnerModal({
   const [skipped, setSkipped] = useState<string[]>([])
   const [total, setTotal] = useState(0)
   const [rows, setRows] = useState<Row[]>([])
+  const [baseline, setBaseline] = useState<RunSnapshot | null>(null)
   const [dataset, setDataset] = useState<DataSet | null>(null)
   const [dataName, setDataName] = useState('')
   const [dataError, setDataError] = useState('')
@@ -170,6 +189,17 @@ export function RunnerModal({
   }
   const writeCount = all.length - all.filter((e) => SAFE_METHODS.includes(e.item.method)).length
 
+  const comparison = useMemo(
+    () =>
+      baseline && rows.length > 0
+        ? compareRuns(
+            baseline.rows,
+            rows.map((r) => ({ key: rowId(r), status: r.status, timeMs: r.timeMs }))
+          )
+        : null,
+    [baseline, rows]
+  )
+
   const stats = useMemo(
     () => timingStats(rows.map((r) => ({ name: r.entry.item.name, timeMs: r.timeMs }))),
     [rows]
@@ -231,8 +261,15 @@ export function RunnerModal({
     const guard = confirmRunMessage(useEnvironmentStore.getState().getActive(), writes)
     if (guard && !confirm(guard)) return
 
+    // Solo una ejecución completa (no "Repetir fallidas") se guarda como referencia
+    const isFullRun = queue === jobs
+    const scope = runScope(collectionId, folderFilter)
+    const collected: Row[] = []
+    let completed = true
+
     const myRun = ++runId.current
     runEnvName.current = useEnvironmentStore.getState().getActive()?.name ?? null
+    setBaseline(loadLastRun(scope))
     setRows([])
     setFinished(false)
     setStoppedEarly(false)
@@ -278,16 +315,24 @@ export function RunnerModal({
       }
 
       if (runId.current !== myRun) return
+      collected.push(row)
       setRows((r) => [...r, row])
 
       if (row.status === 'fail') folders.markFailed(job.entry.group, job.iteration)
 
       if (stopOnFail && row.status === 'fail') {
         setStoppedEarly(true)
+        completed = false
         break
       }
     }
 
+    if (isFullRun && completed && collected.length > 0) {
+      saveLastRun(
+        scope,
+        collected.map((r) => ({ key: rowId(r), status: r.status, timeMs: r.timeMs }))
+      )
+    }
     setRunning(false)
     setFinished(true)
   }
@@ -541,6 +586,12 @@ export function RunnerModal({
                 {rows.length}/{total}
               </span>
             </div>
+            {comparison && baseline && (
+              <p className={comparison.regressions > 0 ? 'text-red-400' : 'text-zinc-500'}>
+                Contra la ejecución del {new Date(baseline.savedAt).toLocaleString()}:{' '}
+                {summarizeComparison(comparison)}
+              </p>
+            )}
             {stats && (
               <p className="text-zinc-500">
                 Promedio {stats.avg} ms · p50 {stats.p50} ms · p95 {stats.p95} ms · más lenta:{' '}
@@ -571,6 +622,13 @@ export function RunnerModal({
                     {row.iteration && (
                       <span className="ml-2 text-[11px] text-zinc-500">
                         {row.data ? 'fila' : 'vuelta'} {row.iteration}
+                      </span>
+                    )}
+                    {comparison?.changes[rowId(row)] && (
+                      <span
+                        className={`ml-2 text-[11px] ${CHANGE[comparison.changes[rowId(row)]].color}`}
+                      >
+                        {CHANGE[comparison.changes[rowId(row)]].label}
                       </span>
                     )}
                     {row.attempts && row.attempts > 1 && (
