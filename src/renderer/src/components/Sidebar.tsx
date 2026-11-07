@@ -14,6 +14,7 @@ import { ScopeVariablesModal, type VariablesScope } from './ScopeVariablesModal'
 import { CollectionDescriptionModal, type DescriptionScope } from './CollectionDescriptionModal'
 import { remapPrefix } from '../../../shared/pathRemap'
 import { remapQuickAccess } from '../lib/quickAccess'
+import { previewDescription } from '../../../shared/collectionDescription'
 
 const SHORT: Record<HttpMethod, string> = {
   GET: 'GET',
@@ -1167,6 +1168,9 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
           const total = requests.length + folders.reduce((n, f) => n + f.requests.length, 0)
           // Al buscar, todo se muestra abierto para ver las coincidencias
           const isOpen = searching || !!expanded[c.id]
+          const tip = [previewDescription(c.description), `${c.baseUrl ?? c.name}`]
+            .filter(Boolean)
+            .join('\n\n')
 
           return (
             <div key={c.id} className="mb-1.5" {...collectionZone(c)}>
@@ -1338,7 +1342,7 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                           ) : (
                             <span
                               className="flex-1 truncate"
-                              title={`${f.name} (doble clic para renombrar)`}
+                              title={`${tip}\n(doble clic para renombrar)`}
                               onDoubleClick={(e) => {
                                 e.stopPropagation()
                                 setRenaming(`f:${key}`)
