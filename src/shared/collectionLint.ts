@@ -33,10 +33,46 @@ function signature(r: SavedRequest): string {
   return `${r.method} ${r.url.trim().replace(/\/+(?=\?|$)/, '')}`
 }
 
+const VARIABLE = /\{\{\s*[^{}]*?\s*\}\}/g
+
+/** Quita las {{variables}} bien formadas; si queda algún "{{" o "}}", hay una llave sin cerrar */
+const hasBrokenVariable = (text: string): boolean => /\{\{|\}\}/.test(text.replace(VARIABLE, ''))
+
+/** Un body que parece JSON pero no lo es (las {{variables}} cuentan como un valor válido) */
+function isBrokenJson(body: string): boolean {
+  const text = body.trim()
+  if (!text.startsWith('{') && !text.startsWith('[')) return false
+  try {
+    JSON.parse(text.replace(VARIABLE, '0'))
+    return false
+  } catch {
+    return true
+  }
+}
+
 /** Revisa una petición por sí sola */
 export function lintRequest(r: SavedRequest): LintIssue[] {
   const out: LintIssue[] = []
   const url = r.url.trim()
+
+  if (!url) {
+    out.push({ id: 'empty-url', severity: 'warning', message: 'La URL está vacía' })
+  } else {
+    if (/\s/.test(url.replace(VARIABLE, ''))) {
+      out.push({
+        id: 'url-with-spaces',
+        severity: 'warning',
+        message: 'La URL contiene espacios; codifícalos (%20) o quítalos'
+      })
+    }
+    if (hasBrokenVariable(url)) {
+      out.push({
+        id: 'broken-variable',
+        severity: 'warning',
+        message: 'La URL tiene una variable mal escrita (falta "{{" o "}}")'
+      })
+    }
+  }
 
   const host = /^https?:\/\/([^/?#:]+)/i.exec(url)?.[1]
   if (host && !LOCAL_HOST.test(host)) {
@@ -57,6 +93,14 @@ export function lintRequest(r: SavedRequest): LintIssue[] {
 
   if (WITH_BODY.has(r.method) && !hasBody(r)) {
     out.push({ id: 'write-without-body', severity: 'info', message: `${r.method} sin body` })
+  }
+
+  if (!r.bodyForm && isBrokenJson(r.body)) {
+    out.push({
+      id: 'invalid-json-body',
+      severity: 'warning',
+      message: 'El body parece JSON pero no es válido (coma de más, comilla sin cerrar…)'
+    })
   }
 
   const seen = new Set<string>()

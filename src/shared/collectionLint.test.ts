@@ -57,3 +57,24 @@ describe('lintCollection', () => {
     expect(out[0].issues[0].id).toBe('duplicate-request')
   })
 })
+
+describe('lintRequest: reglas nuevas', () => {
+  it('detecta URL vacía y con espacios, ignorando los espacios dentro de {{ }}', () => {
+    expect(ids(req({ url: '  ' }))).toContain('empty-url')
+    expect(ids(req({ url: '{{baseUrl}}/a b' }))).toContain('url-with-spaces')
+    expect(ids(req({ url: '{{ baseUrl }}/a' }))).not.toContain('url-with-spaces')
+  })
+
+  it('detecta variables sin cerrar en la URL', () => {
+    expect(ids(req({ url: '{{baseUrl/a' }))).toContain('broken-variable')
+    expect(ids(req({ url: '{{ baseUrl }}/{{$uuid}}' }))).not.toContain('broken-variable')
+  })
+
+  it('detecta JSON inválido pero acepta variables como valores', () => {
+    const post = (body: string): string[] => ids(req({ method: 'POST', body }))
+    expect(post('{"a":1,}')).toContain('invalid-json-body')
+    expect(post('{"id": {{id}}, "n": "{{name}}"}')).not.toContain('invalid-json-body')
+    expect(post('{"a":{"b":1}}')).not.toContain('invalid-json-body')
+    expect(post('texto plano')).not.toContain('invalid-json-body')
+  })
+})
