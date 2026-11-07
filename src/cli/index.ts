@@ -54,6 +54,7 @@ Opciones de "run":
       --repeat <n>         Repite la colección n veces (1 a 100, se ignora con --data)
       --include-writes     Incluye POST, PUT, PATCH y DELETE (por defecto solo GET, HEAD y OPTIONS)
       --bail               Se detiene en el primer fallo
+      --dry-run            Muestra qué se ejecutaría y sale sin enviar nada
       --strict             Los avisos (⚠) también hacen fallar la ejecución
       --retries <n>        Reintentos ante error de red, 429 o 5xx (0 a 3, por defecto 0)
       --delay <ms>         Pausa entre peticiones (por defecto 0)
@@ -157,6 +158,7 @@ async function main(argv: string[]): Promise<number> {
       data: { type: 'string', short: 'd' },
       'include-writes': { type: 'boolean' },
       bail: { type: 'boolean' },
+      'dry-run': { type: 'boolean' },
       strict: { type: 'boolean' },
       only: { type: 'string' },
       exclude: { type: 'string' },
@@ -344,6 +346,18 @@ async function main(argv: string[]): Promise<number> {
     process.stdout.write(
       c.dim(`  ${skipped} peticiones de escritura omitidas (usa --include-writes)\n`)
     )
+  }
+
+  if (values['dry-run']) {
+    for (const job of jobs) {
+      const where = job.entry.group ? `${job.entry.group} / ` : ''
+      const row = job.iteration ? ` ${c.dim(`[fila ${job.iteration}]`)}` : ''
+      process.stdout.write(
+        `  ${job.entry.item.method.padEnd(7)} ${where}${job.entry.item.name}${row}\n`
+      )
+    }
+    process.stdout.write(c.dim('\nSimulación (--dry-run): no se envió ninguna petición.\n'))
+    return 0
   }
 
   // ----- Ejecución -----
