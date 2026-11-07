@@ -13,6 +13,7 @@ import {
   type ReportInput
 } from '../shared/report'
 import { DEFAULT_SETTINGS, proxyError } from '../shared/settings'
+import { passesFilter } from '../shared/runnerFilter'
 import {
   compareRuns,
   parseReportRows,
@@ -32,7 +33,6 @@ import {
   readRequest
 } from './workspace'
 import { withGlobalVariables } from '../shared/variables'
-import { passesFilter } from '../shared/runnerFilter'
 
 const SAFE_METHODS: HttpMethod[] = ['GET', 'HEAD', 'OPTIONS']
 
@@ -351,9 +351,11 @@ async function main(argv: string[]): Promise<number> {
   if (values['dry-run']) {
     for (const job of jobs) {
       const where = job.entry.group ? `${job.entry.group} / ` : ''
-      const row = job.iteration ? ` ${c.dim(`[fila ${job.iteration}]`)}` : ''
+      const round = job.iteration
+        ? ` ${c.dim(`[${dataset ? 'fila' : 'vuelta'} ${job.iteration}]`)}`
+        : ''
       process.stdout.write(
-        `  ${job.entry.item.method.padEnd(7)} ${where}${job.entry.item.name}${row}\n`
+        `  ${job.entry.item.method.padEnd(7)} ${where}${job.entry.item.name}${round}\n`
       )
     }
     process.stdout.write(c.dim('\nSimulación (--dry-run): no se envió ninguna petición.\n'))
