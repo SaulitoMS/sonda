@@ -207,7 +207,10 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
     }
 
     // Basic se exporta con --user (así los {{secretos}} no se codifican en base64 sin resolver)
-    const basicUser = auth.type === 'basic' ? `${r(auth.username)}:${r(auth.password)}` : undefined
+    // Digest también usa --user, pero con --digest para que cURL responda al desafío del servidor
+    const isDigest = auth.type === 'digest'
+    const basicUser =
+      auth.type === 'basic' || isDigest ? `${r(auth.username)}:${r(auth.password)}` : undefined
     const authParts = buildAuth(auth.type === 'basic' ? null : auth, r)
     for (const h of authParts.headers) {
       if (!finalHeaders.some((x) => x.key.toLowerCase() === h.key.toLowerCase())) {
@@ -221,7 +224,8 @@ function ExportTab({ onClose }: { onClose: () => void }): React.JSX.Element {
       headers: finalHeaders,
       body: finalBody,
       formData,
-      user: basicUser === ':' ? undefined : basicUser
+      user: basicUser === ':' ? undefined : basicUser,
+      ...(isDigest && basicUser !== ':' ? { digest: true } : {})
     }
     return generateCode(lang, redact ? redactRequest(request) : request)
   }, [

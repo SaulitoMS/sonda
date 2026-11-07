@@ -9,6 +9,8 @@ export interface CurlRequest {
   formData?: FormPart[]
   /** Credenciales Basic como "usuario:contraseña" (se exporta con --user) */
   user?: string
+  /** Si es true, `user` se usa con Digest en vez de Basic (se exporta con --digest) */
+  digest?: boolean
 }
 
 export interface ParsedCurl extends CurlRequest {
@@ -404,7 +406,10 @@ export function toCurl(req: CurlRequest): string {
   lines.push(`--url ${quote(req.url)}`)
   for (const h of req.headers) lines.push(`--header ${quote(`${h.key}: ${h.value}`)}`)
 
-  if (req.user) lines.push(`--user ${quote(req.user)}`)
+  if (req.user) {
+    if (req.digest) lines.push('--digest')
+    lines.push(`--user ${quote(req.user)}`)
+  }
 
   const canHaveBody = req.method !== 'GET' && req.method !== 'HEAD'
   if (canHaveBody && req.formData?.length) {

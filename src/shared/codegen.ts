@@ -131,7 +131,11 @@ function toPython(r: CurlRequest): string {
   }
   if (r.user) {
     const [username, password] = splitUser(r.user)
-    args.push(`    auth=(${str(username)}, ${str(password)}),`)
+    args.push(
+      r.digest
+        ? `    auth=HTTPDigestAuth(${str(username)}, ${str(password)}),`
+        : `    auth=(${str(username)}, ${str(password)}),`
+    )
   }
   if (parts.length) {
     // Todo va en files=: es la forma de que requests envíe multipart aunque no haya archivos
@@ -147,6 +151,7 @@ function toPython(r: CurlRequest): string {
 
   return [
     'import requests',
+    ...(r.user && r.digest ? ['from requests.auth import HTTPDigestAuth'] : []),
     '',
     'response = requests.request(',
     args.join('\n'),
@@ -256,7 +261,10 @@ function toPhp(r: CurlRequest): string {
     const rows = headers.map((h) => `        ${phpStr(`${h.key}: ${h.value}`)},`)
     opts.push(`    CURLOPT_HTTPHEADER => [\n${rows.join('\n')}\n    ],`)
   }
-  if (r.user) opts.push(`    CURLOPT_USERPWD => ${phpStr(r.user)},`)
+  if (r.user) {
+    if (r.digest) opts.push('    CURLOPT_HTTPAUTH => CURLAUTH_DIGEST,')
+    opts.push(`    CURLOPT_USERPWD => ${phpStr(r.user)},`)
+  }
   if (parts.length) {
     // Con un array, cURL arma el multipart solo (y pone el boundary)
     const rows = parts.map((p) =>
@@ -652,7 +660,10 @@ const shQuote = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`
 function toHttpie(r: CurlRequest): string {
   const parts = formParts(r)
   const args = [parts.length ? 'http --ignore-stdin --multipart' : 'http --ignore-stdin']
-  if (r.user) args.push(`--auth ${shQuote(r.user)}`)
+  if (r.user) {
+    if (r.digest) args.push('--auth-type digest')
+    args.push(`--auth ${shQuote(r.user)}`)
+  }
   args.push(`${r.method} ${shQuote(r.url)}`)
   // Con multipart HTTPie pone el Content-Type con su boundary
   for (const h of parts.length ? r.headers.filter((x) => !isContentType(x)) : r.headers) {
@@ -679,7 +690,9 @@ function toWget(r: CurlRequest): string {
   }
   if (r.user) {
     const [user, password] = splitUser(r.user)
-    args.push(`--user=${shQuote(user)}`, `--password=${shQuote(password)}`, '--auth-no-challenge')
+    args.push(`--user=${shQuote(user)}`, `--password=${shQuote(password)}`)
+    // Digest necesita el desafío 401 del servidor, así que no se salta
+    if (!r.digest) args.push('--auth-no-challenge')
   }
   if (hasBody(r) && parts.length === 0) args.push(`--body-data=${shQuote(r.body)}`)
   args.push('--output-document=-', shQuote(r.url))
@@ -729,7 +742,7 @@ function toSwift(r: CurlRequest): string {
   return lines.join('\n')
 }
 
-export function generateCode(lang: CodeLang, request: CurlRequest): string {
+function render(lang: CodeLang, request: CurlRequest): string {
   switch (lang) {
     case 'curl':
       return toCurl(request)
@@ -762,4 +775,20 @@ export function generateCode(lang: CodeLang, request: CurlRequest): string {
     case 'swift':
       return toSwift(request)
   }
+}
+
+/** Lenguajes que saben firmar Digest por sí solos con lo que genera Sonda */
+const DIGEST_NATIVE = new Set<CodeLang>(['curl', 'python', 'php', 'httpie', 'wget'])
+
+/** Lenguajes cuyo comentario de línea es # (el resto usa //) */
+const HASH_COMMENT = new Set<CodeLang>(['ruby', 'powershell'])
+
+export function generateCode(lang: CodeLang, request: CurlRequest): string {
+  if (request.user && request.digest && !DIGEST_NATIVE.has(lang)) {
+    // Mandar las credenciales como Basic sería incorrecto: se quitan y se avisa en un comentario
+    const prefix = HASH_COMMENT.has(lang) ? '#' : '//'
+    const note = `${prefix} Auth Digest: este lenguaje no se genera con Digest. Agrégalo con tu cliente HTTP (responde al 401).`
+    return `${note}\n${render(lang, { ...request, user: undefined, digest: undefined })}`
+  }
+  return render(lang, request)
 }

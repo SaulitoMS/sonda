@@ -164,3 +164,40 @@ describe('generateCode: Go, PHP, C# y PowerShell', () => {
     expect(generateCode('powershell', form)).toContain('-Form $form')
   })
 })
+
+describe('generateCode con Digest', () => {
+  const digest: CurlRequest = {
+    method: 'GET',
+    url: 'https://api.ejemplo.com/me',
+    headers: [],
+    body: '',
+    user: 'ana:secreta',
+    digest: true
+  }
+
+  it('cURL, HTTPie, PHP y Python lo firman de forma nativa', () => {
+    expect(generateCode('curl', digest)).toContain('--digest')
+    expect(generateCode('httpie', digest)).toContain('--auth-type digest')
+    expect(generateCode('php', digest)).toContain('CURLOPT_HTTPAUTH => CURLAUTH_DIGEST')
+    const py = generateCode('python', digest)
+    expect(py).toContain('from requests.auth import HTTPDigestAuth')
+    expect(py).toContain('auth=HTTPDigestAuth("ana", "secreta")')
+  })
+
+  it('wget no salta el desafío del servidor', () => {
+    expect(generateCode('wget', digest)).not.toContain('--auth-no-challenge')
+    expect(generateCode('wget', { ...digest, digest: false })).toContain('--auth-no-challenge')
+  })
+
+  it('los demás lenguajes avisan y no mandan las credenciales como Basic', () => {
+    const out = generateCode('fetch', digest)
+    expect(out.startsWith('// Auth Digest')).toBe(true)
+    expect(out).not.toContain('Basic')
+    expect(out).not.toContain('secreta')
+    expect(generateCode('ruby', digest).startsWith('# Auth Digest')).toBe(true)
+  })
+
+  it('sin digest, Basic sigue igual', () => {
+    expect(generateCode('curl', { ...digest, digest: undefined })).not.toContain('--digest')
+  })
+})
