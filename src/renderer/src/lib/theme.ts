@@ -7,10 +7,13 @@ const listeners = new Set<() => void>()
 
 export function getStoredTheme(): Theme {
   try {
-    return localStorage.getItem(KEY) === 'light' ? 'light' : 'dark'
+    const stored = localStorage.getItem(KEY)
+    if (stored === 'light' || stored === 'dark') return stored
   } catch {
-    return 'dark'
+    /* sin almacenamiento: se usa el tema del sistema */
   }
+  // Primer arranque: sigue el tema del sistema operativo
+  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
 }
 
 let current: Theme = getStoredTheme()
