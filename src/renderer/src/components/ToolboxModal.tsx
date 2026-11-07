@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  describeJwt,
   describeTimestamp,
   escapeHtml,
   escapeJsonString,
@@ -12,7 +13,10 @@ import {
   queryToJson,
   toBase64,
   toBase64Url,
+  toCamelCase,
   toHex,
+  toKebabCase,
+  toSnakeCase,
   unescapeHtml,
   unescapeJsonString,
   urlDecode,
@@ -38,6 +42,10 @@ const MODES = [
   { id: 'html-esc', label: 'HTML · escapar entidades' },
   { id: 'html-unesc', label: 'HTML · desescapar entidades' },
   { id: 'ts', label: 'Timestamp ↔ fecha' },
+  { id: 'jwt', label: 'JWT · decodificar' },
+  { id: 'case-snake', label: 'Nombres → snake_case' },
+  { id: 'case-camel', label: 'Nombres → camelCase' },
+  { id: 'case-kebab', label: 'Nombres → kebab-case' },
   { id: 'sha1', label: 'Hash SHA-1' },
   { id: 'sha256', label: 'Hash SHA-256' },
   { id: 'sha512', label: 'Hash SHA-512' }
@@ -108,6 +116,14 @@ function convert(mode: Mode, input: string): Result {
         return { text: unescapeHtml(input), error: false }
       case 'ts':
         return { text: describeTimestamp(input), error: false }
+      case 'jwt':
+        return { text: describeJwt(input), error: false }
+      case 'case-snake':
+        return { text: toSnakeCase(input), error: false }
+      case 'case-camel':
+        return { text: toCamelCase(input), error: false }
+      case 'case-kebab':
+        return { text: toKebabCase(input), error: false }
       default:
         return { text: '', error: false }
     }

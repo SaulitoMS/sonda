@@ -1,3 +1,5 @@
+import { decodeJwt } from './jwt'
+
 export function toBase64(text: string): string {
   let bin = ''
   for (const b of new TextEncoder().encode(text)) bin += String.fromCharCode(b)
@@ -140,3 +142,53 @@ export function unescapeHtml(text: string): string {
     return code <= 0x10ffff ? String.fromCodePoint(code) : match
   })
 }
+
+const iso = (ms: number): string => {
+  const d = new Date(ms)
+  return Number.isNaN(d.getTime()) ? String(ms) : d.toISOString()
+}
+
+/** Decodifica un JWT suelto: header, payload y fechas. No verifica la firma */
+export function describeJwt(token: string): string {
+  const jwt = decodeJwt(token)
+  if (!jwt) throw new Error('No es un JWT válido: se esperan 3 partes separadas por punto')
+  const dates = [
+    ['iat (emitido)', jwt.issuedAt],
+    ['nbf (válido desde)', jwt.notBefore],
+    ['exp (expira)', jwt.expiresAt]
+  ]
+    .filter((d): d is [string, number] => d[1] !== undefined)
+    .map(([label, ms]) => `${label}: ${iso(ms)}`)
+  return [
+    'Header',
+    JSON.stringify(jwt.header, null, 2),
+    '',
+    'Payload',
+    JSON.stringify(jwt.payload, null, 2),
+    ...(dates.length ? ['', 'Fechas', ...dates] : [])
+  ].join('\n')
+}
+
+/** Palabras de un identificador: separa camelCase, snake_case, kebab-case y espacios */
+const words = (text: string): string[] =>
+  text
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .map((w) => w.toLowerCase())
+
+/** Convierte cada línea por separado, así se puede pegar una lista de campos */
+const perLine = (text: string, fn: (line: string) => string): string =>
+  text.split(/\r?\n/).map(fn).join('\n')
+
+export const toSnakeCase = (text: string): string => perLine(text, (line) => words(line).join('_'))
+
+export const toKebabCase = (text: string): string => perLine(text, (line) => words(line).join('-'))
+
+export const toCamelCase = (text: string): string =>
+  perLine(text, (line) =>
+    words(line)
+      .map((w, i) => (i === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+      .join('')
+  )
