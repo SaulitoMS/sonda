@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SESSION_VERSION, parseSession } from './session'
-import { togglePinned } from './tabs'
+import { keepAfterCloseRight, togglePinned } from './tabs'
 
 const ids = (tabs: { id: string; pinned?: boolean }[]): string =>
   tabs.map((t) => t.id + (t.pinned ? '*' : '')).join(' ')
@@ -28,5 +28,18 @@ describe('parseSession y pestañas ancladas', () => {
       ]
     })
     expect(parseSession(raw)?.tabs.map((t) => t.pinned)).toEqual([true, undefined, undefined])
+  })
+})
+
+describe('keepAfterCloseRight', () => {
+  const tabs = [{ id: 'a' }, { id: 'b' }, { id: 'c', pinned: true }, { id: 'd' }, { id: 'e' }]
+
+  it('conserva las de la izquierda, la elegida y las ancladas', () => {
+    expect(keepAfterCloseRight(tabs, 'b').map((t) => t.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('si no hay nada que cerrar devuelve las mismas pestañas', () => {
+    expect(keepAfterCloseRight(tabs, 'e')).toHaveLength(5)
+    expect(keepAfterCloseRight(tabs, 'zzz')).toBe(tabs)
   })
 })

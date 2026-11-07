@@ -35,3 +35,13 @@ export function togglePinned<T extends { id: string; pinned?: boolean }>(
   const next = tabs.map((t) => (t.id === id ? { ...t, pinned: !t.pinned } : t))
   return [...next.filter((t) => t.pinned), ...next.filter((t) => !t.pinned)]
 }
+
+/** Pestañas que quedan al cerrar las de la derecha de `id`: las de su izquierda, ella misma y las ancladas */
+export function keepAfterCloseRight<T extends { id: string; pinned?: boolean }>(
+  tabs: T[],
+  id: string
+): T[] {
+  const index = tabs.findIndex((t) => t.id === id)
+  if (index === -1) return tabs
+  return tabs.filter((t, i) => i <= index || t.pinned)
+}

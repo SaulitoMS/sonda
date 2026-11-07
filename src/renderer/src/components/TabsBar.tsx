@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isDirtyState } from '../../../shared/dirty'
-import { tabLabel } from '../../../shared/tabs'
+import { keepAfterCloseRight, tabLabel } from '../../../shared/tabs'
 import type { HttpMethod } from '../../../shared/types'
 import { METHOD_COLORS } from '../lib/methodColors'
 import { useRequestStore } from '../store/useRequestStore'
@@ -35,6 +35,7 @@ export function TabsBar(): React.JSX.Element {
   const duplicate = useTabsStore((s) => s.duplicate)
   const closeOthers = useTabsStore((s) => s.closeOthers)
   const togglePin = useTabsStore((s) => s.togglePin)
+  const closeRight = useTabsStore((s) => s.closeRight)
   const strip = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState<TabMenu | null>(null)
 
@@ -95,6 +96,21 @@ export function TabsBar(): React.JSX.Element {
     )
       return
     closeOthers(id)
+  }
+
+  const requestCloseRight = (id: string): void => {
+    const closing = tabs.filter((t) => !keepAfterCloseRight(tabs, id).includes(t))
+    const dirty = closing.filter((t) =>
+      t.id === activeId ? liveDirty : t.snapshot ? isDirtyState(t.snapshot) : false
+    ).length
+    if (
+      dirty > 0 &&
+      !confirm(
+        `Hay ${dirty} pestaña(s) con cambios sin guardar. ¿Cerrarlas sin guardar?\n(Podrás recuperarlas con "Reabrir pestaña cerrada".)`
+      )
+    )
+      return
+    closeRight(id)
   }
 
   return (
@@ -219,7 +235,7 @@ export function TabsBar(): React.JSX.Element {
           onMouseDown={(e) => e.stopPropagation()}
           style={{
             left: Math.min(menu.x, window.innerWidth - 200),
-            top: Math.min(menu.y, window.innerHeight - 170)
+            top: Math.min(menu.y, window.innerHeight - 205)
           }}
           className="anim-pop fixed z-50 w-48 rounded-xl border border-zinc-700 bg-zinc-900 p-1.5 shadow-2xl"
         >
@@ -247,6 +263,12 @@ export function TabsBar(): React.JSX.Element {
               label: 'Cerrar las demás',
               disabled: tabs.length < 2,
               run: () => requestCloseOthers(menu.id)
+            },
+            {
+              id: 'right',
+              label: 'Cerrar las de la derecha',
+              disabled: keepAfterCloseRight(tabs, menu.id).length === tabs.length,
+              run: () => requestCloseRight(menu.id)
             }
           ].map((item) => (
             <button

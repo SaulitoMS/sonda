@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { isDirtyState } from '../../../shared/dirty'
-import { nextActiveAfterClose, togglePinned } from '../../../shared/tabs'
+import { keepAfterCloseRight, nextActiveAfterClose, togglePinned } from '../../../shared/tabs'
 import type { SavedRequest } from '../../../shared/types'
 import { pushRecent } from '../lib/quickAccess'
 import {
@@ -34,6 +34,8 @@ interface TabsState {
   duplicate: (id: string) => void
   /** Cierra todas las pestañas menos la indicada (quedan en "reabrir cerrada") */
   closeOthers: (id: string) => void
+  /** Cierra las pestañas a la derecha de `id` (las ancladas se quedan) */
+  closeRight: (id: string) => void
   /** Ancla o desancla una pestaña */
   togglePin: (id: string) => void
   /** Abre una petición de una colección: salta a su pestaña si ya está abierta */
@@ -189,6 +191,31 @@ export const useTabsStore = create<TabsState>((set, get) => {
     togglePin: (id) => {
       const { tabs, activeId } = get()
       set({ tabs: togglePinned(freeze(tabs, activeId), id) })
+    },
+
+    closeRight: (id) => {
+      const { tabs, activeId, closed } = get()
+      const frozen = freeze(tabs, activeId)
+      const target = frozen.find((t) => t.id === id)
+      if (!target) return
+
+      const kept = keepAfterCloseRight(frozen, id)
+      if (kept.length === frozen.length) return
+
+      const discarded = frozen
+        .filter((t) => !kept.includes(t))
+        .flatMap((t) => (t.snapshot ? [t.snapshot] : []))
+        .filter((s) => s.currentFile || s.url.trim())
+        .map((s) => ({ ...s, loading: false }))
+
+      // Si la activa se cierra, queda activa la elegida
+      const nextActive = kept.some((t) => t.id === activeId) ? activeId : id
+      if (nextActive !== activeId) useRequestStore.setState(target.snapshot ?? blankSnapshot())
+      set({
+        tabs: kept,
+        activeId: nextActive,
+        closed: [...discarded, ...closed].slice(0, MAX_CLOSED)
+      })
     },
 
     openSaved: (saved, path) => {
