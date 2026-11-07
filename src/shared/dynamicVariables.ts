@@ -141,6 +141,21 @@ const randomDigits = (length: number, random: () => number): string => {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+/** ULID: 10 caracteres de tiempo (ms) + 16 aleatorios, en base32 Crockford. Se ordena por fecha */
+const ulid = (ms: number, random: () => number): string => {
+  let time = ''
+  let t = Math.floor(ms)
+  for (let i = 0; i < 10; i++) {
+    time = CROCKFORD[t % 32] + time
+    t = Math.floor(t / 32)
+  }
+  let rand = ''
+  for (let i = 0; i < 16; i++) rand += CROCKFORD[Math.floor(random() * 32)]
+  return time + rand
+}
+
 export const DYNAMIC_VARIABLES: DynamicVariable[] = [
   {
     name: '$uuid',
@@ -405,6 +420,18 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
       const payload = { sub: randomString(8, random), iat, exp: iat + 3600 }
       return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(payload)}.${randomString(43, random)}`
     }
+  },
+  {
+    name: '$ulid',
+    description: 'ULID: id único de 26 caracteres que se ordena por fecha de creación',
+    generate: ({ now, random }) => ulid(now.getTime(), random)
+  },
+  {
+    name: '$randomBase64',
+    description:
+      'Cadena aleatoria en base64 de 32 caracteres (24 bytes), útil para tokens o secretos de prueba',
+    generate: ({ random }) =>
+      btoa(String.fromCharCode(...Array.from({ length: 24 }, () => Math.floor(random() * 256))))
   }
 ]
 
