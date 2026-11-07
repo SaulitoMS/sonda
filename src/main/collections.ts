@@ -385,6 +385,15 @@ export function registerCollectionHandlers(): void {
     }
   )
 
+  ipcMain.handle('collections:rename', async (_e, id: string, name: string): Promise<void> => {
+    const clean = String(name).trim()
+    if (!clean) throw new Error('El nombre no puede estar vacío')
+    const dir = safePath(id)
+    const meta: Partial<CollectionMeta> = (await readMeta(dir)) ?? {}
+    meta.name = clean
+    await fs.writeFile(join(dir, META_FILE), JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+  })
+
   ipcMain.handle('collections:readRequest', async (_e, relPath: string): Promise<SavedRequest> => {
     const data = JSON.parse(await fs.readFile(safeRequestPath(relPath), 'utf-8')) as SavedRequest
     return { ...data, headers: data.headers ?? [], body: data.body ?? '' }

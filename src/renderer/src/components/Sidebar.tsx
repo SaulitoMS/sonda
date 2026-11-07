@@ -315,6 +315,45 @@ function ExportButton({
   )
 }
 
+/** Campo para renombrar en línea. Enter o salir del campo guarda; Escape cancela */
+function RenameInput({
+  initial,
+  onSubmit,
+  onCancel
+}: {
+  initial: string
+  onSubmit: (name: string) => void
+  onCancel: () => void
+}): React.JSX.Element {
+  const [draft, setDraft] = useState(initial)
+  const done = useRef(false)
+
+  // Guarda o cancela una sola vez, aunque Enter y el blur disparen casi a la vez
+  const finish = (save: boolean): void => {
+    if (done.current) return
+    done.current = true
+    if (save) onSubmit(draft.trim())
+    else onCancel()
+  }
+
+  return (
+    <input
+      autoFocus
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
+      onClick={(e) => e.stopPropagation()}
+      onBlur={() => finish(true)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') finish(true)
+        if (e.key === 'Escape') finish(false)
+      }}
+      spellCheck={false}
+      className="min-w-0 flex-1 rounded border border-blue-500 bg-zinc-800 px-1 py-0.5 text-xs text-zinc-100 outline-none"
+    />
+  )
+}
+
 /* ---------- Fila de petición ---------- */
 
 /** Qué se está arrastrando */
@@ -450,6 +489,8 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [query, setQuery] = useState('')
+  // Qué se está renombrando: "c:<colección>" o "f:<colección>/<carpeta>"
+  const [renaming, setRenaming] = useState<string | null>(null)
   const [authScope, setAuthScope] = useState<AuthScope | null>(null)
   const [headersScope, setHeadersScope] = useState<HeadersScope | null>(null)
   const [scriptsScope, setScriptsScope] = useState<ScriptsScope | null>(null)
@@ -587,6 +628,17 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
     try {
       const copy = await window.api.duplicateFolder(collectionId, folder)
       setExpanded((e) => ({ ...e, [`${collectionId}/${copy}`]: true }))
+      await refresh()
+    } catch (err) {
+      failed(err)
+    }
+  }
+
+  const renameCollection = async (id: string, name: string): Promise<void> => {
+    setRenaming(null)
+    if (!name || name === collections.find((c) => c.id === id)?.name) return
+    try {
+      await window.api.renameCollection(id, name)
       await refresh()
     } catch (err) {
       failed(err)
@@ -1065,8 +1117,7 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
               {/* Colección (padre) */}
               <div
                 onClick={() => toggle(c.id)}
-                draggable
-                onDragStart={(e) => startDrag(e, { kind: 'collection', id: c.id }, c.name)}
+                draggable={renaming !== `c:${c.id}`}
                 onDragEnd={endDrag}
                 className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors hover:bg-zinc-800/70 ${
                   isOpen ? 'bg-zinc-800/40 text-zinc-100' : 'text-zinc-200'
@@ -1076,9 +1127,24 @@ export function Sidebar({ onImport, onRun, onSync, onCoverage }: SidebarProps): 
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-500/15 text-blue-400">
                   <MenuIcon />
                 </span>
-                <span className="flex-1 truncate" title={c.baseUrl ?? c.name}>
-                  {c.name}
-                </span>
+                {renaming === `c:${c.id}` ? (
+                  <RenameInput
+                    initial={c.name}
+                    onSubmit={(name) => renameCollection(c.id, name)}
+                    onCancel={() => setRenaming(null)}
+                  />
+                ) : (
+                  <span
+                    className="flex-1 truncate"
+                    title={`${c.baseUrl ?? c.name} (doble clic para renombrar)`}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation()
+                      setRenaming(`c:${c.id}`)
+                    }}
+                  >
+                    {c.name}
+                  </span>
+                )}
                 <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 group-hover:hidden">
                   {total}
                 </span>
