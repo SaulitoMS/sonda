@@ -109,3 +109,57 @@ describe('fechas relativas', () => {
     expect(getDynamicVariable('$date+7d')?.description).toContain('+7d')
   })
 })
+
+describe('variables de pruebas técnicas', () => {
+  const real = { ...lowest, random: Math.random }
+
+  const luhnOk = (n: string): boolean => {
+    let sum = 0
+    ;[...n].reverse().forEach((c, i) => {
+      let d = Number(c)
+      if (i % 2 === 1) {
+        d *= 2
+        if (d > 9) d -= 9
+      }
+      sum += d
+    })
+    return sum % 10 === 0
+  }
+
+  it('$randomCard empieza con 4, tiene 16 dígitos y pasa Luhn', () => {
+    for (let i = 0; i < 100; i++) {
+      const card = resolveDynamic('$randomCard', real) as string
+      expect(card).toMatch(/^4\d{15}$/)
+      expect(luhnOk(card)).toBe(true)
+    }
+    expect(luhnOk(resolveDynamic('$randomCard', lowest) as string)).toBe(true)
+  })
+
+  it('$randomHex, $randomMac y $randomPostalCode respetan su formato', () => {
+    for (let i = 0; i < 100; i++) {
+      expect(resolveDynamic('$randomHex', real)).toMatch(/^[0-9a-f]{32}$/)
+      expect(resolveDynamic('$randomMac', real)).toMatch(/^([0-9a-f]{2}:){5}[0-9a-f]{2}$/)
+      expect(resolveDynamic('$randomPostalCode', real)).toMatch(/^\d{5}$/)
+    }
+    expect(resolveDynamic('$randomPostalCode', lowest)).toBe('01000')
+  })
+
+  it('$randomLatitude y $randomLongitude quedan dentro de rango', () => {
+    for (let i = 0; i < 100; i++) {
+      const lat = Number(resolveDynamic('$randomLatitude', real))
+      const lon = Number(resolveDynamic('$randomLongitude', real))
+      expect(Math.abs(lat)).toBeLessThanOrEqual(90)
+      expect(Math.abs(lon)).toBeLessThanOrEqual(180)
+    }
+  })
+
+  it('$randomJwt tiene tres partes y un payload con exp a 1 hora', () => {
+    const [header, payload, signature] = (resolveDynamic('$randomJwt', real) as string).split('.')
+    const decode = (part: string): Record<string, unknown> =>
+      JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')))
+    expect(decode(header)).toEqual({ alg: 'HS256', typ: 'JWT' })
+    const body = decode(payload) as { iat: number; exp: number }
+    expect(body.exp - body.iat).toBe(3600)
+    expect(signature).toMatch(/^[A-Za-z0-9_-]{43}$/)
+  })
+})

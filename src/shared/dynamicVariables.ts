@@ -343,6 +343,68 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
       const sum = [...base].reduce((acc, d, i) => acc + ((Number(d) * weights[i % 3]) % 10), 0)
       return base + String((10 - (sum % 10)) % 10)
     }
+  },
+  {
+    name: '$randomHex',
+    description: 'Cadena hexadecimal aleatoria de 32 caracteres (ids, nonces o hashes de prueba)',
+    generate: ({ random }) =>
+      Array.from({ length: 32 }, () => Math.floor(random() * 16).toString(16)).join('')
+  },
+  {
+    name: '$randomMac',
+    description: 'Dirección MAC aleatoria (aa:bb:cc:dd:ee:ff)',
+    generate: ({ random }) =>
+      Array.from({ length: 6 }, () =>
+        Math.floor(random() * 256)
+          .toString(16)
+          .padStart(2, '0')
+      ).join(':')
+  },
+  {
+    name: '$randomPostalCode',
+    description: 'Código postal mexicano aleatorio (5 dígitos, de 01000 a 99999)',
+    generate: ({ random }) => String(1000 + Math.floor(random() * 98999)).padStart(5, '0')
+  },
+  {
+    name: '$randomLatitude',
+    description: 'Latitud aleatoria entre -90 y 90 (6 decimales)',
+    generate: ({ random }) => (random() * 180 - 90).toFixed(6)
+  },
+  {
+    name: '$randomLongitude',
+    description: 'Longitud aleatoria entre -180 y 180 (6 decimales)',
+    generate: ({ random }) => (random() * 360 - 180).toFixed(6)
+  },
+  {
+    name: '$randomCard',
+    description:
+      'Número de tarjeta de 16 dígitos que empieza con 4 y pasa la validación Luhn. No es una tarjeta real',
+    generate: ({ random }) => {
+      const base = '4' + randomDigits(14, random)
+      let sum = 0
+      for (let i = 0; i < base.length; i++) {
+        let d = Number(base[i])
+        // El dígito verificador va a la derecha, así que el último de la base se duplica
+        if ((base.length - i) % 2 === 1) {
+          d *= 2
+          if (d > 9) d -= 9
+        }
+        sum += d
+      }
+      return base + String((10 - (sum % 10)) % 10)
+    }
+  },
+  {
+    name: '$randomJwt',
+    description:
+      'JWT de prueba (HS256) con sub, iat y exp a 1 hora. La firma es aleatoria: no es válida',
+    generate: ({ now, random }) => {
+      const encode = (o: object): string =>
+        btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+      const iat = Math.floor(now.getTime() / 1000)
+      const payload = { sub: randomString(8, random), iat, exp: iat + 3600 }
+      return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(payload)}.${randomString(43, random)}`
+    }
   }
 ]
 
