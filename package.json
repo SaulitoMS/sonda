@@ -1,7 +1,7 @@
 {
   "name": "sonda",
   "productName": "Sonda",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cliente de APIs local-first, sin login. Importa Swagger/OpenAPI y genera tus colecciones.",
   "main": "./out/main/index.js",
   "bin": {
