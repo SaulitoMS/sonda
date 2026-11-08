@@ -58,7 +58,7 @@ Descarga el instalador de la última versión (**v0.1.0**) o consulta todas en [
 | Sistema                 | Descarga                                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | **Windows** (64 bits)   | [`sonda-0.1.0-setup.exe`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0-setup.exe)               |
-| **macOS** (Apple Silicon) | [`sonda-0.1.0-arm64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0-arm64.dmg)             |
+| **macOS** (Apple Silicon) | [`sonda-0.1.0-arm64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0.dmg)             |
 | **macOS** (Intel)       | [`sonda-0.1.0-x64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0-x64.dmg)                   |
 
 > **Aviso:** los instaladores todavía no están firmados.
