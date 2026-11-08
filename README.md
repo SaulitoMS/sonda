@@ -53,13 +53,13 @@ Importa tu Swagger/OpenAPI, genera las colecciones, comprueba que la API cumple 
 
 ## Descargas
 
-Descarga el instalador de la última versión (**v0.1.0**) o consulta todas en [Releases](https://github.com/SaulitoMS/sonda/releases/latest).
+Descarga el instalador de la última versión (**v0.1.1**) o consulta todas en [Releases](https://github.com/SaulitoMS/sonda/releases/latest).
 
 | Sistema                 | Descarga                                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **Windows** (64 bits)   | [`sonda-0.1.0-setup.exe`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0-setup.exe)               |
-| **macOS** (Apple Silicon) | [`sonda-0.1.0-arm64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0.dmg)             |
-| **macOS** (Intel)       | [`sonda-0.1.0-x64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.0/sonda-0.1.0-x64.dmg)                   |
+| **Windows** (64 bits)   | [`sonda-0.1.1-setup.exe`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.1/sonda-0.1.1-setup.exe)               |
+| **macOS** (Apple Silicon) | [`sonda-0.1.1-arm64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.1/sonda-0.1.1-arm64.dmg)             |
+| **macOS** (Intel)       | [`sonda-0.1.1-x64.dmg`](https://github.com/SaulitoMS/sonda/releases/download/v0.1.1/sonda-0.1.1-x64.dmg)                   |
 
 > **Aviso:** los instaladores todavía no están firmados.
 > En **Windows**, si aparece SmartScreen, pulsa _Más información_ y luego _Ejecutar de todas formas_.
@@ -100,7 +100,7 @@ Los instaladores quedan en la carpeta `dist/`.
 3. Abre cualquier petición de la colección y pulsa **Enviar** (`Cmd/Ctrl + Enter`).
 4. Revisa la pestaña **Schema** para ver si la respuesta cumple lo que promete la spec.
 
->  Las guías paso a paso de cada funcionalidad están en [`funcionalidadesRD`](./funcionalidadesRD/README.md).
+> Las guías paso a paso de cada funcionalidad están en [`funcionalidadesRD`](./funcionalidadesRD/README.md).
 
 ---
 
